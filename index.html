@@ -805,7 +805,7 @@ function renderFiches(){
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
     const ingCount=(f.ingredients||[]).length;
-    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div><div class="fc-foot">${profil==='admin'?`<button class="btn btn-d btn-sm" onclick="event.stopPropagation();deleteFiche('${escHTML(f.id)}')">Suppr.</button><button class="btn btn-g btn-sm" onclick="event.stopPropagation();editFiche('${escHTML(f.id)}')">Modifier</button>`:''}<button class="btn btn-p btn-sm" onclick="openFD('${escHTML(f.id)}')">Voir →</button></div>`;
+    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div><div class="fc-foot">${profil==='admin'?`<button class="btn btn-d btn-sm" onclick="event.stopPropagation();deleteFiche('${escHTML(f.id)}')">Suppr.</button><button class="btn btn-g btn-sm" onclick="event.stopPropagation();editFiche('${escHTML(f.id)}')">Modifier</button><button class="btn btn-g btn-sm" onclick="event.stopPropagation();duplicateFiche('${escHTML(f.id)}')">Copier</button>`:''}<button class="btn btn-p btn-sm" onclick="openFD('${escHTML(f.id)}')">Voir →</button></div>`;
     grid.appendChild(c);
   });
 }
@@ -897,7 +897,7 @@ function addIR(nom='',qty='',u='g'){
   const l=document.getElementById('il');const r=document.createElement('div');r.className='ir';
   const units=['g','kg','cl','L','cs','cc','pièce','botte','ml'];
   const opts=units.map(x=>`<option value="${x}" ${u===x?'selected':''}>${x}</option>`).join('');
-  r.innerHTML=`<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom)}"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  r.innerHTML=`<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   l.appendChild(r);if(!nom)r.querySelector('.ing-n').focus();
 }
 
@@ -909,13 +909,24 @@ function addSR(t=''){
 
 function renum(){document.querySelectorAll('#sl .sn').forEach((e,i)=>e.textContent=i+1)}
 
+async function checkFrench(texts){
+  try{
+    const text=texts.filter(Boolean).join('\n');
+    if(!text.trim())return[];
+    const params=new URLSearchParams({text,language:'fr',enabledOnly:'false'});
+    const res=await fetch('https://api.languagetool.org/v2/check',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params.toString()});
+    const data=await res.json();
+    return(data.matches||[]).filter(m=>m.rule&&m.rule.issueType!=='typographical');
+  }catch(e){return[];}
+}
+
 async function saveFiche(){
   const nom=document.getElementById('f-nom').value.trim();
   if(!nom){toast('Le nom est obligatoire','err');return}
   setBusy('btn-save-fiche',true);
   try{
     const ings=[];
-    document.querySelectorAll('#il .ir').forEach(r=>{const n=r.querySelector('.ing-n').value.trim();if(n)ings.push({nom:n,quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value})});
+    document.querySelectorAll('#il .ir').forEach(r=>{const n=r.querySelector('.ing-n').value.trim().toUpperCase();if(n)ings.push({nom:n,quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value})});
     const proc=[];
     document.querySelectorAll('#sl .s-txt').forEach(i=>{if(i.value.trim())proc.push(i.value.trim())});
     const conds=[];
@@ -926,6 +937,12 @@ async function saveFiche(){
     });
     const conditionnement=JSON.stringify(conds);
     const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),conditionnement,ingredients:ings,process:proc};
+    // correcteur français
+    const errs=await checkFrench([nom,...proc]);
+    if(errs.length){
+      const msg=errs.slice(0,3).map(e=>`• ${e.message} : "${e.context?.text?.slice(e.context.offset,e.context.offset+e.context.length)||''}"`).join('\n');
+      if(!confirm(`Corrections suggérées :\n${msg}\n\nEnregistrer quand même ?`)){setBusy('btn-save-fiche',false);return;}
+    }
     setSyncing(true);
     const res=editId?await callAPI('update_fiche',{id:editId,data}):await callAPI('insert_fiche',data);
     setSyncing(false);
@@ -968,6 +985,13 @@ async function deleteFiche(id){
   if(!confirm('Supprimer cette fiche ?'))return;
   setSyncing(true);await callAPI('delete_fiche',{id});setSyncing(false);
   toast('Fiche supprimée');await loadAll();
+}
+
+async function duplicateFiche(id){
+  const f=fiches.find(f=>f.id===id);if(!f)return;
+  const copy={nom:'Copie de '+f.nom,categorie:f.categorie,quantite_nette:f.quantite_nette,conditionnement:f.conditionnement,ingredients:f.ingredients,process:f.process};
+  setSyncing(true);await callAPI('insert_fiche',copy);setSyncing(false);
+  toast('Recette dupliquée ✓','ok');await loadAll();
 }
 
 // ── PLAT CRUD ──
@@ -1060,7 +1084,7 @@ async function deleteMenuItem(sec,idx){
 
 // ── FICHE DOC ──
 function buildFicheDoc(f){
-  const irows=(f.ingredients||[]).map(i=>`<tr><td>${escHTML(i.nom)}</td><td>${i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):'—'}</td></tr>`).join('');
+  const irows=(f.ingredients||[]).map(i=>`<tr><td>${escHTML((i.nom||'').toUpperCase())}</td><td>${i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):'—'}</td></tr>`).join('');
   const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
   const condDisplay=(()=>{try{const a=JSON.parse(f.conditionnement||'[]');return a.length?a.map(escHTML).join('<br>'):'—';}catch(e){return escHTML(f.conditionnement||'—');}})();
   return `<div class="fdoc">
