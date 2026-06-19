@@ -192,32 +192,32 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .fd-content{max-width:780px;margin:0 auto;padding:2rem}
 
 /* FICHE DOC */
-.fdoc{background:var(--blanc);font-family:'Poppins',sans-serif;padding:2.5rem;border:1px solid var(--border)}
-.fdoc-hdr{display:flex;align-items:center;gap:1.25rem;margin-bottom:0.25rem}
-.fdoc{background:#fff;font-family:'Poppins',sans-serif;padding:2.5cm 2cm;min-height:29.7cm;position:relative;box-sizing:border-box}
-.fdoc-hdr{margin-bottom:0.5rem}
-.fdoc-nom{font-size:2rem;font-weight:700;color:#221818;line-height:1.1;margin-bottom:0.2rem}
-.fdoc-sub{font-size:0.72rem;color:#B5433C;font-weight:400;letter-spacing:0.02em}
-.fdoc-sep{height:3px;margin:1.5rem 0 3px;background:#B5433C;border:none}
+.fdoc{background:#fff;font-family:'Poppins',sans-serif;min-height:29.7cm;position:relative;box-sizing:border-box;border:1px solid var(--border)}
+.fdoc-hdr{padding:1.5cm 2cm 0 2cm}
+.fdoc-body{padding:0 2cm 3cm 2cm}
+.fdoc-nom{font-size:2rem;font-weight:700;color:#221818;line-height:1.1;margin-bottom:0.25rem}
+.fdoc-sub{font-size:0.7rem;color:#B5433C;font-weight:400}
+.fdoc-sep{height:3px;margin:1.5rem 0 3px;background:#B5433C;border:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .fdoc-sep2{height:1px;background:#C0504A;opacity:0.3;border:none;margin-bottom:2rem}
 .fdoc-meta{display:none}
 .fdoc-table{width:100%;border-collapse:collapse;margin-bottom:2rem;border:1px solid #E0D0D0}
-.fdoc-table thead th{font-size:0.68rem;font-weight:700;letter-spacing:0.08em;color:#B5433C;padding:0.7rem 1rem;text-align:left;background:#fff;border-bottom:1px solid #E0D0D0}
+.fdoc-table thead th{font-size:0.68rem;font-weight:600;color:#B5433C;padding:0.8rem 1rem;text-align:left;background:#fff;border-bottom:1px solid #E0D0D0}
 .fdoc-table thead th:last-child{text-align:right}
-.fdoc-table tbody tr td{padding:0.75rem 1rem;font-size:0.82rem;color:#221818;border:none;border-bottom:1px solid #f0e8e8}
-.fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC}
+.fdoc-table tbody td{padding:0.85rem 1rem;font-size:0.82rem;color:#221818;border-bottom:1px solid #EDD8D8}
+.fdoc-table tbody tr:last-child td{border-bottom:none}
 .fdoc-table tbody tr:nth-child(odd) td{background:#fff}
-.fdoc-table tbody td:last-child{text-align:right;color:#6B5C5C;font-weight:500;font-size:0.8rem}
-.fdoc-ptitle{font-size:0.72rem;font-weight:700;letter-spacing:0.05em;color:#B5433C;margin-bottom:0.6rem;padding-top:0.25rem}
-.fdoc-steps{display:flex;flex-direction:column;gap:0;border:1px solid #E0D0D0}
+.fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.fdoc-table tbody td:last-child{text-align:right;color:#6B5C5C;font-weight:500}
+.fdoc-ptitle{font-size:0.68rem;font-weight:700;color:#B5433C;margin-bottom:0.5rem}
+.fdoc-steps{display:flex;flex-direction:column;border:1px solid #E0D0D0}
 .fdoc-step{display:flex;align-items:stretch;border-bottom:1px solid #E0D0D0}
 .fdoc-step:last-child{border-bottom:none}
-.fdoc-step:nth-child(even) .fdoc-stxt{background:#F5ECEC}
-.fdoc-step:nth-child(odd) .fdoc-stxt{background:#fff}
-.fdoc-snum{width:40px;flex-shrink:0;background:#B5433C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700}
-.fdoc-stxt{flex:1;padding:0.75rem 1rem;font-size:0.82rem;color:#221818;line-height:1.5}
-.fdoc-footer{position:absolute;bottom:1.5cm;left:2cm;right:2cm;display:flex;justify-content:space-between;padding-top:0.75rem;border-top:1px solid #E0D0D0}
-.fdoc-fl{font-size:0.62rem;font-weight:400;color:#B5433C;margin-bottom:0.2rem;letter-spacing:0.02em}
+.fdoc-step:nth-child(odd) .fdoc-stxt{background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.fdoc-step:nth-child(even) .fdoc-stxt{background:#fff}
+.fdoc-snum{width:40px;flex-shrink:0;background:#B5433C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.fdoc-stxt{flex:1;padding:0.85rem 1rem;font-size:0.82rem;color:#221818;line-height:1.5}
+.fdoc-footer{position:absolute;bottom:1.5cm;left:2cm;right:2cm;display:flex;justify-content:space-between;padding-top:0.6rem;border-top:1px solid #E0D0D0}
+.fdoc-fl{font-size:0.6rem;font-weight:400;color:#B5433C;margin-bottom:0.2rem}
 .fdoc-fv{font-size:1.1rem;font-weight:700;color:#221818}
 
 /* SCAN */
@@ -991,21 +991,24 @@ async function deleteMenuItem(sec,idx){
 function buildFicheDoc(f){
   const irows=(f.ingredients||[]).map(i=>`<tr><td>${escHTML(i.nom)}</td><td>${i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):'—'}</td></tr>`).join('');
   const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
+  const condDisplay=(()=>{try{const a=JSON.parse(f.conditionnement||'[]');return a.length?a.map(escHTML).join('<br>'):'—';}catch(e){return escHTML(f.conditionnement||'—');}})();
   return `<div class="fdoc">
     <div class="fdoc-hdr">
       <div class="fdoc-nom">${escHTML(f.nom)}</div>
       <div class="fdoc-sub">Fiche Technique</div>
     </div>
-    <hr class="fdoc-sep"><hr class="fdoc-sep2">
-    <table class="fdoc-table">
-      <thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th></tr></thead>
-      <tbody>${irows}</tbody>
-    </table>
-    <div class="fdoc-ptitle">Process</div>
-    <div class="fdoc-steps">${steps}</div>
-    <div class="fdoc-footer">
-      <div><div class="fdoc-fl">Quantité nette</div><div class="fdoc-fv">${escHTML(f.quantite_nette||'—')}</div></div>
-      <div style="text-align:right"><div class="fdoc-fl">Conditionnement</div><div class="fdoc-fv">${(()=>{try{const a=JSON.parse(f.conditionnement||'[]');return a.length?a.map(escHTML).join('<br>'):'—';}catch(e){return escHTML(f.conditionnement||'—');}})()}</div></div>
+    <div class="fdoc-body">
+      <hr class="fdoc-sep"><hr class="fdoc-sep2">
+      <table class="fdoc-table">
+        <thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th></tr></thead>
+        <tbody>${irows}</tbody>
+      </table>
+      <div class="fdoc-ptitle">Process</div>
+      <div class="fdoc-steps">${steps}</div>
+      <div class="fdoc-footer">
+        <div><div class="fdoc-fl">Quantité nette</div><div class="fdoc-fv">${escHTML(f.quantite_nette||'—')}</div></div>
+        <div style="text-align:right"><div class="fdoc-fl">Conditionnement</div><div class="fdoc-fv">${condDisplay}</div></div>
+      </div>
     </div>
   </div>`;
 }
@@ -1025,30 +1028,35 @@ function printFiche(){
   const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${escHTML(f.nom)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    @page{size:A4;margin:1.5cm}
+    @page{size:A4;margin:0}
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Poppins',sans-serif;background:white;color:#221818;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc{padding:0;min-height:auto}
-    .fdoc-nom{font-size:2rem;font-weight:700;color:#221818;line-height:1.1;margin-bottom:0.2rem}
-    .fdoc-sub{font-size:0.72rem;color:#B5433C;font-weight:400}
+    .fdoc{min-height:29.7cm;position:relative;background:#fff}
+    .fdoc-hdr{padding:1.5cm 2cm 0 2cm}
+    .fdoc-body{padding:0 2cm 3cm 2cm}
+    .fdoc-nom{font-size:2rem;font-weight:700;color:#221818;line-height:1.1;margin-bottom:0.25rem}
+    .fdoc-sub{font-size:0.7rem;color:#B5433C;font-weight:400}
     .fdoc-sep{height:3px;margin:1.5rem 0 3px;background:#B5433C;border:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .fdoc-sep2{height:1px;background:#C0504A;opacity:0.3;border:none;margin-bottom:2rem}
     .fdoc-table{width:100%;border-collapse:collapse;margin-bottom:2rem;border:1px solid #E0D0D0}
-    .fdoc-table thead th{font-size:0.68rem;font-weight:700;color:#B5433C;padding:0.7rem 1rem;text-align:left;border-bottom:1px solid #E0D0D0}
+    .fdoc-table thead th{font-size:0.68rem;font-weight:600;color:#B5433C;padding:0.8rem 1rem;text-align:left;background:#fff;border-bottom:1px solid #E0D0D0}
     .fdoc-table thead th:last-child{text-align:right}
+    .fdoc-table tbody td{padding:0.85rem 1rem;font-size:0.82rem;color:#221818;border-bottom:1px solid #EDD8D8}
+    .fdoc-table tbody tr:last-child td{border-bottom:none}
+    .fdoc-table tbody tr:nth-child(odd) td{background:#fff}
     .fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-table tbody td{padding:0.75rem 1rem;font-size:0.82rem;border-bottom:1px solid #f0e8e8}
     .fdoc-table tbody td:last-child{text-align:right;color:#6B5C5C;font-weight:500}
-    .fdoc-ptitle{font-size:0.72rem;font-weight:700;color:#B5433C;margin-bottom:0.6rem}
+    .fdoc-ptitle{font-size:0.68rem;font-weight:700;color:#B5433C;margin-bottom:0.5rem}
     .fdoc-steps{border:1px solid #E0D0D0}
     .fdoc-step{display:flex;align-items:stretch;border-bottom:1px solid #E0D0D0}
     .fdoc-step:last-child{border-bottom:none}
-    .fdoc-step:nth-child(even) .fdoc-stxt{background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-snum{width:40px;flex-shrink:0;background:#B5433C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-stxt{flex:1;padding:0.75rem 1rem;font-size:0.82rem;line-height:1.5}
-    .fdoc-footer{margin-top:3rem;display:flex;justify-content:space-between;padding-top:0.75rem;border-top:1px solid #E0D0D0}
-    .fdoc-fl{font-size:0.62rem;color:#B5433C;margin-bottom:0.2rem}
-    .fdoc-fv{font-size:1.1rem;font-weight:700}
+    .fdoc-step:nth-child(odd) .fdoc-stxt{background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .fdoc-step:nth-child(even) .fdoc-stxt{background:#fff}
+    .fdoc-snum{width:40px;flex-shrink:0;background:#B5433C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .fdoc-stxt{flex:1;padding:0.85rem 1rem;font-size:0.82rem;line-height:1.5}
+    .fdoc-footer{position:absolute;bottom:1.5cm;left:2cm;right:2cm;display:flex;justify-content:space-between;padding-top:0.6rem;border-top:1px solid #E0D0D0}
+    .fdoc-fl{font-size:0.6rem;color:#B5433C;margin-bottom:0.2rem}
+    .fdoc-fv{font-size:1.1rem;font-weight:700;color:#221818}
   </style></head><body>
   ${buildFicheDoc(f)}
   <script>window.onload=function(){window.print();setTimeout(()=>window.close(),500)}<\/script>
