@@ -732,10 +732,9 @@ function renderFiches(){
   if(tot===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">📋</div><h3>Aucune fiche</h3><p>Crée ta première fiche ou importe depuis une photo</p></div>';return}
   if(fil.length===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🔍</div><h3>Aucun résultat</h3><p>Essaie un autre terme</p></div>';return}
   fil.forEach(f=>{
-    const prev=(f.ingredients||[]).slice(0,3).map(i=>escHTML(i.nom)).join(', ');
     const c=document.createElement('div');c.className='fc';
     const ingCount=(f.ingredients||[]).length;
-    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div><div class="fc-body"><div class="fc-meta"><span>${ingCount} ingrédient${ingCount>1?'s':''}</span><span>${escHTML(f.quantite_nette||'—')}</span></div><div class="fc-prev">${prev}${ingCount>3?'…':''}</div></div><div class="fc-foot">${profil==='admin'?`<button class="btn btn-d btn-sm" onclick="event.stopPropagation();deleteFiche('${escHTML(f.id)}')">Suppr.</button><button class="btn btn-g btn-sm" onclick="event.stopPropagation();editFiche('${escHTML(f.id)}')">Modifier</button>`:''}<button class="btn btn-p btn-sm" onclick="openFD('${escHTML(f.id)}')">Voir →</button></div>`;
+    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div><div class="fc-foot">${profil==='admin'?`<button class="btn btn-d btn-sm" onclick="event.stopPropagation();deleteFiche('${escHTML(f.id)}')">Suppr.</button><button class="btn btn-g btn-sm" onclick="event.stopPropagation();editFiche('${escHTML(f.id)}')">Modifier</button>`:''}<button class="btn btn-p btn-sm" onclick="openFD('${escHTML(f.id)}')">Voir →</button></div>`;
     grid.appendChild(c);
   });
 }
