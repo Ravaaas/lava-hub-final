@@ -705,8 +705,8 @@ async function loadAll(){
   setSyncing(true);
   try{
     const[{data:f},{data:p}]=await Promise.all([
-      sb.from('fiches').select('*').order('created_at',{ascending:false}),
-      sb.from('plats').select('*').order('created_at',{ascending:false})
+      sb.from('fiches').select('*').order('nom',{ascending:true}),
+      sb.from('plats').select('*').order('nom',{ascending:true})
     ]);
     fiches=f||[];plats=p||[];
     renderFiches();renderPlats();renderMenu();
