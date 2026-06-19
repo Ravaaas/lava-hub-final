@@ -864,16 +864,6 @@ function addSR(t=''){
 
 function renum(){document.querySelectorAll('#sl .sn').forEach((e,i)=>e.textContent=i+1)}
 
-async function checkFrench(texts){
-  try{
-    const text=texts.filter(Boolean).join('\n');
-    if(!text.trim())return[];
-    const params=new URLSearchParams({text,language:'fr',enabledOnly:'false'});
-    const res=await fetch('https://api.languagetool.org/v2/check',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params.toString()});
-    const data=await res.json();
-    return(data.matches||[]).filter(m=>m.rule&&m.rule.issueType!=='typographical');
-  }catch(e){return[];}
-}
 
 async function saveFiche(){
   const nom=document.getElementById('f-nom').value.trim();
@@ -892,12 +882,6 @@ async function saveFiche(){
     });
     const conditionnement=JSON.stringify(conds);
     const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),conditionnement,ingredients:ings,process:proc};
-    // correcteur français
-    const errs=await checkFrench([nom,...proc]);
-    if(errs.length){
-      const msg=errs.slice(0,3).map(e=>`• ${e.message} : "${e.context?.text?.slice(e.context.offset,e.context.offset+e.context.length)||''}"`).join('\n');
-      if(!confirm(`Corrections suggérées :\n${msg}\n\nEnregistrer quand même ?`)){setBusy('btn-save-fiche',false);return;}
-    }
     setSyncing(true);
     const res=editId?await sb.from('fiches').update(data).eq('id',editId):await sb.from('fiches').insert(data);
     setSyncing(false);
