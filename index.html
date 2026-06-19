@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>LAVA — Hub Cuisine</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --rouge:#B5433C; --rouge-dk:#8C302A; --rouge-lt:#C0504A;
+  --rose:#F5ECEC; --rose-mid:#EDD8D8; --rose-deep:#E2C5C5;
+  --creme:#FAF7F4; --blanc:#FFFFFF;
+  --gc:#F2EDEB; --gt:#6B5C5C; --noir:#221818;
+  --border:#E0D0D0;
+  --r:3px;
+  --sh-sm:0 1px 4px rgba(34,24,24,.06);
+  --sh-md:0 4px 20px rgba(34,24,24,.10);
+  --sh-lg:0 8px 40px rgba(34,24,24,.14);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{font-family:'Poppins',sans-serif;background:var(--creme);color:var(--noir);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* LOGIN */
+#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:2rem;background:var(--creme)}
+.lbox{background:var(--blanc);border:1px solid var(--border);border-radius:var(--r);padding:3rem 2.5rem;width:100%;max-width:360px;text-align:center;box-shadow:var(--sh-md)}
+.l-circle{width:56px;height:56px;border-radius:50%;border:2px solid var(--rouge);display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem}
+.l-circle svg{width:28px;height:28px}
+.l-logo{font-size:1.7rem;font-weight:700;letter-spacing:0.35em;color:var(--rouge)}
+.l-sub{font-size:0.65rem;letter-spacing:0.25em;color:var(--gt);text-transform:uppercase;margin-bottom:2rem}
+.l-div{height:1px;background:var(--border);margin:0 0 1.5rem}
+.pb-wrap{display:flex;flex-direction:column;gap:0.6rem}
+.pb{padding:0.85rem;border:1.5px solid var(--border);background:var(--blanc);border-radius:var(--r);cursor:pointer;font-family:'Poppins',sans-serif;font-size:0.78rem;font-weight:500;letter-spacing:0.08em;text-transform:uppercase;color:var(--noir);transition:all .15s}
+.pb:hover{border-color:var(--rouge);color:var(--rouge);background:var(--rose)}
+.pb.admin{background:var(--rouge);color:var(--blanc);border-color:var(--rouge)}
+.pb.admin:hover{background:var(--rouge-dk)}
+.pb:disabled{opacity:0.6;cursor:not-allowed}
+.pw-field{display:none;flex-direction:column;gap:0.6rem;margin-top:0.75rem}
+.pw-field input{padding:0.75rem 1rem;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.85rem;background:var(--rose);color:var(--noir);outline:none;width:100%;transition:border-color .15s}
+.pw-field input:focus{border-color:var(--rouge);background:var(--blanc)}
+.btn-confirm{padding:0.75rem;background:var(--rouge);color:var(--blanc);border:none;border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.78rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:background .15s}
+.btn-confirm:hover{background:var(--rouge-dk)}
+.btn-confirm:disabled{opacity:0.6;cursor:not-allowed}
+.l-err{color:var(--rouge);font-size:0.72rem;margin-top:0.25rem;display:none}
+
+/* APP SHELL */
+#app{display:none;flex-direction:column;min-height:100vh}
+header{background:var(--blanc);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:58px;position:sticky;top:0;z-index:100;box-shadow:var(--sh-sm)}
+.h-left{display:flex;align-items:center;gap:0.75rem}
+.h-circle{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--rouge);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.h-circle svg{width:15px;height:15px}
+.h-logo{font-size:0.95rem;font-weight:700;letter-spacing:0.3em;color:var(--rouge)}
+.h-right{display:flex;align-items:center;gap:0.85rem}
+.sync-pill{display:flex;align-items:center;gap:0.4rem;font-size:0.6rem;font-weight:500;color:var(--gt);background:var(--gc);padding:0.28rem 0.65rem;border-radius:20px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#5cb85c;flex-shrink:0}
+.sync-dot.syncing{background:var(--rouge);animation:pulse 1s infinite}
+.prof-badge{font-size:0.6rem;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;padding:0.26rem 0.65rem;border-radius:20px;background:var(--rose);color:var(--rouge);border:1px solid var(--rose-mid)}
+.btn-out{font-size:0.62rem;font-weight:500;color:var(--gt);background:none;border:none;cursor:pointer;font-family:'Poppins',sans-serif;padding:0.3rem 0}
+.btn-out:hover{color:var(--rouge)}
+
+/* TABS */
+nav.tabs{background:var(--blanc);border-bottom:1px solid var(--border);display:flex;padding:0 1.5rem;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+.tb{padding:0 1.1rem;height:46px;background:none;border:none;border-bottom:2.5px solid transparent;font-family:'Poppins',sans-serif;font-size:0.7rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gt);cursor:pointer;transition:all .15s;white-space:nowrap;margin-bottom:-1px;display:flex;align-items:center;gap:0.4rem}
+.tb:hover{color:var(--rouge)}
+.tb.active{color:var(--rouge);border-bottom-color:var(--rouge)}
+.tbadge{background:var(--rose-mid);color:var(--rouge);font-size:0.54rem;font-weight:700;padding:0.1rem 0.38rem;border-radius:10px;min-width:16px;text-align:center}
+
+/* MAIN */
+main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
+.tc{display:none;animation:fi .15s ease}
+.tc.active{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* PAGE HEADER */
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.5rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:1rem}
+.ph-title{font-size:0.95rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--rouge)}
+.ph-sub{font-size:0.66rem;color:var(--gt);margin-top:0.2rem}
+.ph-actions{display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap}
+
+/* SEARCH */
+.sb{display:flex;align-items:center;gap:0.7rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.si-wrap{position:relative;flex:1;min-width:180px}
+.si-wrap svg{position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);opacity:0.35;pointer-events:none}
+.si{width:100%;padding:0.6rem 0.75rem 0.6rem 2.1rem;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.78rem;background:var(--blanc);color:var(--noir);outline:none;transition:border-color .15s}
+.si:focus{border-color:var(--rouge)}
+.fs{padding:0.6rem 0.85rem;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:500;background:var(--blanc);color:var(--gt);outline:none;cursor:pointer;transition:border-color .15s}
+.fs:focus{border-color:var(--rouge)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:0.4rem;padding:0.58rem 1.1rem;border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.67rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:all .15s;white-space:nowrap;border:1.5px solid transparent}
+.btn svg{width:13px;height:13px;flex-shrink:0}
+.btn-p{background:var(--rouge);color:var(--blanc);border-color:var(--rouge)}
+.btn-p:hover{background:var(--rouge-dk)}
+.btn-o{background:var(--blanc);color:var(--rouge);border-color:var(--rouge)}
+.btn-o:hover{background:var(--rose)}
+.btn-g{background:none;color:var(--gt);border-color:var(--border)}
+.btn-g:hover{border-color:var(--rouge);color:var(--rouge)}
+.btn-d{background:none;color:#b44;border-color:#e0b0b0}
+.btn-d:hover{background:#fdf0f0}
+.btn-sm{padding:0.32rem 0.65rem;font-size:0.6rem}
+.btn:disabled{opacity:0.6;cursor:not-allowed;pointer-events:none}
+
+/* FICHE CARDS */
+.fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:1rem}
+.fc{background:var(--blanc);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:box-shadow .2s,border-color .2s,transform .2s;cursor:pointer}
+.fc:hover{border-color:var(--rouge);box-shadow:var(--sh-md);transform:translateY(-2px)}
+.fc-top{background:var(--rose);padding:1.1rem 1.2rem 0.9rem;border-bottom:2px solid var(--rouge)}
+.fc-cat{font-size:0.57rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--rouge);margin-bottom:0.3rem}
+.fc-name{font-size:0.98rem;font-weight:700;color:var(--noir);line-height:1.2}
+.fc-body{padding:0.9rem 1.2rem}
+.fc-meta{font-size:0.67rem;color:var(--gt);display:flex;justify-content:space-between;margin-bottom:0.55rem}
+.fc-prev{font-size:0.69rem;color:var(--gt);line-height:1.5}
+.fc-foot{padding:0.6rem 1.2rem;border-top:1px solid var(--gc);display:flex;gap:0.4rem;justify-content:flex-end}
+
+/* PLAT CARDS */
+.pc{background:var(--blanc);border:1px solid var(--border);border-radius:var(--r);margin-bottom:0.75rem;overflow:hidden}
+.pc-head{background:var(--blanc);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid transparent;transition:background .15s}
+.pc-head:hover{background:var(--rose)}
+.pc.expanded .pc-head{background:var(--rose);border-bottom-color:var(--rose-mid)}
+.pc-sec{font-size:0.57rem;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--rouge);margin-bottom:0.15rem}
+.pc-name{font-size:0.9rem;font-weight:700;color:var(--noir)}
+.pc-chev{font-size:0.72rem;color:var(--gt);transition:transform .2s}
+.pc.expanded .pc-chev{transform:rotate(180deg)}
+.pc-body{display:none;padding:1.25rem 1.5rem}
+.pc.expanded .pc-body{display:block}
+.comp-list{display:flex;flex-direction:column;gap:0.4rem}
+.comp-item{display:flex;align-items:center;justify-content:space-between;padding:0.55rem 0.85rem;background:var(--rose);border:1px solid var(--rose-mid);border-radius:var(--r);font-size:0.75rem}
+.comp-item.linked{cursor:pointer;transition:all .15s}
+.comp-item.linked:hover{border-color:var(--rouge);background:var(--blanc)}
+.comp-lnk{font-size:0.58rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--rouge)}
+
+/* MENU */
+.ms{margin-bottom:2.5rem}
+.ms-label{font-size:0.58rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--rouge);padding-bottom:0.5rem;margin-bottom:1rem;border-bottom:1px solid var(--rose-mid)}
+.mr{display:flex;padding:0.85rem 0;border-bottom:1px solid var(--gc);gap:1rem;align-items:flex-start}
+.mr-name{font-size:0.87rem;font-weight:600;color:var(--noir);margin-bottom:0.2rem}
+.mr-desc{font-size:0.69rem;color:var(--gt);line-height:1.5}
+.atags{display:flex;gap:0.3rem;flex-wrap:wrap;margin-top:0.4rem}
+.atag{font-size:0.55rem;font-weight:700;letter-spacing:0.06em;padding:0.15rem 0.42rem;border-radius:2px;background:var(--rose-mid);color:var(--rouge);text-transform:uppercase}
+.mr-actions{display:flex;gap:0.3rem;flex-shrink:0;align-items:flex-start;margin-top:0.15rem}
+
+/* CONFIG */
+.cs{margin-bottom:2rem}
+.cs-title{font-size:0.68rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--rouge);padding-bottom:0.6rem;margin-bottom:1rem;border-bottom:1px solid var(--border)}
+.cl{display:flex;flex-direction:column;gap:0.4rem;margin-bottom:0.75rem}
+.ci{display:flex;align-items:center;justify-content:space-between;padding:0.65rem 1rem;background:var(--blanc);border:1px solid var(--border);border-radius:var(--r)}
+.ci-label{font-size:0.8rem;font-weight:500;color:var(--noir)}
+.ca-row{display:flex;gap:0.5rem}
+.ca-row input{flex:1;padding:0.6rem 0.85rem;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.78rem;background:var(--rose);color:var(--noir);outline:none;transition:border-color .15s}
+.ca-row input:focus{border-color:var(--rouge);background:var(--blanc)}
+
+/* MODAL */
+.mo{display:none;position:fixed;inset:0;background:rgba(34,24,24,.45);backdrop-filter:blur(2px);z-index:200;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.mo.open{display:flex}
+.modal{background:var(--blanc);border-radius:var(--r);width:100%;max-width:640px;border-top:3px solid var(--rouge);margin:auto;box-shadow:var(--sh-lg);animation:su .2s ease}
+@keyframes su{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.m-head{padding:1.5rem 2rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.m-title{font-size:0.8rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--rouge)}
+.m-close{background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--gt);width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:50%;transition:background .15s}
+.m-close:hover{background:var(--rose);color:var(--rouge)}
+.m-body{padding:1.5rem 2rem;max-height:72vh;overflow-y:auto}
+.m-foot{padding:1rem 2rem 1.5rem;display:flex;justify-content:flex-end;gap:0.6rem;border-top:1px solid var(--border)}
+
+/* FORM */
+.fg2{margin-bottom:1.1rem}
+.fl{display:block;font-size:0.62rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gt);margin-bottom:0.35rem}
+.fi2,.fsel,.fta{width:100%;padding:0.65rem 0.85rem;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.8rem;background:var(--rose);color:var(--noir);outline:none;transition:border-color .15s}
+.fi2:focus,.fsel:focus,.fta:focus{border-color:var(--rouge);background:var(--blanc)}
+.fta{resize:vertical;min-height:80px;line-height:1.6}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.fsect{font-size:0.62rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--rouge);padding:0.75rem 0 0.5rem;border-top:1px solid var(--border);margin-top:0.25rem;margin-bottom:0.6rem}
+
+/* DYNAMIC ROWS */
+.il{display:flex;flex-direction:column;gap:0.4rem}
+.ir{display:grid;grid-template-columns:1fr 70px 100px 28px;gap:0.35rem;align-items:center}
+.btn-rm{width:28px;height:28px;background:none;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--gt);font-size:0.9rem;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.btn-rm:hover{border-color:var(--rouge);color:var(--rouge);background:var(--rose)}
+.btn-ar{display:flex;align-items:center;gap:0.4rem;padding:0.42rem 0.65rem;background:none;border:1.5px dashed var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.63rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gt);cursor:pointer;width:100%;margin-top:0.25rem;transition:all .15s}
+.btn-ar:hover{border-color:var(--rouge);color:var(--rouge);border-style:solid}
+.sl{display:flex;flex-direction:column;gap:0.4rem}
+.sr{display:grid;grid-template-columns:24px 1fr 28px;gap:0.35rem;align-items:flex-start}
+.sn{width:24px;height:24px;background:var(--rouge);color:var(--blanc);border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:0.62rem;font-weight:700;margin-top:0.45rem;flex-shrink:0}
+
+/* FICHE DETAIL */
+.fd{display:none;position:fixed;inset:0;background:var(--creme);z-index:150;overflow-y:auto}
+.fd.open{display:block}
+.fd-nav{background:var(--blanc);border-bottom:1px solid var(--border);padding:0.9rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:10;box-shadow:var(--sh-sm);flex-wrap:wrap}
+.btn-back{background:none;border:none;font-family:'Poppins',sans-serif;font-size:0.66rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gt);cursor:pointer;display:flex;align-items:center;gap:0.35rem;padding:0}
+.btn-back:hover{color:var(--rouge)}
+.fd-content{max-width:780px;margin:0 auto;padding:2rem}
+
+/* FICHE DOC */
+.fdoc{background:var(--blanc);font-family:'Poppins',sans-serif;padding:2.5rem;border:1px solid var(--border)}
+.fdoc-hdr{display:flex;align-items:center;gap:1.25rem;margin-bottom:0.25rem}
+.fdoc{background:#fff;font-family:'Poppins',sans-serif;padding:2.5cm 2cm;min-height:29.7cm;position:relative;box-sizing:border-box}
+.fdoc-hdr{margin-bottom:0.5rem}
+.fdoc-nom{font-size:2rem;font-weight:700;color:#221818;line-height:1.1;margin-bottom:0.2rem}
+.fdoc-sub{font-size:0.72rem;color:#B5433C;font-weight:400;letter-spacing:0.02em}
+.fdoc-sep{height:3px;margin:1.5rem 0 3px;background:#B5433C;border:none}
+.fdoc-sep2{height:1px;background:#C0504A;opacity:0.3;border:none;margin-bottom:2rem}
+.fdoc-meta{display:none}
+.fdoc-table{width:100%;border-collapse:collapse;margin-bottom:2rem;border:1px solid #E0D0D0}
+.fdoc-table thead th{font-size:0.68rem;font-weight:700;letter-spacing:0.08em;color:#B5433C;padding:0.7rem 1rem;text-align:left;background:#fff;border-bottom:1px solid #E0D0D0}
+.fdoc-table thead th:last-child{text-align:right}
+.fdoc-table tbody tr td{padding:0.75rem 1rem;font-size:0.82rem;color:#221818;border:none;border-bottom:1px solid #f0e8e8}
+.fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC}
+.fdoc-table tbody tr:nth-child(odd) td{background:#fff}
+.fdoc-table tbody td:last-child{text-align:right;color:#6B5C5C;font-weight:500;font-size:0.8rem}
+.fdoc-ptitle{font-size:0.72rem;font-weight:700;letter-spacing:0.05em;color:#B5433C;margin-bottom:0.6rem;padding-top:0.25rem}
+.fdoc-steps{display:flex;flex-direction:column;gap:0;border:1px solid #E0D0D0}
+.fdoc-step{display:flex;align-items:stretch;border-bottom:1px solid #E0D0D0}
+.fdoc-step:last-child{border-bottom:none}
+.fdoc-step:nth-child(even) .fdoc-stxt{background:#F5ECEC}
+.fdoc-step:nth-child(odd) .fdoc-stxt{background:#fff}
+.fdoc-snum{width:40px;flex-shrink:0;background:#B5433C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700}
+.fdoc-stxt{flex:1;padding:0.75rem 1rem;font-size:0.82rem;color:#221818;line-height:1.5}
+.fdoc-footer{position:absolute;bottom:1.5cm;left:2cm;right:2cm;display:flex;justify-content:space-between;padding-top:0.75rem;border-top:1px solid #E0D0D0}
+.fdoc-fl{font-size:0.62rem;font-weight:400;color:#B5433C;margin-bottom:0.2rem;letter-spacing:0.02em}
+.fdoc-fv{font-size:1.1rem;font-weight:700;color:#221818}
+
+/* SCAN */
+#sdz{border:2px dashed var(--border);border-radius:var(--r);padding:2.5rem;text-align:center;cursor:pointer;transition:all .15s;background:var(--rose)}
+#sdz:hover{border-color:var(--rouge);background:var(--rose-mid)}
+
+/* EMPTY */
+.es{text-align:center;padding:4rem 2rem;color:var(--gt)}
+.es-icon{font-size:2.5rem;margin-bottom:1rem;opacity:0.22}
+.es h3{font-size:0.82rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.5rem;color:var(--noir)}
+.es p{font-size:0.76rem;line-height:1.6}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--noir);color:var(--blanc);padding:0.7rem 1.2rem;border-radius:var(--r);font-size:0.7rem;font-weight:500;z-index:500;opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;max-width:280px;box-shadow:var(--sh-lg)}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:#2d5a2d}
+.toast.err{background:var(--rouge-dk)}
+
+/* PRINT */
+#print-area{display:none}
+@media print{
+  @page{size:A4;margin:0}
+  html,body{background:white!important}
+  body > *{display:none!important}
+  #print-area{display:block!important;background:white!important;width:100%;height:100%}
+  #print-area *{visibility:visible!important}
+  .fdoc-step:nth-child(even) .fdoc-stxt{background:#F5ECEC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .fdoc-step:nth-child(odd) .fdoc-stxt{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .fdoc-table tbody tr:nth-child(odd) td{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .fdoc-snum{background:#B5433C!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .fdoc-sep{background:#B5433C!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+
+/* ANIMATIONS */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.spinner{width:28px;height:28px;border:2.5px solid var(--rose-mid);border-top-color:var(--rouge);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+
+/* RESPONSIVE */
+@media(max-width:640px){
+  header{padding:0 1rem}
+  .h-logo{font-size:0.85rem}
+  .sync-pill{display:none}
+  main{padding:1rem}
+  .fr{grid-template-columns:1fr}
+  .ir{grid-template-columns:1fr 60px 90px 28px}
+  .fdoc{padding:1.5rem 1.25rem}
+  .fdoc-nom{font-size:1.4rem}
+  .fd-content{padding:1rem}
+  .m-body{padding:1.25rem;max-height:75vh}
+  .m-head{padding:1.25rem 1.25rem 0.75rem}
+  .m-foot{padding:0.75rem 1.25rem 1.25rem}
+}
+</style>
+</head>
+<body>
+<div id="print-area"></div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="lbox">
+    <div class="l-circle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#B5433C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" opacity="0"/><path d="M8.5 14.5s1.5 2 3.5 2 3.5-2 3.5-2"/><path d="M12 3c0 0-3 3.5-3 7 0 1.66 1.34 3 3 3s3-1.34 3-3c0-3.5-3-7-3-7z" fill="#B5433C" stroke="none"/></svg>
+    </div>
+    <div class="l-logo">LAVA</div>
+    <div class="l-sub">Hub Cuisine</div>
+    <div class="l-div"></div>
+    <div class="pb-wrap">
+      <button class="pb admin" id="btn-admin" onclick="showPW()">Admin — Accès complet</button>
+      <button class="pb" id="btn-cuisine" onclick="loginAs('cuisine')">Cuisine — Lecture seule</button>
+    </div>
+    <div class="pw-field" id="pw-field">
+      <input type="password" id="pw-input" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')checkPW()">
+      <button class="btn-confirm" id="btn-confirm" onclick="checkPW()">Accéder</button>
+      <div class="l-err" id="l-err">Mot de passe incorrect</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="h-left">
+      <div class="h-logo">LAVA</div>
+    </div>
+    <div class="h-right">
+      <div class="sync-pill"><div class="sync-dot" id="sync-dot"></div><span id="sync-lbl">Sync</span></div>
+      <div class="prof-badge" id="prof-badge">—</div>
+      <button class="btn-out" onclick="logout()">Quitter</button>
+    </div>
+  </header>
+  <nav class="tabs">
+    <button class="tb active" onclick="switchTab('recettes',this)">Fiches Recettes <span class="tbadge" id="b-rec">0</span></button>
+    <button class="tb" onclick="switchTab('plats',this)">Fiches Plats <span class="tbadge" id="b-plats">0</span></button>
+    <button class="tb" onclick="switchTab('menu',this)">Menu</button>
+    <button class="tb admin-only" onclick="switchTab('config',this)" style="display:none">Config</button>
+  </nav>
+  <main>
+
+    <!-- RECETTES -->
+    <div class="tc active" id="tab-recettes">
+      <div class="ph">
+        <div><div class="ph-title">Fiches Recettes</div><div class="ph-sub" id="rec-sub">Chargement…</div></div>
+        <div class="ph-actions">
+          <button class="btn btn-o btn-sm admin-only" onclick="openModal('modal-scan')" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Photo
+          </button>
+          <button class="btn btn-p admin-only" onclick="openNewFiche()" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nouvelle fiche
+          </button>
+        </div>
+      </div>
+      <div class="sb">
+        <div class="si-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="si" id="s-rec" type="text" placeholder="Rechercher…" oninput="renderFiches()">
+        </div>
+        <select class="fs" id="f-cat-filter" onchange="renderFiches()"><option value="">Toutes catégories</option></select>
+      </div>
+      <div class="fg" id="fiches-grid"><div class="es" style="grid-column:1/-1"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- PLATS -->
+    <div class="tc" id="tab-plats">
+      <div class="ph">
+        <div><div class="ph-title">Fiches Plats</div><div class="ph-sub" id="plats-sub">—</div></div>
+        <div class="ph-actions">
+          <button class="btn btn-p admin-only" onclick="openNewPlat()" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nouveau plat
+          </button>
+        </div>
+      </div>
+      <div class="sb">
+        <div class="si-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="si" id="s-plats" type="text" placeholder="Rechercher…" oninput="renderPlats()">
+        </div>
+        <select class="fs" id="f-sec-filter" onchange="renderPlats()"><option value="">Toutes sections</option></select>
+      </div>
+      <div id="plats-list"></div>
+    </div>
+
+    <!-- MENU -->
+    <div class="tc" id="tab-menu">
+      <div class="ph">
+        <div><div class="ph-title">Menu</div><div class="ph-sub" id="menu-sub">Lunch</div></div>
+        <div class="ph-actions">
+          <button class="btn btn-g btn-sm" onclick="printMenu()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Imprimer
+          </button>
+          <button class="btn btn-p admin-only" onclick="openModal('modal-menu-item')" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter
+          </button>
+        </div>
+      </div>
+      <div id="menu-content"></div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="tc" id="tab-config">
+      <div class="ph"><div><div class="ph-title">Configuration</div><div class="ph-sub">Admin uniquement</div></div></div>
+      <div class="cs">
+        <div class="cs-title">Catégories de fiches recettes</div>
+        <div class="cl" id="cfg-cats"></div>
+        <div class="ca-row">
+          <input type="text" id="new-cat" placeholder="Nouvelle catégorie…" onkeydown="if(event.key==='Enter')addCat()">
+          <button class="btn btn-p btn-sm" onclick="addCat()">Ajouter</button>
+        </div>
+      </div>
+      <div class="cs">
+        <div class="cs-title">Sections du menu</div>
+        <div class="cl" id="cfg-secs"></div>
+        <div class="ca-row">
+          <input type="text" id="new-sec" placeholder="Nouvelle section…" onkeydown="if(event.key==='Enter')addSec()">
+          <button class="btn btn-p btn-sm" onclick="addSec()">Ajouter</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- FICHE DETAIL -->
+<div class="fd" id="fd">
+  <div class="fd-nav">
+    <button class="btn-back" onclick="closeFD()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>Retour
+    </button>
+    <div style="flex:1;font-size:0.72rem;font-weight:600;color:var(--rouge)" id="fd-crumb"></div>
+    <div style="display:flex;gap:0.5rem">
+      <button class="btn btn-g btn-sm" onclick="printFiche()">🖨 Imprimer / PDF</button>
+      <button class="btn btn-o btn-sm admin-only" id="btn-edit-fd" onclick="editCurrentFiche()" style="display:none">Modifier</button>
+    </div>
+  </div>
+  <div class="fd-content"><div id="fdoc-area"></div></div>
+</div>
+
+<!-- MODAL FICHE -->
+<div class="mo" id="modal-fiche">
+  <div class="modal">
+    <div class="m-head"><div class="m-title" id="mf-title">Nouvelle fiche</div><button class="m-close" onclick="closeModal('modal-fiche')">✕</button></div>
+    <div class="m-body">
+      <div class="fr">
+        <div class="fg2"><label class="fl">Nom *</label><input class="fi2" id="f-nom" type="text" placeholder="ex: Velouté Curry"></div>
+        <div class="fg2"><label class="fl">Catégorie</label><select class="fsel" id="f-cat"></select></div>
+      </div>
+      <div class="fr">
+        <div class="fg2"><label class="fl">Quantité nette</label><input class="fi2" id="f-qte" type="text" placeholder="ex: 5.06 kg"></div>
+        <div class="fg2"><label class="fl">Conditionnement</label>
+          <div id="cond-il" style="display:flex;flex-direction:column;gap:0.4rem"></div>
+          <button class="btn-ar" onclick="addCondRow()" style="margin-top:0.4rem">+ Ajouter un conditionnement</button>
+        </div>
+      </div>
+      <div class="fsect">Ingrédients</div>
+      <div class="il" id="il"></div>
+      <button class="btn-ar" onclick="addIR()">+ Ajouter un ingrédient</button>
+      <div class="fsect" style="margin-top:1.25rem">Process</div>
+      <div class="sl" id="sl"></div>
+      <button class="btn-ar" onclick="addSR()">+ Ajouter une étape</button>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-fiche')">Annuler</button>
+      <button class="btn btn-p" id="btn-save-fiche" onclick="saveFiche()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PLAT -->
+<div class="mo" id="modal-plat">
+  <div class="modal">
+    <div class="m-head"><div class="m-title" id="mp-title">Nouveau plat</div><button class="m-close" onclick="closeModal('modal-plat')">✕</button></div>
+    <div class="m-body">
+      <div class="fr">
+        <div class="fg2"><label class="fl">Nom *</label><input class="fi2" id="p-nom" type="text"></div>
+        <div class="fg2"><label class="fl">Section</label><select class="fsel" id="p-sec"></select></div>
+      </div>
+      <div class="fg2"><label class="fl">Description</label><input class="fi2" id="p-desc" type="text" placeholder="ex: Velouté curry, huile sésame…"></div>
+      <div class="fsect">Composants</div>
+      <div class="il" id="comp-il"></div>
+      <button class="btn-ar" onclick="addCR()">+ Ajouter un composant</button>
+      <div class="fsect" style="margin-top:1.25rem">Allergènes</div>
+      <div class="fg2"><input class="fi2" id="p-alg" type="text" placeholder="ex: Œufs, Lactose, Gluten"></div>
+      <div class="fg2" style="margin-top:0.75rem"><label class="fl">Notes de dressage</label><textarea class="fta" id="p-dress" placeholder="Instructions…"></textarea></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-plat')">Annuler</button>
+      <button class="btn btn-p" id="btn-save-plat" onclick="savePlat()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MENU -->
+<div class="mo" id="modal-menu-item">
+  <div class="modal">
+    <div class="m-head"><div class="m-title">Ajouter au menu</div><button class="m-close" onclick="closeModal('modal-menu-item')">✕</button></div>
+    <div class="m-body">
+      <div class="fr">
+        <div class="fg2"><label class="fl">Nom *</label><input class="fi2" id="m-nom" type="text"></div>
+        <div class="fg2"><label class="fl">Section</label><select class="fsel" id="m-sec"></select></div>
+      </div>
+      <div class="fg2"><label class="fl">Composition (une ligne par élément)</label><textarea class="fta" id="m-comp" placeholder="Velouté curry&#10;Huile sésame"></textarea></div>
+      <div class="fg2"><label class="fl">Allergènes</label><input class="fi2" id="m-alg" type="text" placeholder="ex: Œufs, Lactose"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-menu-item')">Annuler</button>
+      <button class="btn btn-p" id="btn-save-menu" onclick="saveMenuItem()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SCAN -->
+<div class="mo" id="modal-scan">
+  <div class="modal" style="max-width:560px">
+    <div class="m-head"><div class="m-title">Photo → Fiche Technique</div><button class="m-close" onclick="closeModal('modal-scan');resetScan()">✕</button></div>
+    <div class="m-body">
+      <div id="sdz" ondragover="event.preventDefault()" ondrop="handleDrop(event)" onclick="document.getElementById('photo-input').click()">
+        <div style="font-size:2.2rem;margin-bottom:0.75rem;opacity:0.35">📸</div>
+        <div style="font-size:0.8rem;font-weight:600;color:var(--noir);margin-bottom:0.25rem">Glisse ou clique pour choisir</div>
+        <div style="font-size:0.68rem;color:var(--gt)">Brouillon manuscrit, cahier, note rapide…</div>
+      </div>
+      <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)">
+      <img id="scan-prev" style="display:none;width:100%;max-height:220px;object-fit:contain;margin-top:1rem;border:1px solid var(--border);border-radius:var(--r)">
+      <div id="scan-load" style="display:none;text-align:center;padding:2rem"><div class="spinner"></div><div style="font-size:0.72rem;color:var(--gt);margin-top:1rem">Analyse en cours…</div></div>
+      <div id="scan-res" style="display:none;margin-top:1.25rem">
+        <div style="font-size:0.6rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--rouge);margin-bottom:0.6rem;padding-bottom:0.4rem;border-bottom:1px solid var(--border)">Extrait par l'IA</div>
+        <div id="scan-ext" style="font-size:0.74rem;line-height:1.8;color:var(--noir);background:var(--rose);padding:1rem;border-radius:var(--r)"></div>
+        <p style="margin-top:0.5rem;font-size:0.66rem;color:var(--gt)">Modifiable après création.</p>
+      </div>
+      <div id="scan-err" style="display:none;margin-top:1rem;padding:0.75rem 1rem;background:#fdf0f0;border:1px solid #e0b0b0;border-radius:var(--r);font-size:0.7rem;color:var(--rouge)"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="resetScan()">Recommencer</button>
+      <button class="btn btn-p" id="btn-scan-save" style="display:none" onclick="saveScanResult()">Créer la fiche</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL='https://qmvxmxzsmpigvseuidcd.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtdnhteHpzbXBpZ3ZzZXVpZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTY1ODYsImV4cCI6MjA5NzI5MjU4Nn0._kDu_tyJbr9Hcckg_dC0OYsSqh23aPND96wMX_KLdAc';
+const sb=supabase.createClient(SB_URL,SB_KEY);
+
+let profil=null, editId=null, editPlatId=null, curFicheId=null, scanData=null;
+let fiches=[], plats=[];
+
+const MENU_INITIAL={
+  'Entrées':[
+    {nom:'Œuf Parfait',comp:['Œuf parfait','Velouté curry','Huile curry','Mix sésame','Ciboulette'],alg:['Œufs','Fruits à coque','Ail / Oignon']},
+    {nom:'Poireau',comp:['Crème oseille','Poireaux confits','Huile pimenton','Condiment câpre raisin','Crouton pain de mie','Glace faiselle fumée'],alg:['Lactose','Gluten']},
+    {nom:'Huître',comp:['Huître n°2 Camargue','Vinaigrette sweet chili','Fleur d\'ail'],alg:['Mollusques','Ail']},
+  ],
+  'Plats':[
+    {nom:'Échine de Cochon',comp:['Purée patate douce','Molé pain','Échine cochon BBQ','Jus caramel','Riz torréfié','Radicchio'],alg:['Gluten','Soja','Lactose']},
+    {nom:'Gnocchis',comp:['Gnocchis','Petit pois','Jus végétal','Siphon kimchi','Gel thym citron'],alg:['Gluten','Oignon / Ail','Lactose']},
+    {nom:'Poisson de Ligne',comp:['Poisson de ligne','Pak choï & pois gourmand','Sauce 5C1M','Cajou au beurre'],alg:['Poisson','Fruits à coque','Lactose']},
+  ],
+  'Desserts':[
+    {nom:'Cheese Cake',comp:['Cheese cake','Marmelade fraise rhubarbe','Sirop sucre Okinawa','Opaline'],alg:['Lactose','Gluten','Œufs']},
+    {nom:'Riz au Lait',comp:['Riz au lait coco','Sorbet ananas gingembre','Caramel miso','Riz soufflé'],alg:['Soja']},
+  ]
+};
+
+let cfg={
+  cats:['Base','Sauce','Garniture','Dessert','Autre'],
+  secs:['Entrées','Plats','Desserts'],
+  menu:null
+};
+
+// ── UTILS ──
+function escHTML(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function menuDateLabel(){
+  const d=new Date();
+  const m=d.toLocaleString('fr-FR',{month:'long'});
+  return 'Lunch · '+m.charAt(0).toUpperCase()+m.slice(1)+' '+d.getFullYear();
+}
+
+function setBusy(btnId,v){
+  const b=document.getElementById(btnId);
+  if(!b)return;
+  b.disabled=v;
+  b.style.opacity=v?'0.6':'';
+}
+
+function setSyncing(v){
+  document.getElementById('sync-dot').classList.toggle('syncing',v);
+  document.getElementById('sync-lbl').textContent=v?'Sync…':'Sync';
+}
+
+async function callAPI(action,payload){
+  const r=await fetch('/.netlify/functions/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,payload})});
+  return r.json();
+}
+
+// ── LOGIN ──
+function showPW(){
+  document.getElementById('pw-field').style.display='flex';
+  setTimeout(()=>document.getElementById('pw-input').focus(),50);
+}
+
+async function checkPW(){
+  const pw=document.getElementById('pw-input').value;
+  if(!pw)return;
+  setBusy('btn-confirm',true);
+  setBusy('btn-admin',true);
+  document.getElementById('l-err').style.display='none';
+  try{
+    const res=await callAPI('check_password',{password:pw});
+    if(res.ok){loginAs('admin');}
+    else{
+      document.getElementById('l-err').style.display='block';
+      document.getElementById('pw-input').value='';
+      document.getElementById('pw-input').focus();
+    }
+  }catch(e){
+    // fallback local si l'API n'est pas disponible (dev local)
+    if(pw==='lava2026'){loginAs('admin');}
+    else{
+      document.getElementById('l-err').style.display='block';
+      document.getElementById('pw-input').value='';
+    }
+  }
+  setBusy('btn-confirm',false);
+  setBusy('btn-admin',false);
+}
+
+function loginAs(p){
+  profil=p;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('prof-badge').textContent=p==='admin'?'Admin':'Cuisine';
+  if(p==='admin')document.querySelectorAll('.admin-only').forEach(el=>el.style.display='flex');
+  document.getElementById('menu-sub').textContent=menuDateLabel();
+  loadCfg().then(()=>loadAll());
+}
+
+function logout(){
+  profil=null;
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('pw-field').style.display='none';
+  document.getElementById('pw-input').value='';
+  document.getElementById('l-err').style.display='none';
+}
+
+// ── CONFIG (Supabase + localStorage fallback) ──
+async function loadCfg(){
+  try{
+    const r=await callAPI('get_config',{});
+    if(r&&r.data){
+      cfg={...cfg,...r.data};
+      if(!cfg.menu)cfg.menu=JSON.parse(JSON.stringify(MENU_INITIAL));
+      populateSels();renderCfg();
+      return;
+    }
+  }catch(e){}
+  // fallback localStorage
+  try{const s=localStorage.getItem('lava_cfg');if(s){const d=JSON.parse(s);cfg={...cfg,...d};}}catch(e){}
+  if(!cfg.menu)cfg.menu=JSON.parse(JSON.stringify(MENU_INITIAL));
+  populateSels();renderCfg();
+}
+
+async function saveCfg(){
+  // sauvegarde locale immédiate
+  try{localStorage.setItem('lava_cfg',JSON.stringify(cfg));}catch(e){}
+  // sync Supabase en arrière-plan
+  try{await callAPI('save_config',cfg);}catch(e){}
+  populateSels();renderCfg();
+}
+
+function populateSels(){
+  ['f-cat','f-cat-filter'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cv=el.value;
+    el.innerHTML=id==='f-cat-filter'?'<option value="">Toutes catégories</option>':'';
+    cfg.cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;el.appendChild(o)});
+    if(cv)el.value=cv;
+  });
+  ['p-sec','m-sec','f-sec-filter'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cv=el.value;
+    el.innerHTML=id==='f-sec-filter'?'<option value="">Toutes sections</option>':'';
+    cfg.secs.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;el.appendChild(o)});
+    if(cv)el.value=cv;
+  });
+}
+
+function renderCfg(){
+  const cl=document.getElementById('cfg-cats');if(!cl)return;
+  cl.innerHTML='';
+  cfg.cats.forEach((c,i)=>{
+    const d=document.createElement('div');d.className='ci';
+    d.innerHTML=`<span class="ci-label">${escHTML(c)}</span><button class="btn btn-d btn-sm" onclick="rmCat(${i})">Supprimer</button>`;
+    cl.appendChild(d);
+  });
+  const sl=document.getElementById('cfg-secs');if(!sl)return;
+  sl.innerHTML='';
+  cfg.secs.forEach((s,i)=>{
+    const d=document.createElement('div');d.className='ci';
+    d.innerHTML=`<span class="ci-label">${escHTML(s)}</span><button class="btn btn-d btn-sm" onclick="rmSec(${i})">Supprimer</button>`;
+    sl.appendChild(d);
+  });
+}
+
+function addCat(){const v=document.getElementById('new-cat').value.trim();if(!v||cfg.cats.includes(v))return;cfg.cats.push(v);document.getElementById('new-cat').value='';saveCfg();toast('Catégorie ajoutée ✓','ok')}
+function rmCat(i){if(cfg.cats.length<=1){toast('Au moins une catégorie requise','err');return}cfg.cats.splice(i,1);saveCfg()}
+function addSec(){const v=document.getElementById('new-sec').value.trim();if(!v||cfg.secs.includes(v))return;cfg.secs.push(v);document.getElementById('new-sec').value='';saveCfg();toast('Section ajoutée ✓','ok')}
+function rmSec(i){if(cfg.secs.length<=1){toast('Au moins une section requise','err');return}cfg.secs.splice(i,1);saveCfg()}
+
+// ── TABS ──
+function switchTab(n,b){
+  document.querySelectorAll('.tc').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tb').forEach(x=>x.classList.remove('active'));
+  document.getElementById('tab-'+n).classList.add('active');
+  b.classList.add('active');
+}
+
+// ── LOAD ──
+async function loadAll(){
+  setSyncing(true);
+  try{
+    const[{data:f},{data:p}]=await Promise.all([
+      sb.from('fiches').select('*').order('created_at',{ascending:false}),
+      sb.from('plats').select('*').order('created_at',{ascending:false})
+    ]);
+    fiches=f||[];plats=p||[];
+    renderFiches();renderPlats();renderMenu();
+    document.getElementById('b-rec').textContent=fiches.length;
+    document.getElementById('b-plats').textContent=plats.length;
+  }catch(e){toast('Erreur de connexion','err')}
+  setSyncing(false);
+}
+
+// ── RENDER FICHES ──
+function renderFiches(){
+  const q=(document.getElementById('s-rec')?.value||'').toLowerCase();
+  const cat=document.getElementById('f-cat-filter')?.value||'';
+  const grid=document.getElementById('fiches-grid');
+  let fil=fiches.filter(f=>{
+    const mq=!q||f.nom.toLowerCase().includes(q)||(f.ingredients||[]).some(i=>i.nom?.toLowerCase().includes(q));
+    return mq&&(!cat||f.categorie===cat);
+  });
+  const tot=fiches.length;
+  document.getElementById('rec-sub').textContent=tot===0?'Aucune fiche':tot+' fiche'+(tot!==1?'s':'')+(fil.length!==tot?` · ${fil.length} résultat${fil.length!==1?'s':''}`:'');
+  document.getElementById('b-rec').textContent=tot;
+  grid.innerHTML='';
+  if(tot===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">📋</div><h3>Aucune fiche</h3><p>Crée ta première fiche ou importe depuis une photo</p></div>';return}
+  if(fil.length===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🔍</div><h3>Aucun résultat</h3><p>Essaie un autre terme</p></div>';return}
+  fil.forEach(f=>{
+    const prev=(f.ingredients||[]).slice(0,3).map(i=>escHTML(i.nom)).join(', ');
+    const c=document.createElement('div');c.className='fc';
+    const ingCount=(f.ingredients||[]).length;
+    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div><div class="fc-body"><div class="fc-meta"><span>${ingCount} ingrédient${ingCount>1?'s':''}</span><span>${escHTML(f.quantite_nette||'—')}</span></div><div class="fc-prev">${prev}${ingCount>3?'…':''}</div></div><div class="fc-foot">${profil==='admin'?`<button class="btn btn-d btn-sm" onclick="event.stopPropagation();deleteFiche('${escHTML(f.id)}')">Suppr.</button><button class="btn btn-g btn-sm" onclick="event.stopPropagation();editFiche('${escHTML(f.id)}')">Modifier</button>`:''}<button class="btn btn-p btn-sm" onclick="openFD('${escHTML(f.id)}')">Voir →</button></div>`;
+    grid.appendChild(c);
+  });
+}
+
+// ── RENDER PLATS ──
+function renderPlats(){
+  const q=(document.getElementById('s-plats')?.value||'').toLowerCase();
+  const sec=document.getElementById('f-sec-filter')?.value||'';
+  const list=document.getElementById('plats-list');
+  const tot=plats.length;
+  let fil=plats.filter(p=>(!q||p.nom.toLowerCase().includes(q))&&(!sec||p.section===sec));
+  document.getElementById('plats-sub').textContent=tot+' plat'+(tot!==1?'s':'');
+  document.getElementById('b-plats').textContent=tot;
+  if(tot===0){list.innerHTML='<div class="es"><div class="es-icon">🍽️</div><h3>Aucun plat</h3><p>Ajoute les plats de ta carte</p></div>';return}
+  if(fil.length===0){list.innerHTML='<div class="es"><div class="es-icon">🔍</div><h3>Aucun résultat</h3></div>';return}
+  list.innerHTML='';
+  fil.forEach(p=>{
+    const d=document.createElement('div');d.className='pc';
+    const ch=(p.composants||[]).map(c=>{
+      const f=fiches.find(f=>f.nom.toLowerCase()===c.toLowerCase());
+      return f
+        ?`<div class="comp-item linked" onclick="openFD('${escHTML(f.id)}')"><span>${escHTML(c)}</span><span class="comp-lnk">→ Fiche</span></div>`
+        :`<div class="comp-item"><span>${escHTML(c)}</span></div>`;
+    }).join('');
+    const ah=(p.allergenes||'').split(',').filter(Boolean).map(a=>`<span class="atag">${escHTML(a.trim())}</span>`).join('');
+    const adminBtns=profil==='admin'
+      ?`<div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:0.4rem">
+          <button class="btn btn-g btn-sm" onclick="editPlat('${escHTML(p.id)}')">Modifier</button>
+          <button class="btn btn-d btn-sm" onclick="deletePlat('${escHTML(p.id)}')">Supprimer</button>
+        </div>`:'';
+    d.innerHTML=`<div class="pc-head" onclick="this.parentElement.classList.toggle('expanded')"><div><div class="pc-sec">${escHTML(p.section)}</div><div class="pc-name">${escHTML(p.nom)}</div></div><span class="pc-chev">▼</span></div><div class="pc-body">${p.description?`<p style="font-size:0.74rem;color:var(--gt);margin-bottom:1rem">${escHTML(p.description)}</p>`:''}<div class="comp-list">${ch}</div>${ah?`<div class="atags" style="margin-top:1rem">${ah}</div>`:''} ${p.dressage?`<div style="margin-top:1rem;padding:0.75rem;background:var(--rose);font-size:0.7rem;color:var(--gt);line-height:1.6;border-left:2px solid var(--rouge);border-radius:var(--r)">${escHTML(p.dressage)}</div>`:''} ${adminBtns}</div>`;
+    list.appendChild(d);
+  });
+}
+
+// ── RENDER MENU ──
+function renderMenu(){
+  const cont=document.getElementById('menu-content');cont.innerHTML='';
+  const menu=cfg.menu||MENU_INITIAL;
+  cfg.secs.forEach(sec=>{
+    const items=menu[sec]||[];if(!items.length)return;
+    const d=document.createElement('div');d.className='ms';
+    d.innerHTML=`<div class="ms-label">${escHTML(sec)}</div>`;
+    items.forEach((item,idx)=>{
+      const r=document.createElement('div');r.className='mr';
+      const ah=(item.alg||[]).map(a=>`<span class="atag">${escHTML(a)}</span>`).join('');
+      const adminBtn=profil==='admin'
+        ?`<div class="mr-actions"><button class="btn btn-d btn-sm" onclick="deleteMenuItem('${escHTML(sec)}',${idx})">✕</button></div>`:'';
+      r.innerHTML=`<div style="flex:1"><div class="mr-name">${escHTML(item.nom)}</div><div class="mr-desc">${escHTML(item.comp.join(' · '))}</div>${ah?`<div class="atags">${ah}</div>`:''}</div>${adminBtn}`;
+      d.appendChild(r);
+    });
+    cont.appendChild(d);
+  });
+  if(!cont.children.length){
+    cont.innerHTML='<div class="es"><div class="es-icon">📋</div><h3>Menu vide</h3><p>Ajoute des plats au menu</p></div>';
+  }
+}
+
+// ── MODALS ──
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){
+  document.getElementById(id).classList.remove('open');
+  if(id==='modal-fiche')editId=null;
+  if(id==='modal-plat')editPlatId=null;
+}
+
+// ── FICHE CRUD ──
+function openNewFiche(){
+  editId=null;
+  document.getElementById('mf-title').textContent='Nouvelle fiche';
+  ['f-nom','f-qte'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cond-il').innerHTML='';addCondRow();
+  document.getElementById('il').innerHTML='';document.getElementById('sl').innerHTML='';
+  addIR();addSR();openModal('modal-fiche');
+}
+
+const COND_TYPES=['Sac sous vide','Siphon','Petite boite','Moyenne boite','Grande boite','Poche à pâtisserie','Pipette'];
+function addCondRow(type='',qty=''){
+  const l=document.getElementById('cond-il');
+  const r=document.createElement('div');
+  r.className='cond-row';
+  r.style.cssText='display:grid;grid-template-columns:1fr 110px 28px;gap:0.35rem;align-items:center';
+  const opts='<option value="">— Choisir —</option>'+COND_TYPES.map(t=>`<option ${t===type?'selected':''}>${escHTML(t)}</option>`).join('');
+  r.innerHTML=`<select class="fsel cond-type">${opts}</select><input class="fi2 cond-qty" type="text" placeholder="ex: 850g" value="${escHTML(qty)}"><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  l.appendChild(r);
+}
+
+function addIR(nom='',qty='',u='g'){
+  const l=document.getElementById('il');const r=document.createElement('div');r.className='ir';
+  const units=['g','kg','cl','L','cs','cc','pièce','botte','ml'];
+  const opts=units.map(x=>`<option value="${x}" ${u===x?'selected':''}>${x}</option>`).join('');
+  r.innerHTML=`<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom)}"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  l.appendChild(r);if(!nom)r.querySelector('.ing-n').focus();
+}
+
+function addSR(t=''){
+  const l=document.getElementById('sl');const n=l.children.length+1;const r=document.createElement('div');r.className='sr';
+  r.innerHTML=`<div class="sn">${n}</div><input class="fi2 s-txt" type="text" placeholder="Étape ${n}" value="${escHTML(t)}"><button class="btn-rm" onclick="this.parentElement.remove();renum()">×</button>`;
+  l.appendChild(r);if(!t)r.querySelector('.s-txt').focus();
+}
+
+function renum(){document.querySelectorAll('#sl .sn').forEach((e,i)=>e.textContent=i+1)}
+
+async function saveFiche(){
+  const nom=document.getElementById('f-nom').value.trim();
+  if(!nom){toast('Le nom est obligatoire','err');return}
+  setBusy('btn-save-fiche',true);
+  try{
+    const ings=[];
+    document.querySelectorAll('#il .ir').forEach(r=>{const n=r.querySelector('.ing-n').value.trim();if(n)ings.push({nom:n,quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value})});
+    const proc=[];
+    document.querySelectorAll('#sl .s-txt').forEach(i=>{if(i.value.trim())proc.push(i.value.trim())});
+    const conds=[];
+    document.querySelectorAll('#cond-il .cond-row').forEach(r=>{
+      const t=r.querySelector('.cond-type').value;
+      const q=r.querySelector('.cond-qty').value.trim();
+      if(t)conds.push(t+(q?' — '+q:''));
+    });
+    const conditionnement=JSON.stringify(conds);
+    const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),conditionnement,ingredients:ings,process:proc};
+    setSyncing(true);
+    const res=editId?await callAPI('update_fiche',{id:editId,data}):await callAPI('insert_fiche',data);
+    setSyncing(false);
+    if(res.error){toast('Erreur : '+res.error,'err');return}
+    toast(editId?'Fiche modifiée ✓':'Fiche enregistrée ✓','ok');
+    closeModal('modal-fiche');await loadAll();
+  }catch(e){
+    setSyncing(false);
+    toast('Erreur réseau — réessaie','err');
+  }finally{
+    setBusy('btn-save-fiche',false);
+  }
+}
+
+async function editFiche(id){
+  const f=fiches.find(f=>f.id===id);if(!f)return;
+  editId=id;
+  document.getElementById('mf-title').textContent='Modifier — '+f.nom;
+  document.getElementById('f-nom').value=f.nom;
+  document.getElementById('f-qte').value=f.quantite_nette||'';
+  document.getElementById('cond-il').innerHTML='';
+  let conds=[];
+  try{conds=JSON.parse(f.conditionnement||'[]');}catch(e){if(f.conditionnement)conds=[f.conditionnement];}
+  if(conds.length){
+    const CT=['Sac sous vide','Siphon','Petite boite','Moyenne boite','Grande boite','Poche à pâtisserie','Pipette'];
+    conds.forEach(c=>{const m=CT.find(t=>c.startsWith(t));addCondRow(m||'',m?c.replace(m,'').replace(/^\s*—\s*/,'').trim():c);});
+  }else{addCondRow();}
+  await new Promise(r=>setTimeout(r,0));
+  document.getElementById('f-cat').value=f.categorie;
+  document.getElementById('il').innerHTML='';
+  (f.ingredients||[]).forEach(i=>addIR(i.nom,i.quantite,i.unite));
+  document.getElementById('sl').innerHTML='';
+  (f.process||[]).forEach(s=>addSR(s));
+  openModal('modal-fiche');
+}
+
+function editCurrentFiche(){if(curFicheId){closeFD();editFiche(curFicheId)}}
+
+async function deleteFiche(id){
+  if(!confirm('Supprimer cette fiche ?'))return;
+  setSyncing(true);await callAPI('delete_fiche',{id});setSyncing(false);
+  toast('Fiche supprimée');await loadAll();
+}
+
+// ── PLAT CRUD ──
+function addCR(v=''){
+  const l=document.getElementById('comp-il');const r=document.createElement('div');
+  r.style.cssText='display:grid;grid-template-columns:1fr 28px;gap:0.35rem;margin-bottom:0.35rem';
+  r.innerHTML=`<input class="fi2" type="text" placeholder="Composant" value="${escHTML(v)}"><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  l.appendChild(r);if(!v)r.querySelector('input').focus();
+}
+
+function openNewPlat(){
+  editPlatId=null;
+  document.getElementById('mp-title').textContent='Nouveau plat';
+  ['p-nom','p-desc','p-alg','p-dress'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('comp-il').innerHTML='';
+  addCR();openModal('modal-plat');
+}
+
+function editPlat(id){
+  const p=plats.find(p=>p.id===id);if(!p)return;
+  editPlatId=id;
+  document.getElementById('mp-title').textContent='Modifier — '+p.nom;
+  document.getElementById('p-nom').value=p.nom;
+  document.getElementById('p-desc').value=p.description||'';
+  document.getElementById('p-alg').value=p.allergenes||'';
+  document.getElementById('p-dress').value=p.dressage||'';
+  document.getElementById('comp-il').innerHTML='';
+  (p.composants||[]).forEach(c=>addCR(c));
+  setTimeout(()=>document.getElementById('p-sec').value=p.section,0);
+  openModal('modal-plat');
+}
+
+async function savePlat(){
+  const nom=document.getElementById('p-nom').value.trim();
+  if(!nom){toast('Le nom est obligatoire','err');return}
+  setBusy('btn-save-plat',true);
+  try{
+    const comps=[];document.querySelectorAll('#comp-il input').forEach(i=>{if(i.value.trim())comps.push(i.value.trim())});
+    const data={nom,section:document.getElementById('p-sec').value,description:document.getElementById('p-desc').value.trim(),composants:comps,allergenes:document.getElementById('p-alg').value.trim(),dressage:document.getElementById('p-dress').value.trim()};
+    setSyncing(true);
+    const r=editPlatId?await callAPI('update_plat',{id:editPlatId,data}):await callAPI('insert_plat',data);
+    setSyncing(false);
+    if(r.error){toast('Erreur : '+r.error,'err');return}
+    toast(editPlatId?'Plat modifié ✓':'Plat enregistré ✓','ok');
+    closeModal('modal-plat');await loadAll();
+  }catch(e){
+    setSyncing(false);
+    toast('Erreur réseau — réessaie','err');
+  }finally{
+    setBusy('btn-save-plat',false);
+  }
+}
+
+async function deletePlat(id){
+  if(!confirm('Supprimer ce plat ?'))return;
+  setSyncing(true);await callAPI('delete_plat',{id});setSyncing(false);
+  toast('Plat supprimé');await loadAll();
+}
+
+// ── MENU CRUD ──
+async function saveMenuItem(){
+  const nom=document.getElementById('m-nom').value.trim();
+  if(!nom){toast('Le nom est obligatoire','err');return}
+  setBusy('btn-save-menu',true);
+  const sec=document.getElementById('m-sec').value;
+  const comp=document.getElementById('m-comp').value.trim().split('\n').filter(l=>l.trim());
+  const alg=document.getElementById('m-alg').value.trim().split(',').map(a=>a.trim()).filter(Boolean);
+  if(!cfg.menu)cfg.menu=JSON.parse(JSON.stringify(MENU_INITIAL));
+  if(!cfg.menu[sec])cfg.menu[sec]=[];
+  cfg.menu[sec].push({nom,comp,alg});
+  await saveCfg();
+  setBusy('btn-save-menu',false);
+  closeModal('modal-menu-item');
+  document.getElementById('m-nom').value='';
+  document.getElementById('m-comp').value='';
+  document.getElementById('m-alg').value='';
+  renderMenu();
+  toast('Ajouté au menu ✓','ok');
+}
+
+async function deleteMenuItem(sec,idx){
+  if(!confirm('Supprimer ce plat du menu ?'))return;
+  if(cfg.menu&&cfg.menu[sec]){
+    cfg.menu[sec].splice(idx,1);
+    await saveCfg();
+    renderMenu();
+    toast('Retiré du menu','ok');
+  }
+}
+
+// ── FICHE DOC ──
+function buildFicheDoc(f){
+  const irows=(f.ingredients||[]).map(i=>`<tr><td>${escHTML(i.nom)}</td><td>${i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):'—'}</td></tr>`).join('');
+  const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
+  return `<div class="fdoc">
+    <div class="fdoc-hdr">
+      <div class="fdoc-nom">${escHTML(f.nom)}</div>
+      <div class="fdoc-sub">Fiche Technique</div>
+    </div>
+    <hr class="fdoc-sep"><hr class="fdoc-sep2">
+    <table class="fdoc-table">
+      <thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th></tr></thead>
+      <tbody>${irows}</tbody>
+    </table>
+    <div class="fdoc-ptitle">Process</div>
+    <div class="fdoc-steps">${steps}</div>
+    <div class="fdoc-footer">
+      <div><div class="fdoc-fl">Quantité nette</div><div class="fdoc-fv">${escHTML(f.quantite_nette||'—')}</div></div>
+      <div style="text-align:right"><div class="fdoc-fl">Conditionnement</div><div class="fdoc-fv">${(()=>{try{const a=JSON.parse(f.conditionnement||'[]');return a.length?a.map(escHTML).join('<br>'):'—';}catch(e){return escHTML(f.conditionnement||'—');}})()}</div></div>
+    </div>
+  </div>`;
+}
+
+function openFD(id){
+  const f=fiches.find(f=>f.id===id);if(!f)return;
+  curFicheId=id;
+  document.getElementById('fd-crumb').textContent=f.nom;
+  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f);
+  document.getElementById('fd').classList.add('open');
+}
+function closeFD(){document.getElementById('fd').classList.remove('open');curFicheId=null}
+
+function printFiche(){
+  if(!curFicheId)return;
+  const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
+  const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${escHTML(f.nom)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page{size:A4;margin:1.5cm}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Poppins',sans-serif;background:white;color:#221818;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .fdoc{padding:0;min-height:auto}
+    .fdoc-nom{font-size:2rem;font-weight:700;color:#221818;line-height:1.1;margin-bottom:0.2rem}
+    .fdoc-sub{font-size:0.72rem;color:#B5433C;font-weight:400}
+    .fdoc-sep{height:3px;margin:1.5rem 0 3px;background:#B5433C;border:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .fdoc-sep2{height:1px;background:#C0504A;opacity:0.3;border:none;margin-bottom:2rem}
+    .fdoc-table{width:100%;border-collapse:collapse;margin-bottom:2rem;border:1px solid #E0D0D0}
+    .fdoc-table thead th{font-size:0.68rem;font-weight:700;color:#B5433C;padding:0.7rem 1rem;text-align:left;border-bottom:1px solid #E0D0D0}
+    .fdoc-table thead th:last-child{text-align:right}
+    .fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .fdoc-table tbody td{padding:0.75rem 1rem;font-size:0.82rem;border-bottom:1px solid #f0e8e8}
+    .fdoc-table tbody td:last-child{text-align:right;color:#6B5C5C;font-weight:500}
+    .fdoc-ptitle{font-size:0.72rem;font-weight:700;color:#B5433C;margin-bottom:0.6rem}
+    .fdoc-steps{border:1px solid #E0D0D0}
+    .fdoc-step{display:flex;align-items:stretch;border-bottom:1px solid #E0D0D0}
+    .fdoc-step:last-child{border-bottom:none}
+    .fdoc-step:nth-child(even) .fdoc-stxt{background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .fdoc-snum{width:40px;flex-shrink:0;background:#B5433C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .fdoc-stxt{flex:1;padding:0.75rem 1rem;font-size:0.82rem;line-height:1.5}
+    .fdoc-footer{margin-top:3rem;display:flex;justify-content:space-between;padding-top:0.75rem;border-top:1px solid #E0D0D0}
+    .fdoc-fl{font-size:0.62rem;color:#B5433C;margin-bottom:0.2rem}
+    .fdoc-fv{font-size:1.1rem;font-weight:700}
+  </style></head><body>
+  ${buildFicheDoc(f)}
+  <script>window.onload=function(){window.print();setTimeout(()=>window.close(),500)}<\/script>
+  </body></html>`;
+  const w=window.open('','_blank','width=900,height=1200');
+  w.document.write(html);
+  w.document.close();
+}
+
+function printMenu(){
+  const menu=cfg.menu||MENU_INITIAL;
+  let html=`<div style="font-family:'Poppins',sans-serif;max-width:560px;margin:0 auto;padding:0">
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:1.5rem;font-weight:700;letter-spacing:0.3em;color:#B5433C">LAVA</div>
+      <div style="font-size:0.6rem;letter-spacing:0.2em;color:#6B5C5C;text-transform:uppercase">${menuDateLabel()}</div>
+    </div>
+    <div style="height:3px;background:#B5433C;margin-bottom:0.25rem"></div>
+    <div style="height:1px;background:#C0504A;opacity:0.35;margin-bottom:2rem"></div>`;
+  cfg.secs.forEach(sec=>{
+    const items=menu[sec]||[];if(!items.length)return;
+    html+=`<div style="margin-bottom:1.75rem"><div style="font-size:0.58rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#B5433C;border-bottom:1px solid #EDD8D8;padding-bottom:0.4rem;margin-bottom:1rem">${escHTML(sec)}</div>`;
+    items.forEach(i=>{html+=`<div style="margin-bottom:1.1rem"><div style="font-size:0.87rem;font-weight:600;margin-bottom:0.2rem">${escHTML(i.nom)}</div><div style="font-size:0.69rem;color:#6B5C5C;line-height:1.5">${escHTML(i.comp.join(' · '))}</div></div>`});
+    html+='</div>';
+  });
+  html+='</div>';
+  const pa=document.getElementById('print-area');
+  pa.style.display='block';pa.innerHTML=html;
+  window.print();
+  setTimeout(()=>{pa.style.display='none';pa.innerHTML=''},800);
+}
+
+// ── SCAN ──
+function handleDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))processScan(f)}
+function handlePhotoUpload(e){const f=e.target.files[0];if(f)processScan(f);e.target.value=''}
+function processScan(file){
+  const r=new FileReader();
+  r.onload=e=>{
+    document.getElementById('scan-prev').src=e.target.result;
+    document.getElementById('scan-prev').style.display='block';
+    document.getElementById('sdz').style.display='none';
+    document.getElementById('scan-load').style.display='block';
+    document.getElementById('scan-res').style.display='none';
+    document.getElementById('scan-err').style.display='none';
+    document.getElementById('btn-scan-save').style.display='none';
+    callVision(e.target.result.split(',')[1],file.type||'image/jpeg');
+  };
+  r.readAsDataURL(file);
+}
+
+async function callVision(b64,mt){
+  try{
+    const r=await fetch('/.netlify/functions/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'vision',base64:b64,mediaType:mt})});
+    const res=await r.json();
+    document.getElementById('scan-load').style.display='none';
+    if(res.error)throw new Error(res.error.message||res.error);
+    const txt=res.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    scanData=JSON.parse(txt.replace(/```json|```/g,'').trim());
+    document.getElementById('scan-ext').innerHTML=`<strong>📋 ${escHTML(scanData.nom||'—')}</strong><br><span style="color:var(--rouge);font-size:0.65rem">${escHTML(scanData.categorie||'')} · ${escHTML(scanData.quantiteNette||'—')}</span><br><br><strong style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase">Ingrédients (${(scanData.ingredients||[]).length})</strong><br>${(scanData.ingredients||[]).map(i=>`${escHTML(i.nom)}${i.quantite?' — '+escHTML(i.quantite)+' '+escHTML(i.unite):''}`).join('<br>')}<br><br><strong style="font-size:0.62rem;letter-spacing:0.1em;text-transform:uppercase">Process</strong><br>${(scanData.process||[]).map((s,i)=>`${i+1}. ${escHTML(s)}`).join('<br>')}`;
+    document.getElementById('scan-res').style.display='block';
+    document.getElementById('btn-scan-save').style.display='flex';
+  }catch(e){
+    document.getElementById('scan-load').style.display='none';
+    const el=document.getElementById('scan-err');el.style.display='block';el.textContent='Erreur : '+e.message;
+  }
+}
+
+async function saveScanResult(){
+  if(!scanData)return;
+  setBusy('btn-scan-save',true);
+  const payload={nom:scanData.nom||'Recette sans nom',categorie:scanData.categorie||cfg.cats[0],quantite_nette:scanData.quantiteNette||'',conditionnement:scanData.conditionnement||'',ingredients:(scanData.ingredients||[]).map(i=>({nom:i.nom,quantite:i.quantite,unite:i.unite==='kg'?'kg':'g'})),process:scanData.process||[]};
+  setSyncing(true);const r=await callAPI('insert_fiche',payload);setSyncing(false);
+  setBusy('btn-scan-save',false);
+  if(r.error){toast('Erreur : '+r.error,'err');return}
+  closeModal('modal-scan');resetScan();await loadAll();toast('Fiche créée ✓','ok');
+}
+
+function resetScan(){
+  scanData=null;
+  document.getElementById('sdz').style.display='block';
+  ['scan-prev','scan-load','scan-res','scan-err'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('btn-scan-save').style.display='none';
+}
+
+// ── TOAST ──
+function toast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast'+(type?' '+type:'');
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);
+}
+</script>
+</body>
+</html>
