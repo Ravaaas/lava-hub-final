@@ -28,9 +28,30 @@ exports.handler = async function(event) {
           max_tokens: 1000,
           messages: [{ role: 'user', content: [
             { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-            { type: 'text', text: `Tu es un assistant cuisine expert. Analyse cette photo de brouillon de recette et extrait en JSON strict uniquement (aucun texte avant/après) :
-{"nom":"","categorie":"Base|Sauce|Garniture|Dessert|Autre","quantiteNette":"","conditionnement":"","ingredients":[{"nom":"","quantite":"","unite":""}],"process":["étape 1..."]}
-Si une info est illisible, mets "". Réponds UNIQUEMENT avec le JSON valide.` }
+            { type: 'text', text: `Tu es un chef cuisinier expert en fiches techniques de cuisine professionnelle. Analyse cette photo et extrais TOUTES les informations visibles avec le maximum de précision.
+
+Réponds UNIQUEMENT avec ce JSON valide, sans aucun texte avant ou après :
+{
+  "nom": "nom de la recette en majuscules",
+  "categorie": "une valeur parmi : Base, Sauce, Garniture, Dessert, Autre",
+  "quantiteNette": "quantité totale produite ex: 5.06 kg ou 1 L",
+  "conditionnement": "une valeur parmi : Sac sous vide, Siphon, Petite boite, Moyenne boite, Grande boite, Poche à pâtisserie, Pipette — ou vide si non précisé",
+  "conditionnementQte": "poids ou volume du contenant ex: 850g ou 500ml — ou vide",
+  "ingredients": [
+    {"nom": "nom exact de l'ingrédient", "quantite": "nombre uniquement ex: 3.60", "unite": "g ou kg ou cl ou L ou cs ou cc ou pièce ou ml"}
+  ],
+  "process": [
+    "étape complète et précise"
+  ]
+}
+
+Règles importantes :
+- Extrais TOUS les ingrédients visibles même partiellement lisibles
+- Normalise les unités : grammes→g, kilogrammes→kg, centilitres→cl, litres→L, millilitres→ml
+- Les quantités doivent être des nombres décimaux (ex: 3.60 pas "3kg600")
+- Pour le process : chaque étape est une phrase complète et actionnable
+- Si quelque chose est illisible mets ""
+- Respecte la casse professionnelle pour les noms d'ingrédients` }
           ]}]
         })
       });
