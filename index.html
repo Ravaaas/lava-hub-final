@@ -221,9 +221,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .fdoc-fl{font-size:0.58rem;font-weight:400;color:#B5433C;margin-bottom:0.2rem}
 .fdoc-fv{font-size:1.1rem;font-weight:700;color:#221818}
 
-/* SCAN */
-#sdz{border:2px dashed var(--border);border-radius:var(--r);padding:2.5rem;text-align:center;cursor:pointer;transition:all .15s;background:var(--rose)}
-#sdz:hover{border-color:var(--rouge);background:var(--rose-mid)}
+
 
 /* EMPTY */
 .es{text-align:center;padding:4rem 2rem;color:var(--gt)}
@@ -394,8 +392,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
       <div class="ph">
         <div><div class="ph-title">Fiches Recettes</div><div class="ph-sub" id="rec-sub">Chargement…</div></div>
         <div class="ph-actions">
-          <button class="btn btn-o btn-sm admin-only" onclick="openModal('modal-scan')" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Photo
           </button>
           <button class="btn btn-p admin-only" onclick="openNewFiche()" style="display:none">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nouvelle fiche
@@ -560,32 +556,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   </div>
 </div>
 
-<!-- MODAL SCAN -->
-<div class="mo" id="modal-scan">
-  <div class="modal" style="max-width:560px">
-    <div class="m-head"><div class="m-title">Photo → Fiche Technique</div><button class="m-close" onclick="closeModal('modal-scan');resetScan()">✕</button></div>
-    <div class="m-body">
-      <div id="sdz" ondragover="event.preventDefault()" ondrop="handleDrop(event)" onclick="document.getElementById('photo-input').click()">
-        <div style="font-size:2.2rem;margin-bottom:0.75rem;opacity:0.35">📸</div>
-        <div style="font-size:0.8rem;font-weight:600;color:var(--noir);margin-bottom:0.25rem">Glisse ou clique pour choisir</div>
-        <div style="font-size:0.68rem;color:var(--gt)">Brouillon manuscrit, cahier, note rapide…</div>
-      </div>
-      <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)">
-      <img id="scan-prev" style="display:none;width:100%;max-height:220px;object-fit:contain;margin-top:1rem;border:1px solid var(--border);border-radius:var(--r)">
-      <div id="scan-load" style="display:none;text-align:center;padding:2rem"><div class="spinner"></div><div style="font-size:0.72rem;color:var(--gt);margin-top:1rem">Analyse en cours…</div></div>
-      <div id="scan-res" style="display:none;margin-top:1.25rem">
-        <div style="font-size:0.6rem;font-weight:700;letter-spacing:0.2em;text-transform:uppercase;color:var(--rouge);margin-bottom:0.6rem;padding-bottom:0.4rem;border-bottom:1px solid var(--border)">Extrait par l'IA</div>
-        <div id="scan-ext" style="font-size:0.74rem;line-height:1.8;color:var(--noir);background:var(--rose);padding:1rem;border-radius:var(--r)"></div>
-        <p style="margin-top:0.5rem;font-size:0.66rem;color:var(--gt)">Modifiable après création.</p>
-      </div>
-      <div id="scan-err" style="display:none;margin-top:1rem;padding:0.75rem 1rem;background:#fdf0f0;border:1px solid #e0b0b0;border-radius:var(--r);font-size:0.7rem;color:var(--rouge)"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-g" onclick="resetScan()">Recommencer</button>
-      <button class="btn btn-p" id="btn-scan-save" style="display:none" onclick="saveScanResult()">Créer la fiche</button>
-    </div>
-  </div>
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -594,7 +564,7 @@ const SB_URL='https://qmvxmxzsmpigvseuidcd.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtdnhteHpzbXBpZ3ZzZXVpZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTY1ODYsImV4cCI6MjA5NzI5MjU4Nn0._kDu_tyJbr9Hcckg_dC0OYsSqh23aPND96wMX_KLdAc';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 
-let profil=null, editId=null, editPlatId=null, curFicheId=null, scanData=null;
+let profil=null, editId=null, editPlatId=null, curFicheId=null;
 let fiches=[], plats=[];
 
 const MENU_INITIAL={
@@ -643,10 +613,7 @@ function setSyncing(v){
   document.getElementById('sync-lbl').textContent=v?'Sync…':'Sync';
 }
 
-async function callAPI(action,payload){
-  const r=await fetch('/.netlify/functions/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,payload})});
-  return r.json();
-}
+const ADMIN_PW='lava2026';
 
 // ── LOGIN ──
 function showPW(){
@@ -660,21 +627,12 @@ async function checkPW(){
   setBusy('btn-confirm',true);
   setBusy('btn-admin',true);
   document.getElementById('l-err').style.display='none';
-  try{
-    const res=await callAPI('check_password',{password:pw});
-    if(res.ok){loginAs('admin');}
-    else{
-      document.getElementById('l-err').style.display='block';
-      document.getElementById('pw-input').value='';
-      document.getElementById('pw-input').focus();
-    }
-  }catch(e){
-    // fallback local si l'API n'est pas disponible (dev local)
-    if(pw==='lava2026'){loginAs('admin');}
-    else{
-      document.getElementById('l-err').style.display='block';
-      document.getElementById('pw-input').value='';
-    }
+  if(pw===ADMIN_PW){
+    loginAs('admin');
+  }else{
+    document.getElementById('l-err').style.display='block';
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-input').focus();
   }
   setBusy('btn-confirm',false);
   setBusy('btn-admin',false);
@@ -699,28 +657,25 @@ function logout(){
   document.getElementById('l-err').style.display='none';
 }
 
-// ── CONFIG (Supabase + localStorage fallback) ──
+// ── CONFIG (Supabase direct + localStorage fallback) ──
 async function loadCfg(){
   try{
-    const r=await callAPI('get_config',{});
-    if(r&&r.data){
-      cfg={...cfg,...r.data};
+    const{data}=await sb.from('lava_config').select('*').eq('id','main').single();
+    if(data&&data.data){
+      cfg={...cfg,...data.data};
       if(!cfg.menu)cfg.menu=JSON.parse(JSON.stringify(MENU_INITIAL));
       populateSels();renderCfg();
       return;
     }
   }catch(e){}
-  // fallback localStorage
   try{const s=localStorage.getItem('lava_cfg');if(s){const d=JSON.parse(s);cfg={...cfg,...d};}}catch(e){}
   if(!cfg.menu)cfg.menu=JSON.parse(JSON.stringify(MENU_INITIAL));
   populateSels();renderCfg();
 }
 
 async function saveCfg(){
-  // sauvegarde locale immédiate
   try{localStorage.setItem('lava_cfg',JSON.stringify(cfg));}catch(e){}
-  // sync Supabase en arrière-plan
-  try{await callAPI('save_config',cfg);}catch(e){}
+  try{await sb.from('lava_config').upsert({id:'main',data:cfg});}catch(e){}
   populateSels();renderCfg();
 }
 
@@ -944,9 +899,9 @@ async function saveFiche(){
       if(!confirm(`Corrections suggérées :\n${msg}\n\nEnregistrer quand même ?`)){setBusy('btn-save-fiche',false);return;}
     }
     setSyncing(true);
-    const res=editId?await callAPI('update_fiche',{id:editId,data}):await callAPI('insert_fiche',data);
+    const res=editId?await sb.from('fiches').update(data).eq('id',editId):await sb.from('fiches').insert(data);
     setSyncing(false);
-    if(res.error){toast('Erreur : '+res.error,'err');return}
+    if(res.error){toast('Erreur : '+res.error.message,'err');return}
     toast(editId?'Fiche modifiée ✓':'Fiche enregistrée ✓','ok');
     closeModal('modal-fiche');await loadAll();
   }catch(e){
@@ -983,14 +938,14 @@ function editCurrentFiche(){if(curFicheId){closeFD();editFiche(curFicheId)}}
 
 async function deleteFiche(id){
   if(!confirm('Supprimer cette fiche ?'))return;
-  setSyncing(true);await callAPI('delete_fiche',{id});setSyncing(false);
+  setSyncing(true);await sb.from('fiches').delete().eq('id',id);setSyncing(false);
   toast('Fiche supprimée');await loadAll();
 }
 
 async function duplicateFiche(id){
   const f=fiches.find(f=>f.id===id);if(!f)return;
   const copy={nom:'Copie de '+f.nom,categorie:f.categorie,quantite_nette:f.quantite_nette,conditionnement:f.conditionnement,ingredients:f.ingredients,process:f.process};
-  setSyncing(true);await callAPI('insert_fiche',copy);setSyncing(false);
+  setSyncing(true);await sb.from('fiches').insert(copy);setSyncing(false);
   toast('Recette dupliquée ✓','ok');await loadAll();
 }
 
@@ -1032,9 +987,9 @@ async function savePlat(){
     const comps=[];document.querySelectorAll('#comp-il input').forEach(i=>{if(i.value.trim())comps.push(i.value.trim())});
     const data={nom,section:document.getElementById('p-sec').value,description:document.getElementById('p-desc').value.trim(),composants:comps,allergenes:document.getElementById('p-alg').value.trim(),dressage:document.getElementById('p-dress').value.trim()};
     setSyncing(true);
-    const r=editPlatId?await callAPI('update_plat',{id:editPlatId,data}):await callAPI('insert_plat',data);
+    const r=editPlatId?await sb.from('plats').update(data).eq('id',editPlatId):await sb.from('plats').insert(data);
     setSyncing(false);
-    if(r.error){toast('Erreur : '+r.error,'err');return}
+    if(r.error){toast('Erreur : '+r.error.message,'err');return}
     toast(editPlatId?'Plat modifié ✓':'Plat enregistré ✓','ok');
     closeModal('modal-plat');await loadAll();
   }catch(e){
@@ -1047,7 +1002,7 @@ async function savePlat(){
 
 async function deletePlat(id){
   if(!confirm('Supprimer ce plat ?'))return;
-  setSyncing(true);await callAPI('delete_plat',{id});setSyncing(false);
+  setSyncing(true);await sb.from('plats').delete().eq('id',id);setSyncing(false);
   toast('Plat supprimé');await loadAll();
 }
 
@@ -1182,67 +1137,6 @@ function printMenu(){
   setTimeout(()=>{pa.style.display='none';pa.innerHTML=''},800);
 }
 
-// ── SCAN ──
-function handleDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))processScan(f)}
-function handlePhotoUpload(e){const f=e.target.files[0];if(f)processScan(f);e.target.value=''}
-function processScan(file){
-  const r=new FileReader();
-  r.onload=e=>{
-    document.getElementById('scan-prev').src=e.target.result;
-    document.getElementById('scan-prev').style.display='block';
-    document.getElementById('sdz').style.display='none';
-    document.getElementById('scan-load').style.display='block';
-    document.getElementById('scan-res').style.display='none';
-    document.getElementById('scan-err').style.display='none';
-    document.getElementById('btn-scan-save').style.display='none';
-    callVision(e.target.result.split(',')[1],file.type||'image/jpeg');
-  };
-  r.readAsDataURL(file);
-}
-
-async function callVision(b64,mt){
-  try{
-    const r=await fetch('/.netlify/functions/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'vision',base64:b64,mediaType:mt})});
-    const res=await r.json();
-    document.getElementById('scan-load').style.display='none';
-    if(res.error)throw new Error(res.error.message||res.error);
-    const txt=res.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-    scanData=JSON.parse(txt.replace(/```json|```/g,'').trim());
-    const condLabel=scanData.conditionnement?(scanData.conditionnementQte?scanData.conditionnement+' — '+scanData.conditionnementQte:scanData.conditionnement):'—';
-    document.getElementById('scan-ext').innerHTML=`
-      <div style="margin-bottom:0.75rem">
-        <div style="font-size:1rem;font-weight:700;color:var(--noir)">${escHTML(scanData.nom||'—')}</div>
-        <div style="font-size:0.65rem;color:var(--rouge);margin-top:0.15rem">${escHTML(scanData.categorie||'—')} · ${escHTML(scanData.quantiteNette||'—')} · ${escHTML(condLabel)}</div>
-      </div>
-      <div style="font-size:0.58rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gt);margin-bottom:0.35rem">Ingrédients (${(scanData.ingredients||[]).length})</div>
-      <div style="margin-bottom:0.75rem">${(scanData.ingredients||[]).map(i=>`<div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid var(--rose-mid);font-size:0.75rem"><span>${escHTML(i.nom)}</span><span style="color:var(--gt);font-weight:500">${i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):''}</span></div>`).join('')}</div>
-      <div style="font-size:0.58rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--gt);margin-bottom:0.35rem">Process</div>
-      <div>${(scanData.process||[]).map((s,i)=>`<div style="display:flex;gap:0.5rem;padding:0.3rem 0;font-size:0.74rem;border-bottom:1px solid var(--rose-mid)"><span style="color:var(--rouge);font-weight:700;flex-shrink:0">${i+1}.</span><span>${escHTML(s)}</span></div>`).join('')}</div>`;
-    document.getElementById('scan-res').style.display='block';
-    document.getElementById('btn-scan-save').style.display='flex';
-  }catch(e){
-    document.getElementById('scan-load').style.display='none';
-    const el=document.getElementById('scan-err');el.style.display='block';el.textContent='Erreur : '+e.message;
-  }
-}
-
-async function saveScanResult(){
-  if(!scanData)return;
-  setBusy('btn-scan-save',true);
-  const condArr=scanData.conditionnement?[scanData.conditionnement+(scanData.conditionnementQte?' — '+scanData.conditionnementQte:'')]:[];
-  const payload={nom:scanData.nom||'Recette sans nom',categorie:scanData.categorie||cfg.cats[0],quantite_nette:scanData.quantiteNette||'',conditionnement:JSON.stringify(condArr),ingredients:(scanData.ingredients||[]).map(i=>({nom:i.nom,quantite:i.quantite,unite:i.unite||'g'})),process:scanData.process||[]};
-  setSyncing(true);const r=await callAPI('insert_fiche',payload);setSyncing(false);
-  setBusy('btn-scan-save',false);
-  if(r.error){toast('Erreur : '+r.error,'err');return}
-  closeModal('modal-scan');resetScan();await loadAll();toast('Fiche créée ✓','ok');
-}
-
-function resetScan(){
-  scanData=null;
-  document.getElementById('sdz').style.display='block';
-  ['scan-prev','scan-load','scan-res','scan-err'].forEach(id=>document.getElementById(id).style.display='none');
-  document.getElementById('btn-scan-save').style.display='none';
-}
 
 // ── TOAST ──
 function toast(msg,type=''){
