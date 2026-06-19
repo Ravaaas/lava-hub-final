@@ -490,6 +490,11 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>Retour
     </button>
     <div style="flex:1;font-size:0.72rem;font-weight:600;color:var(--rouge)" id="fd-crumb"></div>
+    <div style="display:flex;align-items:center;gap:0.4rem;background:var(--rose);border:1.5px solid var(--rose-mid);border-radius:8px;padding:0.3rem 0.75rem">
+      <span style="font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gt)">×</span>
+      <input id="fd-coef" type="number" min="0.1" step="0.1" value="1" oninput="applyCoef()" style="width:52px;border:none;background:transparent;font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:700;color:var(--rouge);outline:none;text-align:center">
+      <span style="font-size:0.6rem;color:var(--gt)">portions</span>
+    </div>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
       <button class="btn btn-g btn-sm" onclick="printFiche()">🖨 Imprimer</button>
       <button class="btn btn-g btn-sm admin-only" onclick="duplicateCurrentFiche()" style="display:none">Copier</button>
@@ -1042,8 +1047,9 @@ async function deleteMenuItem(sec,idx){
 }
 
 // ── FICHE DOC ──
-function buildFicheDoc(f){
-  const irows=(f.ingredients||[]).map(i=>`<tr><td>${escHTML((i.nom||'').toUpperCase())}</td><td>${i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):'—'}</td></tr>`).join('');
+function buildFicheDoc(f,coef=1){
+  const fmt=v=>{const n=parseFloat(v)*coef;return isNaN(n)?v:(Number.isInteger(n)?n:Math.round(n*100)/100).toString()};
+  const irows=(f.ingredients||[]).map(i=>`<tr><td>${escHTML((i.nom||'').toUpperCase())}</td><td>${i.quantite?escHTML(fmt(i.quantite))+' '+escHTML(i.unite||''):'—'}</td></tr>`).join('');
   const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
   const condDisplay=(()=>{try{const a=JSON.parse(f.conditionnement||'[]');return a.length?a.map(escHTML).join('<br>'):'—';}catch(e){return escHTML(f.conditionnement||'—');}})();
   return `<div class="fdoc">
@@ -1070,11 +1076,17 @@ function buildFicheDoc(f){
 function openFD(id){
   const f=fiches.find(f=>f.id===id);if(!f)return;
   curFicheId=id;
+  document.getElementById('fd-coef').value=1;
   document.getElementById('fd-crumb').textContent=f.nom;
-  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f);
+  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,1);
   document.getElementById('fd').classList.add('open');
 }
 function closeFD(){document.getElementById('fd').classList.remove('open');curFicheId=null}
+function applyCoef(){
+  const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
+  const coef=parseFloat(document.getElementById('fd-coef').value)||1;
+  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,coef);
+}
 
 function printFiche(){
   if(!curFicheId)return;
