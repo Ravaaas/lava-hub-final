@@ -936,9 +936,9 @@ async function editFiche(id){
   openModal('modal-fiche');
 }
 
-function editCurrentFiche(){if(curFicheId){closeFD();editFiche(curFicheId)}}
-async function deleteCurrentFiche(){if(curFicheId){closeFD();await deleteFiche(curFicheId);}}
-async function duplicateCurrentFiche(){if(curFicheId){closeFD();await duplicateFiche(curFicheId);}}
+function editCurrentFiche(){if(curFicheId)editFiche(curFicheId)}
+async function deleteCurrentFiche(){if(curFicheId){const id=curFicheId;closeFD();await deleteFiche(id);}}
+async function duplicateCurrentFiche(){if(curFicheId){const id=curFicheId;closeFD();await duplicateFiche(id);}}
 
 async function deleteFiche(id){
   if(!confirm('Supprimer cette fiche ?'))return;
