@@ -490,9 +490,11 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>Retour
     </button>
     <div style="flex:1;font-size:0.72rem;font-weight:600;color:var(--rouge)" id="fd-crumb"></div>
-    <div style="display:flex;gap:0.5rem">
-      <button class="btn btn-g btn-sm" onclick="printFiche()">🖨 Imprimer / PDF</button>
-      <button class="btn btn-o btn-sm admin-only" id="btn-edit-fd" onclick="editCurrentFiche()" style="display:none">Modifier</button>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+      <button class="btn btn-g btn-sm" onclick="printFiche()">🖨 Imprimer</button>
+      <button class="btn btn-g btn-sm admin-only" onclick="duplicateCurrentFiche()" style="display:none">Copier</button>
+      <button class="btn btn-g btn-sm admin-only" onclick="editCurrentFiche()" style="display:none">Modifier</button>
+      <button class="btn btn-d btn-sm admin-only" onclick="deleteCurrentFiche()" style="display:none">Supprimer</button>
     </div>
   </div>
   <div class="fd-content"><div id="fdoc-area"></div></div>
@@ -775,7 +777,8 @@ function renderFiches(){
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
     const ingCount=(f.ingredients||[]).length;
-    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div><div class="fc-foot">${profil==='admin'?`<button class="btn btn-d btn-sm" onclick="event.stopPropagation();deleteFiche('${escHTML(f.id)}')">✕</button><button class="btn btn-g btn-sm" onclick="event.stopPropagation();editFiche('${escHTML(f.id)}')">Modifier</button><button class="btn btn-g btn-sm" onclick="event.stopPropagation();duplicateFiche('${escHTML(f.id)}')">Copier</button>`:''}<button class="btn btn-p btn-sm" onclick="openFD('${escHTML(f.id)}')">Voir →</button></div>`;
+    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
+    c.onclick=()=>openFD(f.id);
     grid.appendChild(c);
   });
 }
@@ -934,6 +937,8 @@ async function editFiche(id){
 }
 
 function editCurrentFiche(){if(curFicheId){closeFD();editFiche(curFicheId)}}
+async function deleteCurrentFiche(){if(curFicheId){closeFD();await deleteFiche(curFicheId);}}
+async function duplicateCurrentFiche(){if(curFicheId){closeFD();await duplicateFiche(curFicheId);}}
 
 async function deleteFiche(id){
   if(!confirm('Supprimer cette fiche ?'))return;
