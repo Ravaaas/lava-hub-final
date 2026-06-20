@@ -495,11 +495,11 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
       <input id="fd-coef" type="number" min="0.1" step="0.1" value="1" oninput="applyCoef()" style="width:52px;border:none;background:transparent;font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:700;color:var(--rouge);outline:none;text-align:center">
       <span style="font-size:0.6rem;color:var(--gt)">portions</span>
     </div>
-    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+    <div class="admin-only" id="fd-actions" style="display:none;gap:0.5rem;flex-wrap:wrap">
       <button class="btn btn-g btn-sm" onclick="printFiche()">🖨 Imprimer</button>
-      <button class="btn btn-g btn-sm admin-only" onclick="duplicateCurrentFiche()" style="display:none">Copier</button>
-      <button class="btn btn-g btn-sm admin-only" onclick="editCurrentFiche()" style="display:none">Modifier</button>
-      <button class="btn btn-d btn-sm admin-only" onclick="deleteCurrentFiche()" style="display:none">Supprimer</button>
+      <button class="btn btn-g btn-sm" onclick="duplicateCurrentFiche()">Copier</button>
+      <button class="btn btn-g btn-sm" onclick="editCurrentFiche()">Modifier</button>
+      <button class="btn btn-d btn-sm" onclick="deleteCurrentFiche()">Supprimer</button>
     </div>
   </div>
   <div class="fd-content"><div id="fdoc-area"></div></div>
