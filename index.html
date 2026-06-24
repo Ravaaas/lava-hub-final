@@ -1093,11 +1093,13 @@ async function deleteMenuItem(sec,idx){
 }
 
 // ── FICHE DOC ──
-function buildFicheDoc(f,coef=1){
+function buildFicheDoc(f,coef=1,forPrint=false){
   const fmt=v=>{const n=parseFloat(v)*coef;return isNaN(n)?v:(Number.isInteger(n)?n:Math.round(n*100)/100).toString()};
   const irows=(f.ingredients||[]).map(i=>{
     const nameCell=i.ficheId
-      ?`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')">${escHTML((i.nom||'').toUpperCase())} <span class="no-print" style="font-size:0.58rem;color:#B5433C;opacity:0.7;font-weight:600">↗</span></td>`
+      ?forPrint
+        ?`<td>${escHTML((i.nom||'').toUpperCase())}</td>`
+        :`<td style="cursor:pointer;border-left:3px solid #B5433C" onclick="openFD('${escHTML(i.ficheId)}')">${escHTML((i.nom||'').toUpperCase())}</td>`
       :`<td>${escHTML((i.nom||'').toUpperCase())}</td>`;
     return `<tr>${nameCell}<td>${i.quantite?escHTML(fmt(i.quantite))+' '+escHTML(i.unite||''):'—'}</td></tr>`;
   }).join('');
@@ -1175,7 +1177,7 @@ function printFiche(){
     .fdoc-fv{font-size:13pt;font-weight:700;color:#221818}
     .no-print{display:none!important}
   </style></head><body>
-  ${buildFicheDoc(f)}
+  ${buildFicheDoc(f,1,true)}
   <script>window.onload=function(){window.print();setTimeout(()=>window.close(),500)}<\/script>
   </body></html>`;
   const w=window.open('','_blank','width=900,height=1200');
