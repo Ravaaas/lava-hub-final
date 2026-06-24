@@ -868,7 +868,7 @@ function openNewFiche(){
   addIR();addSR();openModal('modal-fiche');
 }
 
-const COND_TYPES=['Sac sous vide','Siphon','Petite boite','Moyenne boite','Grande boite','Poche à pâtisserie','Pipette','Petit gilac','Gilac moyen','Grand gilac'];
+const COND_TYPES=['Sac sous vide','Siphon','Petite boite','Moyenne boite','Grande boite','Poche à pâtisserie','Pipette','Petit gilac','Gilac moyen','Grand gilac','Boudin'];
 function addCondRow(type='',qty=''){
   const l=document.getElementById('cond-il');
   const r=document.createElement('div');
@@ -881,7 +881,7 @@ function addCondRow(type='',qty=''){
 
 function addIR(nom='',qty='',u='g',ficheId=''){
   const l=document.getElementById('il');const r=document.createElement('div');r.className='ir';
-  const units=['g','kg','cl','L','cs','cc','pièce','botte','ml'];
+  const units=['g','kg','botte','pièce'];
   const opts=units.map(x=>`<option value="${x}" ${u===x?'selected':''}>${x}</option>`).join('');
   if(ficheId){
     const ficheOpts=fiches.map(f=>`<option value="${f.id}" ${f.id===ficheId?'selected':''}>${escHTML(f.nom)}</option>`).join('');
