@@ -1147,7 +1147,8 @@ function printFiche(){
   const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${escHTML(f.nom)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    @page{size:A4;margin:1.5cm 2cm}
+    @page{size:A4;margin:0}
+    body{padding:1.5cm 2cm}
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Poppins',sans-serif;background:#fff;color:#221818;-webkit-print-color-adjust:exact;print-color-adjust:exact}
     .fdoc{background:#fff}
