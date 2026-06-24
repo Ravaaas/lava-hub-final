@@ -259,6 +259,9 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   .fdoc-table tbody tr:nth-child(odd) td{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .fdoc-snum{background:#B5433C!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .fdoc-sep{background:#B5433C!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .fdoc-table td span{color:#221818!important;font-weight:400!important}
+  .fdoc-table td[style]{cursor:default!important}
+  .no-print{display:none!important}
 }
 
 /* ANIMATIONS */
@@ -1094,7 +1097,7 @@ function buildFicheDoc(f,coef=1){
   const fmt=v=>{const n=parseFloat(v)*coef;return isNaN(n)?v:(Number.isInteger(n)?n:Math.round(n*100)/100).toString()};
   const irows=(f.ingredients||[]).map(i=>{
     const nameCell=i.ficheId
-      ?`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')"><span style="color:#B5433C;font-weight:600">${escHTML((i.nom||'').toUpperCase())}</span> <span style="font-size:0.58rem;color:#B5433C;opacity:0.7">↗</span></td>`
+      ?`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')">${escHTML((i.nom||'').toUpperCase())} <span class="no-print" style="font-size:0.58rem;color:#B5433C;opacity:0.7;font-weight:600">↗</span></td>`
       :`<td>${escHTML((i.nom||'').toUpperCase())}</td>`;
     return `<tr>${nameCell}<td>${i.quantite?escHTML(fmt(i.quantite))+' '+escHTML(i.unite||''):'—'}</td></tr>`;
   }).join('');
@@ -1170,6 +1173,7 @@ function printFiche(){
     .fdoc-footer{margin-top:24pt;display:flex;justify-content:space-between;padding-top:8pt;border-top:1px solid #E0D0D0}
     .fdoc-fl{font-size:7pt;font-weight:400;color:#B5433C;margin-bottom:3pt}
     .fdoc-fv{font-size:13pt;font-weight:700;color:#221818}
+    .no-print{display:none!important}
   </style></head><body>
   ${buildFicheDoc(f)}
   <script>window.onload=function(){window.print();setTimeout(()=>window.close(),500)}<\/script>
