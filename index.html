@@ -179,7 +179,9 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 
 /* DYNAMIC ROWS */
 .il{display:flex;flex-direction:column;gap:0.4rem}
-.ir{display:grid;grid-template-columns:1fr 70px 100px 28px;gap:0.35rem;align-items:center}
+.ir{display:grid;grid-template-columns:1fr 70px 100px 28px 28px;gap:0.35rem;align-items:center}
+.btn-lnk{width:28px;height:28px;background:none;border:1.5px solid var(--rose-mid);border-radius:var(--r);cursor:pointer;color:var(--rouge);font-size:0.7rem;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.btn-lnk:hover{border-color:var(--rouge);background:var(--rose)}
 .btn-rm{width:28px;height:28px;background:none;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--gt);font-size:0.9rem;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .btn-rm:hover{border-color:var(--rouge);color:var(--rouge);background:var(--rose)}
 .btn-ar{display:flex;align-items:center;gap:0.4rem;padding:0.42rem 0.65rem;background:none;border:1.5px dashed var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.63rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gt);cursor:pointer;width:100%;margin-top:0.25rem;transition:all .15s}
@@ -310,7 +312,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   .fi2,.fsel,.fta{font-size:0.8rem;padding:0.7rem 0.85rem}
 
   /* INGREDIENT ROWS */
-  .ir{grid-template-columns:1fr 60px 80px 28px;gap:0.25rem}
+  .ir{grid-template-columns:1fr 60px 80px 28px 28px;gap:0.25rem}
   .cond-row{grid-template-columns:1fr 90px 28px !important;gap:0.25rem}
 
   /* FICHE DETAIL */
@@ -871,12 +873,40 @@ function addCondRow(type='',qty=''){
   l.appendChild(r);
 }
 
-function addIR(nom='',qty='',u='g'){
+function addIR(nom='',qty='',u='g',ficheId=''){
   const l=document.getElementById('il');const r=document.createElement('div');r.className='ir';
   const units=['g','kg','cl','L','cs','cc','pièce','botte','ml'];
   const opts=units.map(x=>`<option value="${x}" ${u===x?'selected':''}>${x}</option>`).join('');
-  r.innerHTML=`<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
-  l.appendChild(r);if(!nom)r.querySelector('.ing-n').focus();
+  if(ficheId){
+    const ficheOpts=fiches.map(f=>`<option value="${f.id}" ${f.id===ficheId?'selected':''}>${escHTML(f.nom)}</option>`).join('');
+    r.innerHTML=`<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select><button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  }else{
+    r.innerHTML=`<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select><button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette">↗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  }
+  l.appendChild(r);if(!nom&&!ficheId)r.querySelector('.ing-n')?.focus();
+}
+
+function switchToFiche(btn){
+  const r=btn.parentElement;
+  const qty=r.querySelector('.ing-q').value;
+  const u=r.querySelector('.ing-u').value;
+  const ficheOpts=fiches.map(f=>`<option value="${f.id}">${escHTML(f.nom)}</option>`).join('');
+  const inp=r.querySelector('.ing-n');
+  const sel=document.createElement('select');
+  sel.className='fsel ing-fiche-sel';sel.style.cssText='color:var(--rouge);font-weight:600';
+  sel.innerHTML=`<option value="">— Choisir une fiche —</option>${ficheOpts}`;
+  inp.replaceWith(sel);
+  btn.title='Délier';btn.textContent='🔗';btn.onclick=function(){switchToFree(this)};
+}
+
+function switchToFree(btn){
+  const r=btn.parentElement;
+  const sel=r.querySelector('.ing-fiche-sel');
+  const inp=document.createElement('input');
+  inp.className='fi2 ing-n';inp.type='text';inp.placeholder='Ingrédient';
+  inp.oninput=function(){this.value=this.value.toUpperCase()};
+  sel.replaceWith(inp);
+  btn.title='Lier une sous-recette';btn.textContent='↗';btn.onclick=function(){switchToFiche(this)};
 }
 
 function addSR(t=''){
@@ -894,7 +924,17 @@ async function saveFiche(){
   setBusy('btn-save-fiche',true);
   try{
     const ings=[];
-    document.querySelectorAll('#il .ir').forEach(r=>{const n=r.querySelector('.ing-n').value.trim().toUpperCase();if(n)ings.push({nom:n,quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value})});
+    document.querySelectorAll('#il .ir').forEach(r=>{
+      const sel=r.querySelector('.ing-fiche-sel');
+      if(sel){
+        const fId=sel.value;if(!fId)return;
+        const f=fiches.find(f=>f.id===fId);
+        ings.push({nom:f?f.nom:'',quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value,ficheId:fId});
+      }else{
+        const n=r.querySelector('.ing-n').value.trim().toUpperCase();
+        if(n)ings.push({nom:n,quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value});
+      }
+    });
     const proc=[];
     document.querySelectorAll('#sl .s-txt').forEach(i=>{if(i.value.trim())proc.push(i.value.trim())});
     const conds=[];
@@ -935,7 +975,7 @@ async function editFiche(id){
   await new Promise(r=>setTimeout(r,0));
   document.getElementById('f-cat').value=f.categorie;
   document.getElementById('il').innerHTML='';
-  (f.ingredients||[]).forEach(i=>addIR(i.nom,i.quantite,i.unite));
+  (f.ingredients||[]).forEach(i=>addIR(i.nom,i.quantite,i.unite,i.ficheId||''));
   document.getElementById('sl').innerHTML='';
   (f.process||[]).forEach(s=>addSR(s));
   openModal('modal-fiche');
@@ -1049,7 +1089,12 @@ async function deleteMenuItem(sec,idx){
 // ── FICHE DOC ──
 function buildFicheDoc(f,coef=1){
   const fmt=v=>{const n=parseFloat(v)*coef;return isNaN(n)?v:(Number.isInteger(n)?n:Math.round(n*100)/100).toString()};
-  const irows=(f.ingredients||[]).map(i=>`<tr><td>${escHTML((i.nom||'').toUpperCase())}</td><td>${i.quantite?escHTML(fmt(i.quantite))+' '+escHTML(i.unite||''):'—'}</td></tr>`).join('');
+  const irows=(f.ingredients||[]).map(i=>{
+    const nameCell=i.ficheId
+      ?`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')""><span style="color:#B5433C;font-weight:600">${escHTML((i.nom||'').toUpperCase())}</span> <span style="font-size:0.58rem;color:#B5433C;opacity:0.7">↗</span></td>`
+      :`<td>${escHTML((i.nom||'').toUpperCase())}</td>`;
+    return `<tr>${nameCell}<td>${i.quantite?escHTML(fmt(i.quantite))+' '+escHTML(i.unite||''):'—'}</td></tr>`;
+  }).join('');
   const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
   const condDisplay=(()=>{try{const a=JSON.parse(f.conditionnement||'[]');return a.length?a.map(escHTML).join('<br>'):'—';}catch(e){return escHTML(f.conditionnement||'—');}})();
   return `<div class="fdoc">
