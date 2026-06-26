@@ -884,7 +884,7 @@ function addCondRow(type='',qty=''){
 
 function addIR(nom='',qty='',u='g',ficheId='',brut=false){
   const l=document.getElementById('il');const r=document.createElement('div');r.className='ir';
-  const units=['g','kg','botte','pièce'];
+  const units=['g','kg','botte','pièce','pm'];
   const opts=units.map(x=>`<option value="${x}" ${u===x?'selected':''}>${x}</option>`).join('');
   const brutBtn=`<button class="btn-brut${brut?' active':''}" onclick="this.classList.toggle('active')" title="Poids brut">B</button>`;
   if(ficheId){
