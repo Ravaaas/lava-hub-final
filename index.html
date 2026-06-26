@@ -182,7 +182,10 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 
 /* DYNAMIC ROWS */
 .il{display:flex;flex-direction:column;gap:0.4rem}
-.ir{display:grid;grid-template-columns:1fr 70px 100px 28px 28px;gap:0.35rem;align-items:center}
+.ir{display:grid;grid-template-columns:1fr 70px 100px 28px 28px 28px;gap:0.35rem;align-items:center}
+.btn-brut{width:28px;height:28px;background:none;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--gt);font-size:0.6rem;font-weight:700;font-family:'Poppins',sans-serif;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.btn-brut:hover{border-color:var(--rouge);color:var(--rouge)}
+.btn-brut.active{background:var(--rose);border-color:var(--rouge);color:var(--rouge)}
 .btn-lnk{width:28px;height:28px;background:none;border:1.5px solid var(--rose-mid);border-radius:var(--r);cursor:pointer;color:var(--rouge);font-size:0.7rem;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .btn-lnk:hover{border-color:var(--rouge);background:var(--rose)}
 .btn-rm{width:28px;height:28px;background:none;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--gt);font-size:0.9rem;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
@@ -318,7 +321,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   .fi2,.fsel,.fta{font-size:0.8rem;padding:0.7rem 0.85rem}
 
   /* INGREDIENT ROWS */
-  .ir{grid-template-columns:1fr 60px 80px 28px 28px;gap:0.25rem}
+  .ir{grid-template-columns:1fr 60px 80px 28px 28px 28px;gap:0.25rem}
   .cond-row{grid-template-columns:1fr 90px 28px !important;gap:0.25rem}
 
   /* FICHE DETAIL */
@@ -879,15 +882,16 @@ function addCondRow(type='',qty=''){
   l.appendChild(r);
 }
 
-function addIR(nom='',qty='',u='g',ficheId=''){
+function addIR(nom='',qty='',u='g',ficheId='',brut=false){
   const l=document.getElementById('il');const r=document.createElement('div');r.className='ir';
   const units=['g','kg','botte','pièce'];
   const opts=units.map(x=>`<option value="${x}" ${u===x?'selected':''}>${x}</option>`).join('');
+  const brutBtn=`<button class="btn-brut${brut?' active':''}" onclick="this.classList.toggle('active')" title="Poids brut">B</button>`;
   if(ficheId){
     const ficheOpts=fiches.map(f=>`<option value="${f.id}" ${f.id===ficheId?'selected':''}>${escHTML(f.nom)}</option>`).join('');
-    r.innerHTML=`<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select><button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }else{
-    r.innerHTML=`<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select><button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }
   l.appendChild(r);if(!nom&&!ficheId)r.querySelector('.ing-n')?.focus();
 }
@@ -935,10 +939,12 @@ async function saveFiche(){
       if(sel){
         const fId=sel.value;if(!fId)return;
         const f=fiches.find(f=>f.id===fId);
-        ings.push({nom:f?f.nom:'',quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value,ficheId:fId});
+        const brut=r.querySelector('.btn-brut')?.classList.contains('active')||false;
+        ings.push({nom:f?f.nom:'',quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value,ficheId:fId,...(brut&&{brut:true})});
       }else{
         const n=r.querySelector('.ing-n').value.trim().toUpperCase();
-        if(n)ings.push({nom:n,quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value});
+        const brut=r.querySelector('.btn-brut')?.classList.contains('active')||false;
+        if(n)ings.push({nom:n,quantite:r.querySelector('.ing-q').value.trim(),unite:r.querySelector('.ing-u').value,...(brut&&{brut:true})});
       }
     });
     const proc=[];
@@ -981,7 +987,7 @@ async function editFiche(id){
   await new Promise(r=>setTimeout(r,0));
   document.getElementById('f-cat').value=f.categorie;
   document.getElementById('il').innerHTML='';
-  (f.ingredients||[]).forEach(i=>addIR(i.nom,i.quantite,i.unite,i.ficheId||''));
+  (f.ingredients||[]).forEach(i=>addIR(i.nom,i.quantite,i.unite,i.ficheId||'',i.brut||false));
   document.getElementById('sl').innerHTML='';
   (f.process||[]).forEach(s=>addSR(s));
   openModal('modal-fiche');
@@ -1096,11 +1102,12 @@ async function deleteMenuItem(sec,idx){
 function buildFicheDoc(f,coef=1,forPrint=false){
   const fmt=v=>{const n=parseFloat(v)*coef;return isNaN(n)?v:(Number.isInteger(n)?n:Math.round(n*100)/100).toString()};
   const irows=(f.ingredients||[]).map(i=>{
+    const brutTag=i.brut?` <span style="font-size:9px;background:#f0ede8;color:#888;padding:1px 5px;border-radius:3px;font-weight:600;letter-spacing:0.03em">BRUT</span>`:'';
     const nameCell=i.ficheId
       ?forPrint
-        ?`<td>${escHTML((i.nom||'').toUpperCase())}</td>`
-        :`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')"><span style="color:#B5433C;text-decoration:underline;font-weight:600">${escHTML((i.nom||'').toUpperCase())}</span></td>`
-      :`<td>${escHTML((i.nom||'').toUpperCase())}</td>`;
+        ?`<td>${escHTML((i.nom||'').toUpperCase())}${brutTag}</td>`
+        :`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')"><span style="color:#B5433C;text-decoration:underline;font-weight:600">${escHTML((i.nom||'').toUpperCase())}</span>${brutTag}</td>`
+      :`<td>${escHTML((i.nom||'').toUpperCase())}${brutTag}</td>`;
     return `<tr>${nameCell}<td>${i.quantite?escHTML(fmt(i.quantite))+' '+escHTML(i.unite||''):'—'}</td></tr>`;
   }).join('');
   const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
