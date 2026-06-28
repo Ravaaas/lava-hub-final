@@ -182,7 +182,10 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 
 /* DYNAMIC ROWS */
 .il{display:flex;flex-direction:column;gap:0.4rem}
-.ir{display:grid;grid-template-columns:1fr 70px 100px 28px 28px 28px;gap:0.35rem;align-items:center}
+.ir{display:grid;grid-template-columns:14px 1fr 70px 100px 28px 28px 28px;gap:0.35rem;align-items:center}
+.drag-handle{cursor:grab;display:flex;align-items:center;justify-content:center;color:var(--border);font-size:12px;user-select:none;touch-action:none}
+.drag-handle:active{cursor:grabbing}
+.ir.dragging,.sr.dragging{opacity:0.35}
 .btn-brut{width:28px;height:28px;background:none;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--gt);font-size:0.6rem;font-weight:700;font-family:'Poppins',sans-serif;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .btn-brut:hover{border-color:var(--rouge);color:var(--rouge)}
 .btn-brut.active{background:var(--rose);border-color:var(--rouge);color:var(--rouge)}
@@ -193,7 +196,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .btn-ar{display:flex;align-items:center;gap:0.4rem;padding:0.42rem 0.65rem;background:none;border:1.5px dashed var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.63rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gt);cursor:pointer;width:100%;margin-top:0.25rem;transition:all .15s}
 .btn-ar:hover{border-color:var(--rouge);color:var(--rouge);border-style:solid}
 .sl{display:flex;flex-direction:column;gap:0.4rem}
-.sr{display:grid;grid-template-columns:24px 1fr 28px;gap:0.35rem;align-items:flex-start}
+.sr{display:grid;grid-template-columns:14px 24px 1fr 28px;gap:0.35rem;align-items:flex-start}
 .sn{width:24px;height:24px;background:var(--rouge);color:var(--blanc);border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:0.62rem;font-weight:700;margin-top:0.45rem;flex-shrink:0}
 
 /* FICHE DETAIL */
@@ -321,7 +324,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   .fi2,.fsel,.fta{font-size:0.8rem;padding:0.7rem 0.85rem}
 
   /* INGREDIENT ROWS */
-  .ir{grid-template-columns:1fr 60px 80px 28px 28px 28px;gap:0.25rem}
+  .ir{grid-template-columns:14px 1fr 60px 80px 28px 28px 28px;gap:0.25rem}
   .cond-row{grid-template-columns:1fr 90px 28px !important;gap:0.25rem}
 
   /* FICHE DETAIL */
@@ -887,11 +890,13 @@ function addIR(nom='',qty='',u='g',ficheId='',brut=false){
   const units=['g','kg','botte','pièce','pm'];
   const opts=units.map(x=>`<option value="${x}" ${u===x?'selected':''}>${x}</option>`).join('');
   const brutBtn=`<button class="btn-brut${brut?' active':''}" onclick="this.classList.toggle('active')" title="Poids brut">B</button>`;
+  const handle=`<div class="drag-handle" title="Déplacer">⠿</div>`;
+  r.setAttribute('draggable','true');
   if(ficheId){
     const ficheOpts=fiches.map(f=>`<option value="${f.id}" ${f.id===ficheId?'selected':''}>${escHTML(f.nom)}</option>`).join('');
-    r.innerHTML=`<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`${handle}<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }else{
-    r.innerHTML=`<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`${handle}<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0"><select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }
   l.appendChild(r);if(!nom&&!ficheId)r.querySelector('.ing-n')?.focus();
 }
@@ -921,7 +926,8 @@ function switchToFree(btn){
 
 function addSR(t=''){
   const l=document.getElementById('sl');const n=l.children.length+1;const r=document.createElement('div');r.className='sr';
-  r.innerHTML=`<div class="sn">${n}</div><input class="fi2 s-txt" type="text" placeholder="Étape ${n}" value="${escHTML(t)}"><button class="btn-rm" onclick="this.parentElement.remove();renum()">×</button>`;
+  r.setAttribute('draggable','true');
+  r.innerHTML=`<div class="drag-handle" title="Déplacer">⠿</div><div class="sn">${n}</div><input class="fi2 s-txt" type="text" placeholder="Étape ${n}" value="${escHTML(t)}"><button class="btn-rm" onclick="this.parentElement.remove();renum()">×</button>`;
   l.appendChild(r);if(!t)r.querySelector('.s-txt').focus();
 }
 
@@ -1216,6 +1222,34 @@ function printMenu(){
   setTimeout(()=>{pa.style.display='none';pa.innerHTML=''},800);
 }
 
+
+// ── DRAG & DROP REORDER ──
+function setupDrag(containerId){
+  const c=document.getElementById(containerId);
+  let drag=null;
+  c.addEventListener('dragstart',e=>{
+    drag=e.target.closest('[draggable]');
+    if(!drag)return;
+    e.dataTransfer.effectAllowed='move';
+    setTimeout(()=>drag.classList.add('dragging'),0);
+  });
+  c.addEventListener('dragend',()=>{
+    if(drag)drag.classList.remove('dragging');
+    drag=null;
+    if(containerId==='sl')renum();
+  });
+  c.addEventListener('dragover',e=>{
+    e.preventDefault();
+    if(!drag)return;
+    const after=[...c.children].filter(el=>!el.classList.contains('dragging')).reduce((closest,el)=>{
+      const box=el.getBoundingClientRect();
+      const offset=e.clientY-box.top-box.height/2;
+      return offset<0&&offset>closest.offset?{offset,el}:closest;
+    },{offset:-Infinity,el:null}).el;
+    after?c.insertBefore(drag,after):c.appendChild(drag);
+  });
+}
+document.addEventListener('DOMContentLoaded',()=>{setupDrag('il');setupDrag('sl')});
 
 // ── TOAST ──
 function toast(msg,type=''){
