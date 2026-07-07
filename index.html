@@ -121,34 +121,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .fc-prev{font-size:0.69rem;color:var(--gt);line-height:1.5}
 .fc-foot{padding:0.65rem 1.4rem;border-top:1px solid var(--gc);display:flex;gap:0.4rem;justify-content:flex-end;flex-wrap:wrap}
 
-/* PLAT CARDS */
-.pc{background:#fff;border:1.5px solid var(--border);border-radius:16px;margin-bottom:0.85rem;overflow:hidden;box-shadow:var(--sh-sm);transition:all .2s}
-.pc:hover{border-color:var(--rose-mid);box-shadow:var(--sh-md)}
-.pc-head{background:#fff;padding:1.1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid transparent;transition:background .15s}
-.pc-head:hover{background:var(--rose)}
-.pc.expanded .pc-head{background:var(--rose);border-bottom-color:var(--rose-mid)}
-.pc-sec{font-size:0.55rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--rouge);margin-bottom:0.15rem;opacity:.8}
-.pc-name{font-size:0.92rem;font-weight:700;color:var(--noir);text-transform:uppercase}
-.pc-chev{font-size:0.72rem;color:var(--gt);transition:transform .25s}
-.pc.expanded .pc-chev{transform:rotate(180deg)}
-.pc-body{display:none;padding:1.25rem 1.5rem}
-.pc.expanded .pc-body{display:block}
-.comp-list{display:flex;flex-direction:column;gap:0.4rem}
-.comp-item{display:flex;align-items:center;justify-content:space-between;padding:0.55rem 0.85rem;background:var(--rose);border:1px solid var(--rose-mid);border-radius:var(--r);font-size:0.75rem}
-.comp-item.linked{cursor:pointer;transition:all .15s}
-.comp-item.linked:hover{border-color:var(--rouge);background:var(--blanc)}
-.comp-lnk{font-size:0.58rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--rouge)}
-
-/* MENU */
-.ms{margin-bottom:2.5rem}
-.ms-label{font-size:0.58rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:var(--rouge);padding-bottom:0.5rem;margin-bottom:1rem;border-bottom:1px solid var(--rose-mid)}
-.mr{display:flex;padding:0.85rem 0;border-bottom:1px solid var(--gc);gap:1rem;align-items:flex-start}
-.mr-name{font-size:0.87rem;font-weight:600;color:var(--noir);margin-bottom:0.2rem;text-transform:uppercase}
-.mr-desc{font-size:0.69rem;color:var(--gt);line-height:1.5}
-.atags{display:flex;gap:0.3rem;flex-wrap:wrap;margin-top:0.4rem}
-.atag{font-size:0.55rem;font-weight:700;letter-spacing:0.06em;padding:0.15rem 0.42rem;border-radius:2px;background:var(--rose-mid);color:var(--rouge);text-transform:uppercase}
-.mr-actions{display:flex;gap:0.3rem;flex-shrink:0;align-items:flex-start;margin-top:0.15rem}
-
 /* CONFIG */
 .cs{margin-bottom:2rem}
 .cs-title{font-size:0.68rem;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--rouge);padding-bottom:0.6rem;margin-bottom:1rem;border-bottom:1px solid var(--border)}
@@ -308,10 +280,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   .fc-foot{padding:0.65rem 1.1rem;gap:0.35rem}
   .btn-sm{padding:0.38rem 0.7rem;font-size:0.62rem}
 
-  /* PLAT CARDS */
-  .pc-head{padding:0.9rem 1.1rem}
-  .pc-body{padding:1rem 1.1rem}
-
   /* MODAL — plein écran */
   .mo{padding:0;align-items:flex-end}
   .modal{border-radius:12px 12px 0 0;max-height:92vh;display:flex;flex-direction:column}
@@ -346,11 +314,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   .fdoc-snum{width:36px;font-size:0.72rem}
   .fdoc-footer{position:static;margin-top:2rem;padding-top:0.6rem;border-top:1px solid #E0D0D0}
   .fdoc-fv{font-size:1rem}
-
-  /* MENU */
-  .mr{padding:0.7rem 0}
-  .mr-name{font-size:0.82rem}
-  .mr-desc{font-size:0.66rem}
 
   /* CONFIG */
   .ca-row{flex-direction:column}
@@ -410,8 +373,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   </header>
   <nav class="tabs">
     <button class="tb active" onclick="switchTab('recettes',this)">Fiches Recettes <span class="tbadge" id="b-rec">0</span></button>
-    <button class="tb" onclick="switchTab('plats',this)">Fiches Plats <span class="tbadge" id="b-plats">0</span></button>
-    <button class="tb" onclick="switchTab('menu',this)">Menu</button>
     <button class="tb admin-only" onclick="switchTab('config',this)" style="display:none">Config</button>
   </nav>
   <main>
@@ -434,42 +395,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
         <select class="fs" id="f-cat-filter" onchange="renderFiches()"><option value="">Toutes catégories</option></select>
       </div>
       <div class="fg" id="fiches-grid"><div class="es" style="grid-column:1/-1"><div class="spinner"></div></div></div>
-    </div>
-
-    <!-- PLATS -->
-    <div class="tc" id="tab-plats">
-      <div class="ph">
-        <div><div class="ph-title">Fiches Plats</div><div class="ph-sub" id="plats-sub">—</div></div>
-        <div class="ph-actions">
-          <button class="btn btn-p admin-only" onclick="openNewPlat()" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nouveau plat
-          </button>
-        </div>
-      </div>
-      <div class="sb">
-        <div class="si-wrap">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="si" id="s-plats" type="text" placeholder="Rechercher…" oninput="renderPlats()">
-        </div>
-        <select class="fs" id="f-sec-filter" onchange="renderPlats()"><option value="">Toutes sections</option></select>
-      </div>
-      <div id="plats-list"><div class="es"><div class="spinner"></div></div></div>
-    </div>
-
-    <!-- MENU -->
-    <div class="tc" id="tab-menu">
-      <div class="ph">
-        <div><div class="ph-title">Menu</div><div class="ph-sub" id="menu-sub">Lunch</div></div>
-        <div class="ph-actions">
-          <button class="btn btn-g btn-sm" onclick="printMenu()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="13" height="13"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Imprimer
-          </button>
-          <button class="btn btn-p admin-only" onclick="openModal('modal-menu-item')" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Ajouter
-          </button>
-        </div>
-      </div>
-      <div id="menu-content"></div>
     </div>
 
     <!-- CONFIG -->
@@ -548,49 +473,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   </div>
 </div>
 
-<!-- MODAL PLAT -->
-<div class="mo" id="modal-plat">
-  <div class="modal">
-    <div class="m-head"><div class="m-title" id="mp-title">Nouveau plat</div><button class="m-close" onclick="closeModal('modal-plat')">✕</button></div>
-    <div class="m-body">
-      <div class="fr">
-        <div class="fg2"><label class="fl">Nom *</label><input class="fi2" id="p-nom" type="text"></div>
-        <div class="fg2"><label class="fl">Section</label><select class="fsel" id="p-sec"></select></div>
-      </div>
-      <div class="fg2"><label class="fl">Description</label><input class="fi2" id="p-desc" type="text" placeholder="ex: Velouté curry, huile sésame…"></div>
-      <div class="fsect">Composants</div>
-      <div class="il" id="comp-il"></div>
-      <button class="btn-ar" onclick="addCR()">+ Ajouter un composant</button>
-      <div class="fsect" style="margin-top:1.25rem">Allergènes</div>
-      <div class="fg2"><input class="fi2" id="p-alg" type="text" placeholder="ex: Œufs, Lactose, Gluten"></div>
-      <div class="fg2" style="margin-top:0.75rem"><label class="fl">Notes de dressage</label><textarea class="fta" id="p-dress" placeholder="Instructions…"></textarea></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-g" onclick="closeModal('modal-plat')">Annuler</button>
-      <button class="btn btn-p" id="btn-save-plat" onclick="savePlat()">Enregistrer</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL MENU -->
-<div class="mo" id="modal-menu-item">
-  <div class="modal">
-    <div class="m-head"><div class="m-title">Ajouter au menu</div><button class="m-close" onclick="closeModal('modal-menu-item')">✕</button></div>
-    <div class="m-body">
-      <div class="fr">
-        <div class="fg2"><label class="fl">Nom *</label><input class="fi2" id="m-nom" type="text"></div>
-        <div class="fg2"><label class="fl">Section</label><select class="fsel" id="m-sec"></select></div>
-      </div>
-      <div class="fg2"><label class="fl">Composition (une ligne par élément)</label><textarea class="fta" id="m-comp" placeholder="Velouté curry&#10;Huile sésame"></textarea></div>
-      <div class="fg2"><label class="fl">Allergènes</label><input class="fi2" id="m-alg" type="text" placeholder="ex: Œufs, Lactose"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-g" onclick="closeModal('modal-menu-item')">Annuler</button>
-      <button class="btn btn-p" id="btn-save-menu" onclick="saveMenuItem()">Ajouter</button>
-    </div>
-  </div>
-</div>
-
 <!-- MODAL CONFIRM -->
 <div class="mo" id="modal-confirm">
   <div class="modal" style="max-width:400px">
@@ -610,41 +492,17 @@ const SB_URL='https://qmvxmxzsmpigvseuidcd.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtdnhteHpzbXBpZ3ZzZXVpZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTY1ODYsImV4cCI6MjA5NzI5MjU4Nn0._kDu_tyJbr9Hcckg_dC0OYsSqh23aPND96wMX_KLdAc';
 const sb=supabase.createClient(SB_URL,SB_KEY);
 
-let profil=null, editId=null, editPlatId=null, curFicheId=null;
-let fiches=[], plats=[];
-
-const MENU_INITIAL={
-  'Entrées':[
-    {nom:'Œuf Parfait',comp:['Œuf parfait','Velouté curry','Huile curry','Mix sésame','Ciboulette'],alg:['Œufs','Fruits à coque','Ail / Oignon']},
-    {nom:'Poireau',comp:['Crème oseille','Poireaux confits','Huile pimenton','Condiment câpre raisin','Crouton pain de mie','Glace faiselle fumée'],alg:['Lactose','Gluten']},
-    {nom:'Huître',comp:['Huître n°2 Camargue','Vinaigrette sweet chili','Fleur d\'ail'],alg:['Mollusques','Ail']},
-  ],
-  'Plats':[
-    {nom:'Échine de Cochon',comp:['Purée patate douce','Molé pain','Échine cochon BBQ','Jus caramel','Riz torréfié','Radicchio'],alg:['Gluten','Soja','Lactose']},
-    {nom:'Gnocchis',comp:['Gnocchis','Petit pois','Jus végétal','Siphon kimchi','Gel thym citron'],alg:['Gluten','Oignon / Ail','Lactose']},
-    {nom:'Poisson de Ligne',comp:['Poisson de ligne','Pak choï & pois gourmand','Sauce 5C1M','Cajou au beurre'],alg:['Poisson','Fruits à coque','Lactose']},
-  ],
-  'Desserts':[
-    {nom:'Cheese Cake',comp:['Cheese cake','Marmelade fraise rhubarbe','Sirop sucre Okinawa','Opaline'],alg:['Lactose','Gluten','Œufs']},
-    {nom:'Riz au Lait',comp:['Riz au lait coco','Sorbet ananas gingembre','Caramel miso','Riz soufflé'],alg:['Soja']},
-  ]
-};
+let profil=null, editId=null, curFicheId=null;
+let fiches=[];
 
 let cfg={
   cats:['Base','Sauce','Garniture','Dessert','Autre'],
-  secs:['Entrées','Plats','Desserts'],
-  menu:null
+  secs:['Entrées','Plats','Desserts']
 };
 
 // ── UTILS ──
 function escHTML(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function menuDateLabel(){
-  const d=new Date();
-  const m=d.toLocaleString('fr-FR',{month:'long'});
-  return 'Lunch · '+m.charAt(0).toUpperCase()+m.slice(1)+' '+d.getFullYear();
 }
 
 function setBusy(btnId,v){
@@ -690,7 +548,6 @@ function loginAs(p){
   document.getElementById('app').style.display='flex';
   document.getElementById('prof-badge').textContent=p==='admin'?'Admin':'Cuisine';
   if(p==='admin')document.querySelectorAll('.admin-only').forEach(el=>el.style.display='flex');
-  document.getElementById('menu-sub').textContent=menuDateLabel();
   loadCfg().then(()=>loadAll());
 }
 
@@ -709,13 +566,11 @@ async function loadCfg(){
     const{data}=await sb.from('lava_config').select('*').eq('id','main').single();
     if(data&&data.data){
       cfg={...cfg,...data.data};
-      if(!cfg.menu)cfg.menu=JSON.parse(JSON.stringify(MENU_INITIAL));
       populateSels();renderCfg();
       return;
     }
   }catch(e){}
   try{const s=localStorage.getItem('lava_cfg');if(s){const d=JSON.parse(s);cfg={...cfg,...d};}}catch(e){}
-  if(!cfg.menu)cfg.menu=JSON.parse(JSON.stringify(MENU_INITIAL));
   populateSels();renderCfg();
 }
 
@@ -731,13 +586,6 @@ function populateSels(){
     const cv=el.value;
     el.innerHTML=id==='f-cat-filter'?'<option value="">Toutes catégories</option>':'';
     cfg.cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;el.appendChild(o)});
-    if(cv)el.value=cv;
-  });
-  ['p-sec','m-sec','f-sec-filter'].forEach(id=>{
-    const el=document.getElementById(id);if(!el)return;
-    const cv=el.value;
-    el.innerHTML=id==='f-sec-filter'?'<option value="">Toutes sections</option>':'';
-    cfg.secs.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;el.appendChild(o)});
     if(cv)el.value=cv;
   });
 }
@@ -769,8 +617,6 @@ function rmCat(i){
 function addSec(){const v=document.getElementById('new-sec').value.trim();if(!v||cfg.secs.includes(v))return;cfg.secs.push(v);document.getElementById('new-sec').value='';saveCfg();toast('Section ajoutée ✓','ok')}
 function rmSec(i){
   if(cfg.secs.length<=1){toast('Au moins une section requise','err');return}
-  const sec=cfg.secs[i];
-  if(plats.some(p=>p.section===sec)){toast('Section utilisée par des plats — impossible de la supprimer','err');return}
   cfg.secs.splice(i,1);saveCfg()
 }
 
@@ -786,14 +632,10 @@ function switchTab(n,b){
 async function loadAll(){
   setSyncing(true);
   try{
-    const[{data:f},{data:p}]=await Promise.all([
-      sb.from('fiches').select('*').order('nom',{ascending:true}),
-      sb.from('plats').select('*').order('nom',{ascending:true})
-    ]);
-    fiches=f||[];plats=p||[];
-    renderFiches();renderPlats();renderMenu();
+    const{data:f}=await sb.from('fiches').select('*').order('nom',{ascending:true});
+    fiches=f||[];
+    renderFiches();
     document.getElementById('b-rec').textContent=fiches.length;
-    document.getElementById('b-plats').textContent=plats.length;
   }catch(e){toast('Erreur de connexion','err')}
   setSyncing(false);
 }
@@ -822,61 +664,6 @@ function renderFiches(){
   });
 }
 
-// ── RENDER PLATS ──
-function renderPlats(){
-  const q=(document.getElementById('s-plats')?.value||'').toLowerCase();
-  const sec=document.getElementById('f-sec-filter')?.value||'';
-  const list=document.getElementById('plats-list');
-  const tot=plats.length;
-  let fil=plats.filter(p=>(!q||p.nom.toLowerCase().includes(q))&&(!sec||p.section===sec));
-  document.getElementById('plats-sub').textContent=tot+' plat'+(tot!==1?'s':'');
-  document.getElementById('b-plats').textContent=tot;
-  if(tot===0){list.innerHTML='<div class="es"><div class="es-icon">🍽️</div><h3>Aucun plat</h3><p>Ajoute les plats de ta carte</p></div>';return}
-  if(fil.length===0){list.innerHTML='<div class="es"><div class="es-icon">🔍</div><h3>Aucun résultat</h3></div>';return}
-  list.innerHTML='';
-  fil.forEach(p=>{
-    const d=document.createElement('div');d.className='pc';
-    const ch=(p.composants||[]).map(c=>{
-      const f=fiches.find(f=>f.nom.toLowerCase()===c.toLowerCase());
-      return f
-        ?`<div class="comp-item linked" onclick="openFD('${escHTML(f.id)}')"><span>${escHTML(c)}</span><span class="comp-lnk">→ Fiche</span></div>`
-        :`<div class="comp-item"><span>${escHTML(c)}</span></div>`;
-    }).join('');
-    const ah=(p.allergenes||'').split(',').filter(Boolean).map(a=>`<span class="atag">${escHTML(a.trim())}</span>`).join('');
-    const adminBtns=profil==='admin'
-      ?`<div style="margin-top:1rem;display:flex;justify-content:flex-end;gap:0.4rem">
-          <button class="btn btn-g btn-sm" onclick="editPlat('${escHTML(p.id)}')">Modifier</button>
-          <button class="btn btn-d btn-sm" onclick="deletePlat('${escHTML(p.id)}')">Supprimer</button>
-        </div>`:'';
-    d.innerHTML=`<div class="pc-head" onclick="this.parentElement.classList.toggle('expanded')"><div><div class="pc-sec">${escHTML(p.section)}</div><div class="pc-name">${escHTML(p.nom)}</div></div><span class="pc-chev">▼</span></div><div class="pc-body">${p.description?`<p style="font-size:0.74rem;color:var(--gt);margin-bottom:1rem">${escHTML(p.description)}</p>`:''}<div class="comp-list">${ch}</div>${ah?`<div class="atags" style="margin-top:1rem">${ah}</div>`:''} ${p.dressage?`<div style="margin-top:1rem;padding:0.75rem;background:var(--rose);font-size:0.7rem;color:var(--gt);line-height:1.6;border-left:2px solid var(--rouge);border-radius:var(--r)">${escHTML(p.dressage)}</div>`:''} ${adminBtns}</div>`;
-    list.appendChild(d);
-  });
-}
-
-// ── RENDER MENU ──
-function renderMenu(){
-  const cont=document.getElementById('menu-content');cont.innerHTML='';
-  const menu=cfg.menu||MENU_INITIAL;
-  cfg.secs.forEach(sec=>{
-    const items=menu[sec]||[];if(!items.length)return;
-    const d=document.createElement('div');d.className='ms';
-    d.innerHTML=`<div class="ms-label">${escHTML(sec)}</div>`;
-    items.forEach((item,idx)=>{
-      const r=document.createElement('div');r.className='mr';
-      const ah=(item.alg||[]).map(a=>`<span class="atag">${escHTML(a)}</span>`).join('');
-      const delKey=item.id?`'${escHTML(item.id)}'`:idx;
-      const adminBtn=profil==='admin'
-        ?`<div class="mr-actions"><button class="btn btn-d btn-sm" onclick="deleteMenuItem('${escHTML(sec)}',${delKey})">✕</button></div>`:'';
-      r.innerHTML=`<div style="flex:1"><div class="mr-name">${escHTML(item.nom)}</div><div class="mr-desc">${escHTML(item.comp.join(' · '))}</div>${ah?`<div class="atags">${ah}</div>`:''}</div>${adminBtn}`;
-      d.appendChild(r);
-    });
-    cont.appendChild(d);
-  });
-  if(!cont.children.length){
-    cont.innerHTML='<div class="es"><div class="es-icon">📋</div><h3>Menu vide</h3><p>Ajoute des plats au menu</p></div>';
-  }
-}
-
 // ── MODALS ──
 function openModal(id){document.getElementById(id).classList.add('open')}
 
@@ -895,7 +682,6 @@ function resolveConfirm(v){
 function closeModal(id){
   document.getElementById(id).classList.remove('open');
   if(id==='modal-fiche')editId=null;
-  if(id==='modal-plat')editPlatId=null;
 }
 
 // ── FICHE CRUD ──
@@ -1059,91 +845,6 @@ async function duplicateFiche(id){
   toast('Recette dupliquée ✓','ok');await loadAll();
 }
 
-// ── PLAT CRUD ──
-function addCR(v=''){
-  const l=document.getElementById('comp-il');const r=document.createElement('div');
-  r.style.cssText='display:grid;grid-template-columns:1fr 28px;gap:0.35rem;margin-bottom:0.35rem';
-  r.innerHTML=`<input class="fi2" type="text" placeholder="Composant" value="${escHTML(v)}"><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
-  l.appendChild(r);if(!v)r.querySelector('input').focus();
-}
-
-function openNewPlat(){
-  editPlatId=null;
-  document.getElementById('mp-title').textContent='Nouveau plat';
-  ['p-nom','p-desc','p-alg','p-dress'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('comp-il').innerHTML='';
-  addCR();openModal('modal-plat');
-}
-
-function editPlat(id){
-  const p=plats.find(p=>p.id===id);if(!p)return;
-  editPlatId=id;
-  document.getElementById('mp-title').textContent='Modifier — '+p.nom;
-  document.getElementById('p-nom').value=p.nom;
-  document.getElementById('p-desc').value=p.description||'';
-  document.getElementById('p-alg').value=p.allergenes||'';
-  document.getElementById('p-dress').value=p.dressage||'';
-  document.getElementById('comp-il').innerHTML='';
-  (p.composants||[]).forEach(c=>addCR(c));
-  setTimeout(()=>document.getElementById('p-sec').value=p.section,0);
-  openModal('modal-plat');
-}
-
-async function savePlat(){
-  const nom=document.getElementById('p-nom').value.trim();
-  if(!nom){toast('Le nom est obligatoire','err');return}
-  setBusy('btn-save-plat',true);
-  try{
-    const comps=[];document.querySelectorAll('#comp-il input').forEach(i=>{if(i.value.trim())comps.push(i.value.trim())});
-    const data={nom,section:document.getElementById('p-sec').value,description:document.getElementById('p-desc').value.trim(),composants:comps,allergenes:document.getElementById('p-alg').value.trim(),dressage:document.getElementById('p-dress').value.trim()};
-    await saveRecord('plats',editPlatId,data,{modalId:'modal-plat',successMsg:'Plat enregistré ✓',updateMsg:'Plat modifié ✓'});
-  }catch(e){
-    toast('Erreur — réessaie','err');
-  }finally{
-    setBusy('btn-save-plat',false);
-  }
-}
-
-async function deletePlat(id){
-  if(!await confirmDialog('Supprimer ce plat ?'))return;
-  setSyncing(true);await sb.from('plats').delete().eq('id',id);setSyncing(false);
-  toast('Plat supprimé');await loadAll();
-}
-
-// ── MENU CRUD ──
-async function saveMenuItem(){
-  const nom=document.getElementById('m-nom').value.trim();
-  if(!nom){toast('Le nom est obligatoire','err');return}
-  setBusy('btn-save-menu',true);
-  const sec=document.getElementById('m-sec').value;
-  const comp=document.getElementById('m-comp').value.trim().split('\n').filter(l=>l.trim());
-  const alg=document.getElementById('m-alg').value.trim().split(',').map(a=>a.trim()).filter(Boolean);
-  if(!cfg.menu)cfg.menu=JSON.parse(JSON.stringify(MENU_INITIAL));
-  if(!cfg.menu[sec])cfg.menu[sec]=[];
-  cfg.menu[sec].push({id:crypto.randomUUID(),nom,comp,alg});
-  await saveCfg();
-  setBusy('btn-save-menu',false);
-  closeModal('modal-menu-item');
-  document.getElementById('m-nom').value='';
-  document.getElementById('m-comp').value='';
-  document.getElementById('m-alg').value='';
-  renderMenu();
-  toast('Ajouté au menu ✓','ok');
-}
-
-async function deleteMenuItem(sec,idOrIdx){
-  if(!await confirmDialog('Supprimer ce plat du menu ?'))return;
-  if(cfg.menu&&cfg.menu[sec]){
-    const arr=cfg.menu[sec];
-    const i=typeof idOrIdx==='string'?arr.findIndex(it=>it.id===idOrIdx):idOrIdx;
-    if(i<0)return;
-    arr.splice(i,1);
-    await saveCfg();
-    renderMenu();
-    toast('Retiré du menu','ok');
-  }
-}
-
 // ── FICHE DOC ──
 function buildFicheDoc(f,coef=1,forPrint=false){
   const fmt=v=>{const n=parseFloat(v)*coef;return isNaN(n)?v:(Number.isInteger(n)?n:Math.round(n*100)/100).toString()};
@@ -1239,29 +940,6 @@ function printFiche(){
   w.document.write(html);
   w.document.close();
 }
-
-function printMenu(){
-  const menu=cfg.menu||MENU_INITIAL;
-  let html=`<div style="font-family:'Poppins',sans-serif;max-width:560px;margin:0 auto;padding:0">
-    <div style="margin-bottom:1.25rem">
-      <div style="font-size:1.5rem;font-weight:700;letter-spacing:0.3em;color:#B5433C">LAVA</div>
-      <div style="font-size:0.6rem;letter-spacing:0.2em;color:#6B5C5C;text-transform:uppercase">${menuDateLabel()}</div>
-    </div>
-    <div style="height:3px;background:#B5433C;margin-bottom:0.25rem"></div>
-    <div style="height:1px;background:#C0504A;opacity:0.35;margin-bottom:2rem"></div>`;
-  cfg.secs.forEach(sec=>{
-    const items=menu[sec]||[];if(!items.length)return;
-    html+=`<div style="margin-bottom:1.75rem"><div style="font-size:0.58rem;font-weight:700;letter-spacing:0.3em;text-transform:uppercase;color:#B5433C;border-bottom:1px solid #EDD8D8;padding-bottom:0.4rem;margin-bottom:1rem">${escHTML(sec)}</div>`;
-    items.forEach(i=>{html+=`<div style="margin-bottom:1.1rem"><div style="font-size:0.87rem;font-weight:600;margin-bottom:0.2rem">${escHTML(i.nom)}</div><div style="font-size:0.69rem;color:#6B5C5C;line-height:1.5">${escHTML(i.comp.join(' · '))}</div></div>`});
-    html+='</div>';
-  });
-  html+='</div>';
-  const pa=document.getElementById('print-area');
-  pa.style.display='block';pa.innerHTML=html;
-  window.print();
-  setTimeout(()=>{pa.style.display='none';pa.innerHTML=''},800);
-}
-
 
 // ── DRAG & DROP REORDER ──
 function setupDrag(containerId){
