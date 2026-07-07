@@ -874,7 +874,7 @@ function buildFicheDoc(f,coef=1,forPrint=false,mode='brut'){
   const irows=(f.ingredients||[]).map(i=>{
     const hasNet=i.brut&&i.quantite_net;
     const showNet=mode==='net'&&hasNet;
-    const badge=i.brut?mkBadge(forPrint&&hasNet?'BRUT + NET':showNet?'NET':'BRUT'):'';
+    const badge=i.brut?mkBadge(forPrint?'BRUT':showNet?'NET':'BRUT'):'';
     const nameCell=i.ficheId
       ?forPrint
         ?`<td>${escHTML((i.nom||'').toUpperCase())}${badge}</td>`
@@ -884,7 +884,8 @@ function buildFicheDoc(f,coef=1,forPrint=false,mode='brut'){
     if(i.unite==='pm'){
       qtyCell='pm';
     }else if(forPrint&&hasNet){
-      qtyCell=`${escHTML(fmt(i.quantite))} ${escHTML(i.unite||'')} <span style="color:#6B5C5C">brut</span><br>${escHTML(fmt(i.quantite_net))} ${escHTML(i.unite||'')} <span style="color:#6B5C5C">net</span>`;
+      const netLine=`<br><span style="font-size:0.68em;color:#6B5C5C">net : ${escHTML(fmt(i.quantite_net))} ${escHTML(i.unite||'')}</span>`;
+      qtyCell=(i.quantite?escHTML(fmt(i.quantite))+' '+escHTML(i.unite||''):'—')+netLine;
     }else{
       const qtyRaw=showNet?i.quantite_net:i.quantite;
       qtyCell=qtyRaw?escHTML(fmt(qtyRaw))+' '+escHTML(i.unite||''):'—';
