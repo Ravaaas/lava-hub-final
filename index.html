@@ -421,7 +421,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
       <div class="ph">
         <div><div class="ph-title">Fiches Recettes</div><div class="ph-sub" id="rec-sub">Chargement…</div></div>
         <div class="ph-actions">
-          </button>
           <button class="btn btn-p admin-only" onclick="openNewFiche()" style="display:none">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nouvelle fiche
           </button>
@@ -987,7 +986,7 @@ async function editFiche(id){
   let conds=[];
   try{conds=JSON.parse(f.conditionnement||'[]');}catch(e){if(f.conditionnement)conds=[f.conditionnement];}
   if(conds.length){
-    const CT=['Sac sous vide','Siphon','Petite boite','Moyenne boite','Grande boite','Poche à pâtisserie','Pipette'];
+    const CT=COND_TYPES;
     conds.forEach(c=>{const m=CT.find(t=>c.startsWith(t));addCondRow(m||'',m?c.replace(m,'').replace(/^\s*—\s*/,'').trim():c);});
   }else{addCondRow();}
   await new Promise(r=>setTimeout(r,0));
