@@ -180,6 +180,9 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .fd-nav{background:var(--blanc);border-bottom:1px solid var(--border);padding:0.9rem 2rem;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:10;box-shadow:var(--sh-sm);flex-wrap:wrap}
 .btn-back{background:none;border:none;font-family:'Poppins',sans-serif;font-size:0.66rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gt);cursor:pointer;display:flex;align-items:center;gap:0.35rem;padding:0}
 .btn-back:hover{color:var(--rouge)}
+.bn-toggle{display:flex;background:var(--rose);border:1.5px solid var(--rose-mid);border-radius:8px;padding:2px;gap:2px}
+.bn-btn{padding:0.3rem 0.75rem;border:none;background:transparent;border-radius:6px;font-family:'Poppins',sans-serif;font-size:0.62rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gt);cursor:pointer;transition:all .15s}
+.bn-btn.active{background:var(--rouge);color:#fff}
 .fd-content{max-width:780px;margin:0 auto;padding:2rem}
 
 /* FICHE DOC */
@@ -436,6 +439,10 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
       <span style="font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--gt)">×</span>
       <input id="fd-coef" type="number" min="0.1" step="0.1" value="1" oninput="applyCoef()" style="width:52px;border:none;background:transparent;font-family:'Poppins',sans-serif;font-size:0.85rem;font-weight:700;color:var(--rouge);outline:none;text-align:center">
       <span style="font-size:0.6rem;color:var(--gt)">portions</span>
+    </div>
+    <div class="bn-toggle" id="bn-toggle" style="display:none">
+      <button class="bn-btn active" id="bn-brut" onclick="setQtyMode('brut')">Brut</button>
+      <button class="bn-btn" id="bn-net" onclick="setQtyMode('net')">Net</button>
     </div>
     <div class="admin-only" id="fd-actions" style="display:none;gap:0.5rem;flex-wrap:wrap">
       <button class="btn btn-g btn-sm" onclick="printFiche()">🖨 Imprimer</button>
@@ -861,17 +868,20 @@ async function duplicateFiche(id){
 }
 
 // ── FICHE DOC ──
-function buildFicheDoc(f,coef=1,forPrint=false){
+function buildFicheDoc(f,coef=1,forPrint=false,mode='brut'){
   const fmt=v=>{const n=parseFloat(v)*coef;return isNaN(n)?v:(Number.isInteger(n)?n:Math.round(n*100)/100).toString()};
   const irows=(f.ingredients||[]).map(i=>{
-    const brutTag=i.brut?` <span style="display:inline-block;margin-left:6px;font-size:8px;background:#FBE8E7;color:#B5433C;padding:2px 6px;border-radius:10px;font-weight:700;letter-spacing:0.06em;vertical-align:middle;border:1px solid #E8C4C2">BRUT</span>`:'';
+    const hasNet=i.brut&&i.quantite_net;
+    const showNet=mode==='net'&&hasNet;
+    const badgeLabel=i.brut?(showNet?'NET':'BRUT'):'';
+    const badge=badgeLabel?` <span style="display:inline-block;margin-left:6px;font-size:8px;background:#FBE8E7;color:#B5433C;padding:2px 6px;border-radius:10px;font-weight:700;letter-spacing:0.06em;vertical-align:middle;border:1px solid #E8C4C2">${badgeLabel}</span>`:'';
     const nameCell=i.ficheId
       ?forPrint
-        ?`<td>${escHTML((i.nom||'').toUpperCase())}${brutTag}</td>`
-        :`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')"><span style="color:#B5433C;text-decoration:underline;font-weight:600">${escHTML((i.nom||'').toUpperCase())}</span>${brutTag}</td>`
-      :`<td>${escHTML((i.nom||'').toUpperCase())}${brutTag}</td>`;
-    const netLine=i.brut&&i.quantite_net?`<br><span style="font-size:0.68em;color:#6B5C5C">net : ${escHTML(fmt(i.quantite_net))} ${escHTML(i.unite||'')}</span>`:'';
-    const qtyCell=(i.unite==='pm'?'pm':i.quantite?escHTML(fmt(i.quantite))+' '+escHTML(i.unite||''):'—')+netLine;
+        ?`<td>${escHTML((i.nom||'').toUpperCase())}${badge}</td>`
+        :`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')"><span style="color:#B5433C;text-decoration:underline;font-weight:600">${escHTML((i.nom||'').toUpperCase())}</span>${badge}</td>`
+      :`<td>${escHTML((i.nom||'').toUpperCase())}${badge}</td>`;
+    const qtyRaw=showNet?i.quantite_net:i.quantite;
+    const qtyCell=i.unite==='pm'?'pm':qtyRaw?escHTML(fmt(qtyRaw))+' '+escHTML(i.unite||''):'—';
     return `<tr>${nameCell}<td>${qtyCell}</td></tr>`;
   }).join('');
   const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
@@ -897,19 +907,30 @@ function buildFicheDoc(f,coef=1,forPrint=false){
   </div>`;
 }
 
+let fdQtyMode='brut';
 function openFD(id){
   const f=fiches.find(f=>f.id===id);if(!f)return;
   curFicheId=id;
+  fdQtyMode='brut';
   document.getElementById('fd-coef').value=1;
   document.getElementById('fd-crumb').textContent=f.nom;
-  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,1);
+  document.getElementById('bn-brut').classList.add('active');
+  document.getElementById('bn-net').classList.remove('active');
+  document.getElementById('bn-toggle').style.display=(f.ingredients||[]).some(i=>i.brut&&i.quantite_net)?'flex':'none';
+  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,1,false,fdQtyMode);
   document.getElementById('fd').classList.add('open');
 }
 function closeFD(){document.getElementById('fd').classList.remove('open');curFicheId=null}
 function applyCoef(){
   const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
   const coef=parseFloat(document.getElementById('fd-coef').value)||1;
-  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,coef);
+  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,coef,false,fdQtyMode);
+}
+function setQtyMode(mode){
+  fdQtyMode=mode;
+  document.getElementById('bn-brut').classList.toggle('active',mode==='brut');
+  document.getElementById('bn-net').classList.toggle('active',mode==='net');
+  applyCoef();
 }
 
 function printFiche(){
@@ -949,7 +970,7 @@ function printFiche(){
     .fdoc-fv{font-size:13pt;font-weight:700;color:#221818}
     .no-print{display:none!important}
   </style></head><body>
-  ${buildFicheDoc(f,1,true)}
+  ${buildFicheDoc(f,1,true,fdQtyMode)}
   <script>window.onload=function(){window.print();setTimeout(()=>window.close(),500)}<\/script>
   </body></html>`;
   const w=window.open('','_blank','width=900,height=1200');
