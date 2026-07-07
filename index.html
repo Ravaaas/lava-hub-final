@@ -453,7 +453,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
         </div>
         <select class="fs" id="f-sec-filter" onchange="renderPlats()"><option value="">Toutes sections</option></select>
       </div>
-      <div id="plats-list"></div>
+      <div id="plats-list"><div class="es"><div class="spinner"></div></div></div>
     </div>
 
     <!-- MENU -->
@@ -591,6 +591,17 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   </div>
 </div>
 
+<!-- MODAL CONFIRM -->
+<div class="mo" id="modal-confirm">
+  <div class="modal" style="max-width:400px">
+    <div class="m-head"><div class="m-title" id="mc-title">Confirmer</div><button class="m-close" onclick="resolveConfirm(false)">✕</button></div>
+    <div class="m-body"><p id="mc-msg" style="font-size:0.82rem;color:var(--noir);line-height:1.6"></p></div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="resolveConfirm(false)">Annuler</button>
+      <button class="btn btn-d" id="mc-ok" onclick="resolveConfirm(true)">Supprimer</button>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -749,9 +760,19 @@ function renderCfg(){
 }
 
 function addCat(){const v=document.getElementById('new-cat').value.trim();if(!v||cfg.cats.includes(v))return;cfg.cats.push(v);document.getElementById('new-cat').value='';saveCfg();toast('Catégorie ajoutée ✓','ok')}
-function rmCat(i){if(cfg.cats.length<=1){toast('Au moins une catégorie requise','err');return}cfg.cats.splice(i,1);saveCfg()}
+function rmCat(i){
+  if(cfg.cats.length<=1){toast('Au moins une catégorie requise','err');return}
+  const cat=cfg.cats[i];
+  if(fiches.some(f=>f.categorie===cat)){toast('Catégorie utilisée par des fiches — impossible de la supprimer','err');return}
+  cfg.cats.splice(i,1);saveCfg()
+}
 function addSec(){const v=document.getElementById('new-sec').value.trim();if(!v||cfg.secs.includes(v))return;cfg.secs.push(v);document.getElementById('new-sec').value='';saveCfg();toast('Section ajoutée ✓','ok')}
-function rmSec(i){if(cfg.secs.length<=1){toast('Au moins une section requise','err');return}cfg.secs.splice(i,1);saveCfg()}
+function rmSec(i){
+  if(cfg.secs.length<=1){toast('Au moins une section requise','err');return}
+  const sec=cfg.secs[i];
+  if(plats.some(p=>p.section===sec)){toast('Section utilisée par des plats — impossible de la supprimer','err');return}
+  cfg.secs.splice(i,1);saveCfg()
+}
 
 // ── TABS ──
 function switchTab(n,b){
@@ -843,8 +864,9 @@ function renderMenu(){
     items.forEach((item,idx)=>{
       const r=document.createElement('div');r.className='mr';
       const ah=(item.alg||[]).map(a=>`<span class="atag">${escHTML(a)}</span>`).join('');
+      const delKey=item.id?`'${escHTML(item.id)}'`:idx;
       const adminBtn=profil==='admin'
-        ?`<div class="mr-actions"><button class="btn btn-d btn-sm" onclick="deleteMenuItem('${escHTML(sec)}',${idx})">✕</button></div>`:'';
+        ?`<div class="mr-actions"><button class="btn btn-d btn-sm" onclick="deleteMenuItem('${escHTML(sec)}',${delKey})">✕</button></div>`:'';
       r.innerHTML=`<div style="flex:1"><div class="mr-name">${escHTML(item.nom)}</div><div class="mr-desc">${escHTML(item.comp.join(' · '))}</div>${ah?`<div class="atags">${ah}</div>`:''}</div>${adminBtn}`;
       d.appendChild(r);
     });
@@ -857,6 +879,19 @@ function renderMenu(){
 
 // ── MODALS ──
 function openModal(id){document.getElementById(id).classList.add('open')}
+
+let _confirmResolve=null;
+function confirmDialog(msg,okLabel='Supprimer'){
+  document.getElementById('mc-msg').textContent=msg;
+  document.getElementById('mc-ok').textContent=okLabel;
+  openModal('modal-confirm');
+  return new Promise(resolve=>{_confirmResolve=resolve});
+}
+function resolveConfirm(v){
+  closeModal('modal-confirm');
+  if(_confirmResolve){_confirmResolve(v);_confirmResolve=null;}
+}
+
 function closeModal(id){
   document.getElementById(id).classList.remove('open');
   if(id==='modal-fiche')editId=null;
@@ -933,6 +968,22 @@ function addSR(t=''){
 function renum(){document.querySelectorAll('#sl .sn').forEach((e,i)=>e.textContent=i+1)}
 
 
+async function saveRecord(table,id,data,{modalId,successMsg,updateMsg}){
+  setSyncing(true);
+  try{
+    const res=id?await sb.from(table).update(data).eq('id',id):await sb.from(table).insert(data);
+    if(res.error){toast('Erreur : '+res.error.message,'err');return false}
+    toast(id?updateMsg:successMsg,'ok');
+    closeModal(modalId);await loadAll();
+    return true;
+  }catch(e){
+    toast('Erreur réseau — réessaie','err');
+    return false;
+  }finally{
+    setSyncing(false);
+  }
+}
+
 async function saveFiche(){
   const nom=document.getElementById('f-nom').value.trim();
   if(!nom){toast('Le nom est obligatoire','err');return}
@@ -962,15 +1013,9 @@ async function saveFiche(){
     });
     const conditionnement=JSON.stringify(conds);
     const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),conditionnement,ingredients:ings,process:proc};
-    setSyncing(true);
-    const res=editId?await sb.from('fiches').update(data).eq('id',editId):await sb.from('fiches').insert(data);
-    setSyncing(false);
-    if(res.error){toast('Erreur : '+res.error.message,'err');return}
-    toast(editId?'Fiche modifiée ✓':'Fiche enregistrée ✓','ok');
-    closeModal('modal-fiche');await loadAll();
+    await saveRecord('fiches',editId,data,{modalId:'modal-fiche',successMsg:'Fiche enregistrée ✓',updateMsg:'Fiche modifiée ✓'});
   }catch(e){
-    setSyncing(false);
-    toast('Erreur réseau — réessaie','err');
+    toast('Erreur — réessaie','err');
   }finally{
     setBusy('btn-save-fiche',false);
   }
@@ -989,7 +1034,6 @@ async function editFiche(id){
     const CT=COND_TYPES;
     conds.forEach(c=>{const m=CT.find(t=>c.startsWith(t));addCondRow(m||'',m?c.replace(m,'').replace(/^\s*—\s*/,'').trim():c);});
   }else{addCondRow();}
-  await new Promise(r=>setTimeout(r,0));
   document.getElementById('f-cat').value=f.categorie;
   document.getElementById('il').innerHTML='';
   (f.ingredients||[]).forEach(i=>addIR(i.nom,i.quantite,i.unite,i.ficheId||'',i.brut||false));
@@ -1003,7 +1047,7 @@ async function deleteCurrentFiche(){if(curFicheId){const id=curFicheId;closeFD()
 async function duplicateCurrentFiche(){if(curFicheId){const id=curFicheId;closeFD();await duplicateFiche(id);}}
 
 async function deleteFiche(id){
-  if(!confirm('Supprimer cette fiche ?'))return;
+  if(!await confirmDialog('Supprimer cette fiche ?'))return;
   setSyncing(true);await sb.from('fiches').delete().eq('id',id);setSyncing(false);
   toast('Fiche supprimée');await loadAll();
 }
@@ -1052,22 +1096,16 @@ async function savePlat(){
   try{
     const comps=[];document.querySelectorAll('#comp-il input').forEach(i=>{if(i.value.trim())comps.push(i.value.trim())});
     const data={nom,section:document.getElementById('p-sec').value,description:document.getElementById('p-desc').value.trim(),composants:comps,allergenes:document.getElementById('p-alg').value.trim(),dressage:document.getElementById('p-dress').value.trim()};
-    setSyncing(true);
-    const r=editPlatId?await sb.from('plats').update(data).eq('id',editPlatId):await sb.from('plats').insert(data);
-    setSyncing(false);
-    if(r.error){toast('Erreur : '+r.error.message,'err');return}
-    toast(editPlatId?'Plat modifié ✓':'Plat enregistré ✓','ok');
-    closeModal('modal-plat');await loadAll();
+    await saveRecord('plats',editPlatId,data,{modalId:'modal-plat',successMsg:'Plat enregistré ✓',updateMsg:'Plat modifié ✓'});
   }catch(e){
-    setSyncing(false);
-    toast('Erreur réseau — réessaie','err');
+    toast('Erreur — réessaie','err');
   }finally{
     setBusy('btn-save-plat',false);
   }
 }
 
 async function deletePlat(id){
-  if(!confirm('Supprimer ce plat ?'))return;
+  if(!await confirmDialog('Supprimer ce plat ?'))return;
   setSyncing(true);await sb.from('plats').delete().eq('id',id);setSyncing(false);
   toast('Plat supprimé');await loadAll();
 }
@@ -1082,7 +1120,7 @@ async function saveMenuItem(){
   const alg=document.getElementById('m-alg').value.trim().split(',').map(a=>a.trim()).filter(Boolean);
   if(!cfg.menu)cfg.menu=JSON.parse(JSON.stringify(MENU_INITIAL));
   if(!cfg.menu[sec])cfg.menu[sec]=[];
-  cfg.menu[sec].push({nom,comp,alg});
+  cfg.menu[sec].push({id:crypto.randomUUID(),nom,comp,alg});
   await saveCfg();
   setBusy('btn-save-menu',false);
   closeModal('modal-menu-item');
@@ -1093,10 +1131,13 @@ async function saveMenuItem(){
   toast('Ajouté au menu ✓','ok');
 }
 
-async function deleteMenuItem(sec,idx){
-  if(!confirm('Supprimer ce plat du menu ?'))return;
+async function deleteMenuItem(sec,idOrIdx){
+  if(!await confirmDialog('Supprimer ce plat du menu ?'))return;
   if(cfg.menu&&cfg.menu[sec]){
-    cfg.menu[sec].splice(idx,1);
+    const arr=cfg.menu[sec];
+    const i=typeof idOrIdx==='string'?arr.findIndex(it=>it.id===idOrIdx):idOrIdx;
+    if(i<0)return;
+    arr.splice(i,1);
     await saveCfg();
     renderMenu();
     toast('Retiré du menu','ok');
