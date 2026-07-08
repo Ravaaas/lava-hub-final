@@ -235,8 +235,25 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   @page{size:A4;margin:0}
   html,body{background:white!important}
   body > *{display:none!important}
-  #print-area{display:block!important;background:white!important;width:100%;height:100%}
+  #print-area{display:block!important;background:white!important;width:100%;height:100%;padding:1.5cm 2cm;box-sizing:border-box}
   #print-area *{visibility:visible!important}
+  #print-area .fdoc{min-height:0;border:none;position:static}
+  #print-area .fdoc-hdr{margin-bottom:0.6cm}
+  #print-area .fdoc-body{padding:0}
+  #print-area .fdoc-nom{font-size:26pt;margin-bottom:3pt}
+  #print-area .fdoc-sub{font-size:8pt}
+  #print-area .fdoc-sep{height:3px;margin:14pt 0 3px}
+  #print-area .fdoc-sep2{margin-bottom:18pt}
+  #print-area .fdoc-table{margin-bottom:18pt}
+  #print-area .fdoc-table thead th{font-size:7.5pt;padding:7pt 9pt}
+  #print-area .fdoc-table tbody td{font-size:9pt;padding:6pt 9pt}
+  #print-area .fdoc-ptitle{font-size:7.5pt;margin-bottom:6pt}
+  #print-area .fdoc-snum{width:26pt;font-size:7.5pt}
+  #print-area .fdoc-stxt{font-size:9pt;padding:6pt 9pt;line-height:1.4}
+  #print-area .fdoc-step{page-break-inside:avoid}
+  #print-area .fdoc-footer{position:static;margin-top:24pt;padding-top:8pt}
+  #print-area .fdoc-fl{font-size:7pt;margin-bottom:3pt}
+  #print-area .fdoc-fv{font-size:13pt}
   .fdoc-step:nth-child(even) .fdoc-stxt{background:#F5ECEC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .fdoc-step:nth-child(odd) .fdoc-stxt{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -944,55 +961,12 @@ function setQtyMode(mode){
 function printFiche(){
   if(!curFicheId)return;
   const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
-  const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${escHTML(f.nom)}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    @page{size:A4;margin:0}
-    body{padding:1.5cm 2cm}
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Poppins',sans-serif;background:#fff;color:#221818;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc{background:#fff}
-    .fdoc-hdr{margin-bottom:0.6cm}
-    .fdoc-nom{font-size:26pt;font-weight:700;color:#221818;line-height:1.1;margin-bottom:3pt;text-transform:uppercase}
-    .fdoc-sub{font-size:8pt;color:#B5433C;font-weight:400}
-    .fdoc-sep{height:3px;margin:14pt 0 3px;background:#B5433C;border:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-sep2{height:1px;background:#C0504A;opacity:0.3;border:none;margin-bottom:18pt}
-    .fdoc-table{width:100%;border-collapse:collapse;margin-bottom:18pt;border:1px solid #E0D0D0}
-    .fdoc-table thead th{font-size:7.5pt;font-weight:600;color:#B5433C;padding:7pt 9pt;text-align:left;background:#fff;border-bottom:1px solid #E0D0D0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-table thead th:last-child{text-align:right}
-    .fdoc-table tbody td{padding:6pt 9pt;font-size:9pt;color:#221818;border-bottom:1px solid #EDD8D8}
-    .fdoc-table tbody tr:last-child td{border-bottom:none}
-    .fdoc-table tbody tr:nth-child(odd) td{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-table tbody td:last-child{text-align:right;color:#221818;font-weight:600;white-space:nowrap}
-    .fdoc-ptitle{font-size:7.5pt;font-weight:700;color:#B5433C;margin-bottom:6pt}
-    .fdoc-steps{border:1px solid #E0D0D0}
-    .fdoc-step{display:flex;align-items:stretch;border-bottom:1px solid #E0D0D0;page-break-inside:avoid}
-    .fdoc-step:last-child{border-bottom:none}
-    .fdoc-step:nth-child(odd) .fdoc-stxt{background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-step:nth-child(even) .fdoc-stxt{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-snum{width:26pt;flex-shrink:0;background:#B5433C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:7.5pt;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-    .fdoc-stxt{flex:1;padding:6pt 9pt;font-size:9pt;color:#221818;line-height:1.4}
-    .fdoc-footer{margin-top:24pt;display:flex;justify-content:space-between;padding-top:8pt;border-top:1px solid #E0D0D0}
-    .fdoc-fl{font-size:7pt;font-weight:400;color:#B5433C;margin-bottom:3pt}
-    .fdoc-fv{font-size:13pt;font-weight:700;color:#221818}
-    .no-print{display:none!important}
-  </style></head><body>
-  ${buildFicheDoc(f,1,true,fdQtyMode)}
-  <script>window.onload=function(){
-    var fdoc=document.querySelector('.fdoc');
-    var pxPerCm=37.7952755906, pageH=(29.7-3)*pxPerCm;
-    var contentH=fdoc.scrollHeight;
-    if(contentH>pageH){
-      var scale=Math.max(0.55,pageH/contentH);
-      fdoc.style.zoom=scale;
-    }
-    window.print();setTimeout(()=>window.close(),500)
-  }<\/script>
-  </body></html>`;
-  const w=window.open('','_blank','width=900,height=1200');
-  w.document.write(html);
-  w.document.close();
+  const n=(f.ingredients||[]).length+(f.process||[]).length;
+  const scale=n<=14?1:n<=20?0.85:n<=28?0.7:0.55;
+  const pa=document.getElementById('print-area');
+  pa.innerHTML=`<div style="zoom:${scale}">${buildFicheDoc(f,1,true,fdQtyMode)}</div>`;
+  window.print();
+  setTimeout(()=>{pa.innerHTML=''},300);
 }
 
 // ── DRAG & DROP REORDER ──
