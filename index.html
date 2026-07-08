@@ -979,7 +979,16 @@ function printFiche(){
     .no-print{display:none!important}
   </style></head><body>
   ${buildFicheDoc(f,1,true,fdQtyMode)}
-  <script>window.onload=function(){window.print();setTimeout(()=>window.close(),500)}<\/script>
+  <script>window.onload=function(){
+    var fdoc=document.querySelector('.fdoc');
+    var pxPerCm=37.7952755906, pageH=(29.7-3)*pxPerCm;
+    var contentH=fdoc.scrollHeight;
+    if(contentH>pageH){
+      var scale=Math.max(0.55,pageH/contentH);
+      fdoc.style.zoom=scale;
+    }
+    window.print();setTimeout(()=>window.close(),500)
+  }<\/script>
   </body></html>`;
   const w=window.open('','_blank','width=900,height=1200');
   w.document.write(html);
