@@ -239,9 +239,9 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   body > *{display:none!important}
   #print-area{display:block!important;background:white!important;width:100%;height:100%;padding:1.5cm 2cm;box-sizing:border-box}
   #print-area *{visibility:visible!important}
-  #print-area .fdoc{min-height:0;border:none;position:static}
+  #print-area .fdoc{min-height:0;border:none;position:static;display:flex;flex-direction:column}
   #print-area .fdoc-hdr{margin-bottom:0.6cm}
-  #print-area .fdoc-body{padding:0}
+  #print-area .fdoc-body{padding:0;display:flex;flex-direction:column;flex:1;min-height:0}
   #print-area .fdoc-nom{font-size:26pt;margin-bottom:3pt}
   #print-area .fdoc-sub{font-size:8pt}
   #print-area .fdoc-sep{height:3px;margin:14pt 0 3px}
@@ -253,7 +253,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   #print-area .fdoc-snum{width:26pt;font-size:7.5pt}
   #print-area .fdoc-stxt{font-size:9pt;padding:6pt 9pt;line-height:1.4}
   #print-area .fdoc-step{page-break-inside:avoid}
-  #print-area .fdoc-footer{position:static;margin-top:24pt;padding-top:8pt}
+  #print-area .fdoc-footer{position:static;margin-top:auto;padding-top:8pt}
   #print-area .fdoc-fl{font-size:7pt;margin-bottom:3pt}
   #print-area .fdoc-fv{font-size:13pt}
   .fdoc-step:nth-child(even) .fdoc-stxt{background:#F5ECEC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -967,10 +967,11 @@ function printFiche(){
   pa.style.cssText='display:block;position:fixed;left:-9999px;top:0;width:17cm';
   const fdocEl=pa.querySelector('.fdoc');
   if(fdocEl)fdocEl.style.minHeight='0';
-  const pxPerCm=37.7952755906, pageH=(29.7-3)*pxPerCm;
+  const pxPerCm=37.7952755906, pageCm=29.7-3, pageH=pageCm*pxPerCm;
   const contentH=pa.scrollHeight;
   const scale=contentH>pageH?Math.max(0.5,pageH/contentH):1;
-  pa.innerHTML=scale<1?`<div style="zoom:${scale}">${html}</div>`:html;
+  const sizedHtml=html.replace('<div class="fdoc">',`<div class="fdoc" style="height:${(pageCm/scale).toFixed(2)}cm">`);
+  pa.innerHTML=scale<1?`<div style="zoom:${scale}">${sizedHtml}</div>`:sizedHtml;
   pa.style.cssText='';
   window.print();
   setTimeout(()=>{pa.innerHTML=''},300);
