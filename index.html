@@ -966,8 +966,16 @@ function printFiche(){
   const sizedHtml=html.replace('<div class="fdoc">',`<div class="fdoc" style="height:${(pageCm/scale).toFixed(2)}cm">`);
   pa.innerHTML=scale<1?`<div style="zoom:${scale}">${sizedHtml}</div>`:sizedHtml;
   pa.style.cssText='';
-  window.print();
-  setTimeout(()=>{pa.innerHTML=''},300);
+  const doPrint=()=>{
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        window.print();
+        setTimeout(()=>{pa.innerHTML=''},300);
+      });
+    });
+  };
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(doPrint);
+  else doPrint();
 }
 
 // ── DRAG & DROP REORDER ──
