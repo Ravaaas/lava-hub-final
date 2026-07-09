@@ -740,7 +740,6 @@ function addIR(nom='',qty='',u='g',ficheId='',brut=false,netQty=''){
   const brutBtn=`<button class="btn-brut${brut?' active':''}" onclick="toggleBrut(this)" title="Poids brut">B</button>`;
   const netInput=`<input class="fi2 ing-net" type="number" step="any" placeholder="Net" value="${escHTML(netQty)}" min="0" title="Poids net">`;
   const handle=`<div class="drag-handle" title="Déplacer">⠿</div>`;
-  r.setAttribute('draggable','true');
   if(ficheId){
     const ficheOpts=fiches.map(f=>`<option value="${f.id}" ${f.id===ficheId?'selected':''}>${escHTML(f.nom)}</option>`).join('');
     r.innerHTML=`${handle}<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
@@ -783,7 +782,6 @@ function switchToFree(btn){
 
 function addSR(t=''){
   const l=document.getElementById('sl');const n=l.children.length+1;const r=document.createElement('div');r.className='sr';
-  r.setAttribute('draggable','true');
   r.innerHTML=`<div class="drag-handle" title="Déplacer">⠿</div><div class="sn">${n}</div><input class="fi2 s-txt" type="text" placeholder="Étape ${n}" value="${escHTML(t)}"><button class="btn-rm" onclick="this.parentElement.remove();renum()">×</button>`;
   l.appendChild(r);if(!t)r.querySelector('.s-txt').focus();
 }
@@ -973,27 +971,33 @@ function printFiche(){
 function setupDrag(containerId){
   const c=document.getElementById(containerId);
   let drag=null;
-  c.addEventListener('dragstart',e=>{
-    drag=e.target.closest('[draggable]');
+  c.addEventListener('pointerdown',e=>{
+    const handle=e.target.closest('.drag-handle');
+    if(!handle)return;
+    drag=handle.parentElement;
     if(!drag)return;
-    e.dataTransfer.effectAllowed='move';
-    setTimeout(()=>drag.classList.add('dragging'),0);
-  });
-  c.addEventListener('dragend',()=>{
-    if(drag)drag.classList.remove('dragging');
-    drag=null;
-    if(containerId==='sl')renum();
-  });
-  c.addEventListener('dragover',e=>{
     e.preventDefault();
+    drag.classList.add('dragging');
+    try{handle.setPointerCapture(e.pointerId);}catch(err){}
+  });
+  const move=e=>{
     if(!drag)return;
+    e.preventDefault();
     const after=[...c.children].filter(el=>!el.classList.contains('dragging')).reduce((closest,el)=>{
       const box=el.getBoundingClientRect();
       const offset=e.clientY-box.top-box.height/2;
       return offset<0&&offset>closest.offset?{offset,el}:closest;
     },{offset:-Infinity,el:null}).el;
     after?c.insertBefore(drag,after):c.appendChild(drag);
-  });
+  };
+  const end=()=>{
+    if(drag)drag.classList.remove('dragging');
+    drag=null;
+    if(containerId==='sl')renum();
+  };
+  c.addEventListener('pointermove',move);
+  c.addEventListener('pointerup',end);
+  c.addEventListener('pointercancel',end);
 }
 document.addEventListener('DOMContentLoaded',()=>{setupDrag('il');setupDrag('sl')});
 
