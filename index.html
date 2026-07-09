@@ -961,10 +961,17 @@ function setQtyMode(mode){
 function printFiche(){
   if(!curFicheId)return;
   const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
-  const n=(f.ingredients||[]).length+(f.process||[]).length;
-  const scale=n<=14?1:n<=20?0.85:n<=28?0.7:0.55;
   const pa=document.getElementById('print-area');
-  pa.innerHTML=`<div style="zoom:${scale}">${buildFicheDoc(f,1,true,fdQtyMode)}</div>`;
+  const html=buildFicheDoc(f,1,true,fdQtyMode);
+  pa.innerHTML=html;
+  pa.style.cssText='display:block;position:fixed;left:-9999px;top:0;width:17cm';
+  const fdocEl=pa.querySelector('.fdoc');
+  if(fdocEl)fdocEl.style.minHeight='0';
+  const pxPerCm=37.7952755906, pageH=(29.7-3)*pxPerCm;
+  const contentH=pa.scrollHeight;
+  const scale=contentH>pageH?Math.max(0.5,pageH/contentH):1;
+  pa.innerHTML=scale<1?`<div style="zoom:${scale}">${html}</div>`:html;
+  pa.style.cssText='';
   window.print();
   setTimeout(()=>{pa.innerHTML=''},300);
 }
