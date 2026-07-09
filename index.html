@@ -418,7 +418,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input class="si" id="s-rec" type="text" placeholder="Rechercher…" oninput="renderFiches()">
         </div>
-        <select class="fs" id="f-cat-filter" onchange="renderFiches()"><option value="">Toutes catégories</option></select>
+        <select class="fs" id="f-cat-filter" onchange="renderFiches()"><option value="">Toutes les catégories</option></select>
       </div>
       <div class="fg" id="fiches-grid"><div class="es" style="grid-column:1/-1"><div class="spinner"></div></div></div>
     </div>
@@ -483,7 +483,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
         <div class="fg2"><label class="fl">Catégorie</label><select class="fsel" id="f-cat"></select></div>
       </div>
       <div class="fr">
-        <div class="fg2"><label class="fl">Quantité nette</label><input class="fi2" id="f-qte" type="text" placeholder="ex: 5.06 kg"></div>
+        <div class="fg2"><label class="fl">Quantité nette</label><input class="fi2" id="f-qte" type="text" placeholder="ex: 5,06 kg"></div>
         <div class="fg2"><label class="fl">Conditionnement</label>
           <div id="cond-il" style="display:flex;flex-direction:column;gap:0.4rem"></div>
           <button class="btn-ar" onclick="addCondRow()" style="margin-top:0.4rem">+ Ajouter un conditionnement</button>
@@ -614,7 +614,7 @@ function populateSels(){
   ['f-cat','f-cat-filter'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     const cv=el.value;
-    el.innerHTML=id==='f-cat-filter'?'<option value="">Toutes catégories</option>':'';
+    el.innerHTML=id==='f-cat-filter'?'<option value="">Toutes les catégories</option>':'';
     cfg.cats.forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;el.appendChild(o)});
     if(cv)el.value=cv;
   });
@@ -731,7 +731,7 @@ function addCondRow(type='',qty=''){
   r.className='cond-row';
   r.style.cssText='display:grid;grid-template-columns:1fr 110px 28px;gap:0.35rem;align-items:center';
   const opts='<option value="">— Choisir —</option>'+COND_TYPES.map(t=>`<option ${t===type?'selected':''}>${escHTML(t)}</option>`).join('');
-  r.innerHTML=`<select class="fsel cond-type">${opts}</select><input class="fi2 cond-qty" type="text" placeholder="ex: 850g" value="${escHTML(qty)}"><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  r.innerHTML=`<select class="fsel cond-type">${opts}</select><input class="fi2 cond-qty" type="text" placeholder="ex: 850 g" value="${escHTML(qty)}"><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   l.appendChild(r);
 }
 
