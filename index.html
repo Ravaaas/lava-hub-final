@@ -232,25 +232,28 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 
 /* PRINT */
 #print-area{display:none}
+/* Taille/mise en page de la fiche imprimée — hors @media print exprès :
+   ces règles doivent être identiques pendant la mesure JS (avant impression)
+   et pendant l'impression réelle, sinon le calcul "tenir sur une page" est faux. */
+#print-area .fdoc{min-height:0;border:none;position:static;display:flex;flex-direction:column}
+#print-area .fdoc-hdr{padding:0}
+#print-area .fdoc-body{padding:0;display:flex;flex-direction:column;flex:1;min-height:0}
+#print-area .fdoc-table{margin-bottom:18pt}
+#print-area .fdoc-table thead th{font-size:7.5pt;padding:7pt 9pt}
+#print-area .fdoc-table tbody td{font-size:9pt;padding:6pt 9pt}
+#print-area .fdoc-ptitle{font-size:7.5pt;margin-bottom:6pt}
+#print-area .fdoc-snum{width:26pt;font-size:7.5pt}
+#print-area .fdoc-stxt{font-size:9pt;padding:6pt 9pt;line-height:1.4}
+#print-area .fdoc-step{page-break-inside:avoid}
+#print-area .fdoc-footer{position:static;margin-top:auto;padding-top:8pt}
+#print-area .fdoc-fl{font-size:7pt;margin-bottom:3pt}
+#print-area .fdoc-fv{font-size:13pt}
 @media print{
   @page{size:A4;margin:0}
   html,body{background:white!important}
   body > *{display:none!important}
   #print-area{display:block!important;background:white!important;width:100%;height:100%;padding:1.5cm 2cm;box-sizing:border-box}
   #print-area *{visibility:visible!important}
-  #print-area .fdoc{min-height:0;border:none;position:static;display:flex;flex-direction:column}
-  #print-area .fdoc-hdr{padding:0}
-  #print-area .fdoc-body{padding:0;display:flex;flex-direction:column;flex:1;min-height:0}
-  #print-area .fdoc-table{margin-bottom:18pt}
-  #print-area .fdoc-table thead th{font-size:7.5pt;padding:7pt 9pt}
-  #print-area .fdoc-table tbody td{font-size:9pt;padding:6pt 9pt}
-  #print-area .fdoc-ptitle{font-size:7.5pt;margin-bottom:6pt}
-  #print-area .fdoc-snum{width:26pt;font-size:7.5pt}
-  #print-area .fdoc-stxt{font-size:9pt;padding:6pt 9pt;line-height:1.4}
-  #print-area .fdoc-step{page-break-inside:avoid}
-  #print-area .fdoc-footer{position:static;margin-top:auto;padding-top:8pt}
-  #print-area .fdoc-fl{font-size:7pt;margin-bottom:3pt}
-  #print-area .fdoc-fv{font-size:13pt}
   .fdoc-step:nth-child(even) .fdoc-stxt{background:#F5ECEC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .fdoc-step:nth-child(odd) .fdoc-stxt{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -959,24 +962,29 @@ function printFiche(){
   const html=buildFicheDoc(f,1,true,fdQtyMode);
   pa.innerHTML=html;
   pa.style.cssText='display:block;position:fixed;left:-9999px;top:0;width:17cm';
-  const fdocEl=pa.querySelector('.fdoc');
-  if(fdocEl)fdocEl.style.minHeight='0';
-  const pxPerCm=37.7952755906, pageCm=29.7-3, pageH=pageCm*pxPerCm;
+  // Marge de sécurité (0.6cm) : les moteurs d'impression (surtout iOS/AirPrint) n'honorent pas
+  // toujours exactement margin:0 — sans cette marge, une fiche pile à la limite déborde d'un
+  // cheveu sur une 2e page fantôme.
+  const pxPerCm=37.7952755906, pageCm=29.7-3-0.6, pageH=pageCm*pxPerCm;
   const contentH=pa.scrollHeight;
   const scale=contentH>pageH?Math.max(0.5,pageH/contentH):1;
-  const sizedHtml=html.replace('<div class="fdoc">',`<div class="fdoc" style="height:${(pageCm/scale).toFixed(2)}cm">`);
-  pa.innerHTML=scale<1?`<div style="zoom:${scale}">${sizedHtml}</div>`:sizedHtml;
+  // transform:scale() au lieu de zoom (non supporté par Firefox) pour un rendu identique sur tous les navigateurs.
+  // On ne force une hauteur de fiche pile à la taille de la page (pour coller le pied de page en bas)
+  // que si le contenu est vraiment trop long et doit être réduit — sinon on laisse la hauteur naturelle,
+  // plus courte que la page, ce qui évite tout débordement sur une page fantôme.
+  if(scale<1){
+    const sizedHtml=html.replace('<div class="fdoc">',`<div class="fdoc" style="height:${(pageCm/scale).toFixed(2)}cm">`);
+    pa.innerHTML=`<div style="width:${(17*scale).toFixed(2)}cm;height:${pageCm}cm;overflow:hidden"><div style="width:17cm;transform:scale(${scale});transform-origin:top left">${sizedHtml}</div></div>`;
+  }else{
+    pa.innerHTML=html;
+  }
   pa.style.cssText='';
-  const doPrint=()=>{
-    requestAnimationFrame(()=>{
-      requestAnimationFrame(()=>{
-        window.print();
-        setTimeout(()=>{pa.innerHTML=''},300);
-      });
-    });
-  };
-  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(doPrint);
-  else doPrint();
+  // Safari annule silencieusement window.print() si l'appel est trop différé après le clic
+  // (attente de fonts.ready, plusieurs requestAnimationFrame...) — on imprime donc tout de suite,
+  // juste après avoir forcé le navigateur à recalculer la mise en page qu'on vient d'injecter.
+  void pa.offsetHeight;
+  window.print();
+  setTimeout(()=>{pa.innerHTML=''},300);
 }
 
 // ── DRAG & DROP REORDER ──
