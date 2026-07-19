@@ -1036,26 +1036,7 @@ function printFiche(){
   const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
   try{
     const doc=buildFichePDF(f,1,fdQtyMode);
-    const blobUrl=doc.output('bloburl');
-    // On charge le PDF dans un iframe caché puis on imprime cet iframe directement :
-    // ça ouvre la boîte de dialogue d'impression tout de suite, sans passer par un nouvel
-    // onglet où il faudrait cliquer soi-même sur Imprimer — et ça marche pareil sur Safari.
-    let ifr=document.getElementById('pdf-print-frame');
-    if(!ifr){
-      ifr=document.createElement('iframe');
-      ifr.id='pdf-print-frame';
-      ifr.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
-      document.body.appendChild(ifr);
-    }
-    ifr.onload=()=>{
-      try{
-        ifr.contentWindow.focus();
-        ifr.contentWindow.print();
-      }catch(e){
-        window.open(blobUrl,'_blank');
-      }
-    };
-    ifr.src=blobUrl;
+    window.open(doc.output('bloburl'),'_blank');
   }catch(e){
     toast('Erreur à la génération du PDF','err');
   }
