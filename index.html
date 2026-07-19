@@ -962,22 +962,17 @@ function printFiche(){
   const html=buildFicheDoc(f,1,true,fdQtyMode);
   pa.innerHTML=html;
   pa.style.cssText='display:block;position:fixed;left:-9999px;top:0;width:17cm';
-  // Marge de sécurité (0.6cm) : les moteurs d'impression (surtout iOS/AirPrint) n'honorent pas
+  // Marge de sécurité (1.2cm) : les moteurs d'impression (surtout iOS/AirPrint) n'honorent pas
   // toujours exactement margin:0 — sans cette marge, une fiche pile à la limite déborde d'un
   // cheveu sur une 2e page fantôme.
-  const pxPerCm=37.7952755906, pageCm=29.7-3-0.6, pageH=pageCm*pxPerCm;
+  const pxPerCm=37.7952755906, pageCm=29.7-3-1.2, pageH=pageCm*pxPerCm;
   const contentH=pa.scrollHeight;
   const scale=contentH>pageH?Math.max(0.5,pageH/contentH):1;
   // transform:scale() au lieu de zoom (non supporté par Firefox) pour un rendu identique sur tous les navigateurs.
-  // On ne force une hauteur de fiche pile à la taille de la page (pour coller le pied de page en bas)
-  // que si le contenu est vraiment trop long et doit être réduit — sinon on laisse la hauteur naturelle,
-  // plus courte que la page, ce qui évite tout débordement sur une page fantôme.
-  if(scale<1){
-    const sizedHtml=html.replace('<div class="fdoc">',`<div class="fdoc" style="height:${(pageCm/scale).toFixed(2)}cm">`);
-    pa.innerHTML=`<div style="width:${(17*scale).toFixed(2)}cm;height:${pageCm}cm;overflow:hidden"><div style="width:17cm;transform:scale(${scale});transform-origin:top left">${sizedHtml}</div></div>`;
-  }else{
-    pa.innerHTML=html;
-  }
+  // min-height (pas height) : la fiche remplit la page et le pied de page reste collé en bas comme avant,
+  // mais si le contenu réel dépasse un peu la mesure, la boîte grandit au lieu de déborder brutalement.
+  const sizedHtml=html.replace('<div class="fdoc">',`<div class="fdoc" style="min-height:${(pageCm/scale).toFixed(2)}cm">`);
+  pa.innerHTML=scale<1?`<div style="width:${(17*scale).toFixed(2)}cm;height:${pageCm}cm;overflow:hidden"><div style="width:17cm;transform:scale(${scale});transform-origin:top left">${sizedHtml}</div></div>`:sizedHtml;
   pa.style.cssText='';
   // Safari annule silencieusement window.print() si l'appel est trop différé après le clic
   // (attente de fonts.ready, plusieurs requestAnimationFrame...) — on imprime donc tout de suite,
