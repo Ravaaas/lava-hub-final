@@ -9,6 +9,8 @@
 <title>LAVA — Hub Cuisine</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@5.0.8/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root {
   --rouge:#B5433C; --rouge-dk:#8C302A; --rouge-lt:#C0504A;
@@ -230,40 +232,8 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .toast.ok{background:#1e5c1e}
 .toast.err{background:var(--rouge-dk)}
 
-/* PRINT */
-#print-area{display:none}
-/* Taille/mise en page de la fiche imprimée — hors @media print exprès :
-   ces règles doivent être identiques pendant la mesure JS (avant impression)
-   et pendant l'impression réelle, sinon le calcul "tenir sur une page" est faux. */
-#print-area .fdoc{min-height:0;border:none;position:static;display:flex;flex-direction:column}
-#print-area .fdoc-hdr{padding:0}
-#print-area .fdoc-body{padding:0;display:flex;flex-direction:column;flex:1;min-height:0}
-#print-area .fdoc-table{margin-bottom:18pt}
-#print-area .fdoc-table thead th{font-size:7.5pt;padding:7pt 9pt}
-#print-area .fdoc-table tbody td{font-size:9pt;padding:6pt 9pt}
-#print-area .fdoc-ptitle{font-size:7.5pt;margin-bottom:6pt}
-#print-area .fdoc-snum{width:26pt;font-size:7.5pt}
-#print-area .fdoc-stxt{font-size:9pt;padding:6pt 9pt;line-height:1.4}
-#print-area .fdoc-step{page-break-inside:avoid}
-#print-area .fdoc-footer{position:static;margin-top:auto;padding-top:8pt}
-#print-area .fdoc-fl{font-size:7pt;margin-bottom:3pt}
-#print-area .fdoc-fv{font-size:13pt}
-@media print{
-  @page{size:A4;margin:0}
-  html,body{background:white!important}
-  body > *{display:none!important}
-  #print-area{display:block!important;background:white!important;width:100%;height:100%;padding:1.5cm 2cm;box-sizing:border-box}
-  #print-area *{visibility:visible!important}
-  .fdoc-step:nth-child(even) .fdoc-stxt{background:#F5ECEC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .fdoc-step:nth-child(odd) .fdoc-stxt{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .fdoc-table tbody tr:nth-child(even) td{background:#F5ECEC!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .fdoc-table tbody tr:nth-child(odd) td{background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .fdoc-snum{background:#B5433C!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .fdoc-sep{background:#B5433C!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .fdoc-table td span{color:#221818!important;font-weight:400!important}
-  .fdoc-table td[style]{cursor:default!important}
-  .no-print{display:none!important}
-}
+/* PRINT (généré en PDF via JS — voir buildFichePDF) */
+.no-print{display:none!important}
 
 /* ANIMATIONS */
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -349,7 +319,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 </style>
 </head>
 <body>
-<div id="print-area"></div>
 
 <!-- LOGIN -->
 <div id="login-screen">
@@ -882,24 +851,19 @@ async function duplicateFiche(id){
 }
 
 // ── FICHE DOC ──
-function buildFicheDoc(f,coef=1,forPrint=false,mode='brut'){
+function buildFicheDoc(f,coef=1,mode='brut'){
   const fmt=v=>{const n=parseFloat(v)*coef;return isNaN(n)?v:(Number.isInteger(n)?n:Math.round(n*100)/100).toString()};
   const mkBadge=label=>` <span style="display:inline-block;margin-left:6px;font-size:8px;background:#FBE8E7;color:#B5433C;padding:2px 6px;border-radius:10px;font-weight:700;letter-spacing:0.06em;vertical-align:middle;border:1px solid #E8C4C2">${label}</span>`;
   const irows=(f.ingredients||[]).map(i=>{
     const hasNet=i.brut&&i.quantite_net;
     const showNet=mode==='net'&&hasNet;
-    const badge=i.brut?mkBadge(forPrint?'BRUT':showNet?'NET':'BRUT'):'';
+    const badge=i.brut?mkBadge(showNet?'NET':'BRUT'):'';
     const nameCell=i.ficheId
-      ?forPrint
-        ?`<td>${escHTML((i.nom||'').toUpperCase())}${badge}</td>`
-        :`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')"><span style="color:#B5433C;text-decoration:underline;font-weight:600">${escHTML((i.nom||'').toUpperCase())}</span>${badge}</td>`
+      ?`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')"><span style="color:#B5433C;text-decoration:underline;font-weight:600">${escHTML((i.nom||'').toUpperCase())}</span>${badge}</td>`
       :`<td>${escHTML((i.nom||'').toUpperCase())}${badge}</td>`;
     let qtyCell;
     if(i.unite==='pm'){
       qtyCell='pm';
-    }else if(forPrint&&hasNet){
-      const netLine=`<br><span style="font-size:0.68em;color:#6B5C5C">net : ${escHTML(fmt(i.quantite_net))} ${escHTML(i.unite||'')}</span>`;
-      qtyCell=(i.quantite?escHTML(fmt(i.quantite))+' '+escHTML(i.unite||''):'—')+netLine;
     }else{
       const qtyRaw=showNet?i.quantite_net:i.quantite;
       qtyCell=qtyRaw?escHTML(fmt(qtyRaw))+' '+escHTML(i.unite||''):'—';
@@ -939,14 +903,14 @@ function openFD(id){
   document.getElementById('bn-brut').classList.add('active');
   document.getElementById('bn-net').classList.remove('active');
   document.getElementById('bn-toggle').style.display=(f.ingredients||[]).some(i=>i.brut&&i.quantite_net)?'flex':'none';
-  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,1,false,fdQtyMode);
+  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,1,fdQtyMode);
   document.getElementById('fd').classList.add('open');
 }
 function closeFD(){document.getElementById('fd').classList.remove('open');curFicheId=null}
 function applyCoef(){
   const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
   const coef=parseFloat(document.getElementById('fd-coef').value)||1;
-  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,coef,false,fdQtyMode);
+  document.getElementById('fdoc-area').innerHTML=buildFicheDoc(f,coef,fdQtyMode);
 }
 function setQtyMode(mode){
   fdQtyMode=mode;
@@ -955,31 +919,127 @@ function setQtyMode(mode){
   applyCoef();
 }
 
+// ── PDF (impression) ──
+// Un vrai PDF généré en JS (jsPDF + AutoTable) plutôt qu'une impression HTML :
+// chaque navigateur a son propre moteur de pagination pour window.print(), ce qui rendait
+// le rendu différent (voire cassé) selon l'appareil. Un PDF a des dimensions exactes en mm
+// et s'affiche à l'identique partout.
+const PDF_ROUGE=[181,67,60], PDF_NOIR=[34,24,24], PDF_GRIS_FONCE=[107,92,92], PDF_ROSE_ALT=[245,236,236], PDF_BORDER=[224,208,208];
+
+function pdfFmtQty(v,coef){
+  const n=parseFloat(String(v??'').replace(',','.'))*coef;
+  if(isNaN(n))return v??'';
+  const r=Number.isInteger(n)?n:Math.round(n*100)/100;
+  return r.toString().replace('.',',');
+}
+
+function buildFichePDF(f,coef=1,mode='brut'){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const pageW=210,pageH=297,mX=20,mTop=15,mBottom=16,footerH=14;
+  let y=mTop;
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(20);
+  doc.setTextColor(...PDF_NOIR);
+  doc.text((f.nom||'').toUpperCase(),mX,y+7);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...PDF_ROUGE);
+  doc.text('Fiche Technique',mX,y+13);
+  y+=17;
+  doc.setDrawColor(...PDF_ROUGE);
+  doc.setLineWidth(0.6);
+  doc.line(mX,y,pageW-mX,y);
+  y+=6;
+
+  const rows=(f.ingredients||[]).map(i=>{
+    const hasNet=i.brut&&i.quantite_net;
+    const showNet=mode==='net'&&hasNet;
+    let qtyCell;
+    if(i.unite==='pm'){
+      qtyCell='pm';
+    }else if(hasNet){
+      const brutTxt=i.quantite?pdfFmtQty(i.quantite,coef)+' '+(i.unite||''):'—';
+      qtyCell=brutTxt+'\nnet : '+pdfFmtQty(i.quantite_net,coef)+' '+(i.unite||'');
+    }else{
+      const qtyRaw=showNet?i.quantite_net:i.quantite;
+      qtyCell=qtyRaw?pdfFmtQty(qtyRaw,coef)+' '+(i.unite||''):'—';
+    }
+    return [(i.nom||'').toUpperCase()+(i.brut?'  [BRUT]':''),qtyCell];
+  });
+
+  doc.autoTable({
+    startY:y,
+    head:[['Ingrédient','Quantité']],
+    body:rows,
+    theme:'plain',
+    margin:{left:mX,right:mX,bottom:mBottom+footerH},
+    styles:{font:'helvetica',fontSize:9,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:2.2,bottom:2.2,left:2.8,right:2.8}},
+    headStyles:{textColor:PDF_ROUGE,fontStyle:'bold',fontSize:7.5,fillColor:[255,255,255],lineWidth:{bottom:0.25},halign:'left'},
+    columnStyles:{1:{halign:'right',textColor:PDF_GRIS_FONCE}},
+    alternateRowStyles:{fillColor:PDF_ROSE_ALT},
+    didParseCell:(data)=>{ if(data.section==='head'&&data.column.index===1) data.cell.styles.halign='right'; }
+  });
+
+  y=doc.lastAutoTable.finalY+7;
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...PDF_ROUGE);
+  doc.text('PROCESS',mX,y);
+  y+=1.5;
+  doc.setDrawColor(237,216,216);
+  doc.setLineWidth(0.2);
+  doc.line(mX,y,pageW-mX,y);
+  y+=3;
+
+  const stepRows=(f.process||[]).map((s,i)=>[String(i+1),s]);
+  if(stepRows.length){
+    doc.autoTable({
+      startY:y,
+      body:stepRows,
+      theme:'plain',
+      margin:{left:mX,right:mX,bottom:mBottom+footerH},
+      styles:{font:'helvetica',fontSize:9,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:2.2,bottom:2.2,left:2.8,right:2.8},valign:'middle'},
+      columnStyles:{0:{cellWidth:9,halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{cellWidth:'auto'}},
+      alternateRowStyles:{fillColor:PDF_ROSE_ALT},
+      didParseCell:(data)=>{ if(data.column.index===0) data.cell.styles.fillColor=PDF_ROUGE; }
+    });
+    y=doc.lastAutoTable.finalY;
+  }
+
+  const lastPage=doc.internal.getNumberOfPages();
+  doc.setPage(lastPage);
+  const fy=pageH-mBottom-footerH+5;
+  doc.setDrawColor(...PDF_BORDER);
+  doc.setLineWidth(0.15);
+  doc.line(mX,fy-4,pageW-mX,fy-4);
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(...PDF_ROUGE);
+  doc.text('Quantité nette',mX,fy);
+  doc.text('Conditionnement',pageW-mX,fy,{align:'right'});
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...PDF_NOIR);
+  doc.text(f.quantite_nette||'—',mX,fy+6);
+  let cond=[];
+  try{cond=JSON.parse(f.conditionnement||'[]');}catch(e){cond=f.conditionnement?[f.conditionnement]:[];}
+  doc.text(cond.length?cond.join(' / '):'—',pageW-mX,fy+6,{align:'right'});
+
+  return doc;
+}
+
 function printFiche(){
   if(!curFicheId)return;
   const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
-  const pa=document.getElementById('print-area');
-  const html=buildFicheDoc(f,1,true,fdQtyMode);
-  pa.innerHTML=html;
-  pa.style.cssText='display:block;position:fixed;left:-9999px;top:0;width:17cm';
-  // Marge de sécurité (1.2cm) : les moteurs d'impression (surtout iOS/AirPrint) n'honorent pas
-  // toujours exactement margin:0 — sans cette marge, une fiche pile à la limite déborde d'un
-  // cheveu sur une 2e page fantôme.
-  const pxPerCm=37.7952755906, pageCm=29.7-3-1.2, pageH=pageCm*pxPerCm;
-  const contentH=pa.scrollHeight;
-  const scale=contentH>pageH?Math.max(0.5,pageH/contentH):1;
-  // transform:scale() au lieu de zoom (non supporté par Firefox) pour un rendu identique sur tous les navigateurs.
-  // min-height (pas height) : la fiche remplit la page et le pied de page reste collé en bas comme avant,
-  // mais si le contenu réel dépasse un peu la mesure, la boîte grandit au lieu de déborder brutalement.
-  const sizedHtml=html.replace('<div class="fdoc">',`<div class="fdoc" style="min-height:${(pageCm/scale).toFixed(2)}cm">`);
-  pa.innerHTML=scale<1?`<div style="width:${(17*scale).toFixed(2)}cm;height:${pageCm}cm;overflow:hidden"><div style="width:17cm;transform:scale(${scale});transform-origin:top left">${sizedHtml}</div></div>`:sizedHtml;
-  pa.style.cssText='';
-  // Safari annule silencieusement window.print() si l'appel est trop différé après le clic
-  // (attente de fonts.ready, plusieurs requestAnimationFrame...) — on imprime donc tout de suite,
-  // juste après avoir forcé le navigateur à recalculer la mise en page qu'on vient d'injecter.
-  void pa.offsetHeight;
-  window.print();
-  setTimeout(()=>{pa.innerHTML=''},300);
+  try{
+    const doc=buildFichePDF(f,1,fdQtyMode);
+    window.open(doc.output('bloburl'),'_blank');
+  }catch(e){
+    toast('Erreur à la génération du PDF','err');
+  }
 }
 
 // ── DRAG & DROP REORDER ──
