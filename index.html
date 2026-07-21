@@ -165,6 +165,9 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .drag-handle{cursor:grab;display:flex;align-items:center;justify-content:center;color:var(--border);font-size:12px;user-select:none;touch-action:none}
 .drag-handle:active{cursor:grabbing}
 .ir.dragging,.sr.dragging{opacity:0.35}
+.allerg-chip{padding:0.35rem 0.7rem;border:1.5px solid var(--border);border-radius:20px;background:#fff;color:var(--gt);font-family:'Poppins',sans-serif;font-size:0.66rem;font-weight:600;cursor:pointer;transition:all .15s}
+.allerg-chip.active{background:var(--rose);border-color:var(--rouge);color:var(--rouge)}
+.allerg-badge{display:inline-block;font-size:0.58rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:var(--rose);color:var(--rouge);border:1px solid var(--rose-mid);border-radius:20px;padding:0.15rem 0.55rem;margin:0 0.3rem 0.3rem 0}
 .btn-brut{width:28px;height:28px;background:none;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--gt);font-size:0.6rem;font-weight:700;font-family:'Poppins',sans-serif;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .btn-brut:hover{border-color:var(--rouge);color:var(--rouge)}
 .btn-brut.active{background:var(--rose);border-color:var(--rouge);color:var(--rouge)}
@@ -408,6 +411,14 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
           <button class="btn btn-p btn-sm" onclick="addSec()">Ajouter</button>
         </div>
       </div>
+      <div class="cs">
+        <div class="cs-title">Sauvegarde</div>
+        <button class="btn btn-o btn-sm" onclick="exportFiches()">⬇ Exporter toutes les fiches (JSON)</button>
+      </div>
+      <div class="cs">
+        <div class="cs-title">Historique</div>
+        <div class="cl" id="cfg-audit" style="max-height:320px;overflow-y:auto"></div>
+      </div>
     </div>
 
   </main>
@@ -455,6 +466,8 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
           <button class="btn-ar" onclick="addCondRow()" style="margin-top:0.4rem">+ Ajouter un conditionnement</button>
         </div>
       </div>
+      <div class="fsect" style="margin-top:0.25rem">Allergènes</div>
+      <div id="f-allerg" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem"></div>
       <div class="fsect">Ingrédients</div>
       <div class="il" id="il"></div>
       <button class="btn-ar" onclick="addIR()">+ Ajouter un ingrédient</button>
@@ -481,6 +494,28 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   </div>
 </div>
 
+<!-- MODAL EXPORT -->
+<div class="mo" id="modal-export">
+  <div class="modal" style="max-width:520px">
+    <div class="m-head"><div class="m-title">Exporter en PDF</div><button class="m-close" onclick="closeModal('modal-export')">✕</button></div>
+    <div class="m-body">
+      <div class="si-wrap" style="margin-bottom:0.75rem">
+        <input class="si" style="padding-left:0.85rem" id="export-search" type="text" placeholder="Rechercher…" oninput="renderExportList()">
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem">
+        <button class="btn btn-g btn-sm" onclick="setExportSelection(true)">Tout cocher</button>
+        <button class="btn btn-g btn-sm" onclick="setExportSelection(false)">Tout décocher</button>
+      </div>
+      <div id="export-list" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:0.3rem"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-export')">Annuler</button>
+      <button class="btn btn-p" onclick="generateExportPDF()">⬇ Générer le PDF (<span id="export-count">0</span>)</button>
+    </div>
+  </div>
+</div>
+
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -490,6 +525,8 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
 
 let profil=null, editId=null, curFicheId=null;
 let fiches=[];
+let hasAllergenesCol=false;
+const ALLERGENES=['Gluten','Crustacés','Œufs','Poisson','Arachide','Soja','Lactose','Fruits à coque','Céleri','Moutarde','Sésame','Sulfites','Lupin','Mollusques'];
 
 let cfg={
   cats:['Base','Sauce','Garniture','Dessert','Autre'],
@@ -513,7 +550,7 @@ function setSyncing(v){
   document.getElementById('sync-lbl').textContent=v?'Sync…':'Sync';
 }
 
-const ADMIN_PW='lava2026';
+const ADMIN_EMAIL='alexandre.ravasio@outlook.com';
 
 // ── LOGIN ──
 function showPW(){
@@ -527,7 +564,8 @@ async function checkPW(){
   setBusy('btn-confirm',true);
   setBusy('btn-admin',true);
   document.getElementById('l-err').style.display='none';
-  if(pw===ADMIN_PW){
+  const{error}=await sb.auth.signInWithPassword({email:ADMIN_EMAIL,password:pw});
+  if(!error){
     loginAs('admin');
   }else{
     document.getElementById('l-err').style.display='block';
@@ -536,6 +574,15 @@ async function checkPW(){
   }
   setBusy('btn-confirm',false);
   setBusy('btn-admin',false);
+}
+
+async function tryRestoreSession(){
+  try{
+    const{data}=await sb.auth.getSession();
+    if(data&&data.session&&data.session.user&&data.session.user.email===ADMIN_EMAIL){
+      loginAs('admin');
+    }
+  }catch(e){}
 }
 
 function loginAs(p){
@@ -547,8 +594,10 @@ function loginAs(p){
   loadCfg().then(()=>loadAll());
 }
 
-function logout(){
+async function logout(){
+  if(profil==='admin'){try{await sb.auth.signOut();}catch(e){}}
   profil=null;
+  document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('pw-field').style.display='none';
@@ -573,6 +622,7 @@ async function loadCfg(){
 async function saveCfg(){
   try{localStorage.setItem('lava_cfg',JSON.stringify(cfg));}catch(e){}
   try{await sb.from('lava_config').upsert({id:'main',data:cfg});}catch(e){}
+  await logAudit('config','catégories/sections');
   populateSels();renderCfg();
 }
 
@@ -622,6 +672,65 @@ function switchTab(n,b){
   document.querySelectorAll('.tb').forEach(x=>x.classList.remove('active'));
   document.getElementById('tab-'+n).classList.add('active');
   b.classList.add('active');
+  if(n==='config')renderAudit();
+}
+
+async function renderAudit(){
+  const el=document.getElementById('cfg-audit');if(!el)return;
+  el.innerHTML='<div class="es-icon" style="font-size:1rem;padding:0.5rem 0">Chargement…</div>';
+  try{
+    const{data}=await sb.from('lava_config').select('*').eq('id','audit_log').single();
+    const log=(data&&data.data&&Array.isArray(data.data.entries))?data.data.entries:[];
+    if(!log.length){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Aucun historique pour l\'instant.</div>';return}
+    el.innerHTML=log.slice().reverse().map(e=>{
+      const d=new Date(e.ts);
+      const when=d.toLocaleDateString('fr-FR')+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+      return `<div class="ci"><span class="ci-label">${escHTML(when)} — ${escHTML(e.action)} — ${escHTML(e.ficheNom||'')}</span></div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Aucun historique pour l\'instant.</div>';}
+}
+
+let exportSelectedIds=new Set();
+
+function exportFiches(){
+  exportSelectedIds=new Set();
+  document.getElementById('export-search').value='';
+  renderExportList();
+  openModal('modal-export');
+}
+
+function renderExportList(){
+  const q=(document.getElementById('export-search').value||'').toLowerCase();
+  const list=document.getElementById('export-list');
+  const fil=fiches.filter(f=>!q||f.nom.toLowerCase().includes(q)).sort((a,b)=>a.nom.localeCompare(b.nom));
+  list.innerHTML=fil.map(f=>`<label class="ci" style="cursor:pointer"><span class="ci-label">${escHTML(f.nom)}</span><input type="checkbox" ${exportSelectedIds.has(f.id)?'checked':''} onchange="toggleExportSelected('${f.id}',this.checked)"></label>`).join('')
+    ||'<div class="ci-label" style="color:var(--gt)">Aucun résultat</div>';
+}
+
+function toggleExportSelected(id,checked){
+  if(checked)exportSelectedIds.add(id);else exportSelectedIds.delete(id);
+  document.getElementById('export-count').textContent=exportSelectedIds.size;
+}
+
+function setExportSelection(all){
+  const q=(document.getElementById('export-search').value||'').toLowerCase();
+  const fil=fiches.filter(f=>!q||f.nom.toLowerCase().includes(q));
+  fil.forEach(f=>{if(all)exportSelectedIds.add(f.id);else exportSelectedIds.delete(f.id);});
+  document.getElementById('export-count').textContent=exportSelectedIds.size;
+  renderExportList();
+}
+
+function generateExportPDF(){
+  if(exportSelectedIds.size===0){toast('Sélectionne au moins une fiche','err');return}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const selected=fiches.filter(f=>exportSelectedIds.has(f.id)).sort((a,b)=>a.nom.localeCompare(b.nom));
+  selected.forEach((f,i)=>{
+    if(i>0)doc.addPage();
+    addFicheToPDF(doc,f,1,'brut');
+  });
+  doc.save(`lava-fiches-${new Date().toISOString().slice(0,10)}.pdf`);
+  closeModal('modal-export');
 }
 
 // ── LOAD ──
@@ -630,6 +739,7 @@ async function loadAll(){
   try{
     const{data:f}=await sb.from('fiches').select('*').order('nom',{ascending:true});
     fiches=f||[];
+    hasAllergenesCol=fiches.length>0&&fiches[0].allergenes!==undefined;
     renderFiches();
     document.getElementById('b-rec').textContent=fiches.length;
   }catch(e){toast('Erreur de connexion','err')}
@@ -654,7 +764,8 @@ function renderFiches(){
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
     const ingCount=(f.ingredients||[]).length;
-    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
+    const allergBadges=(f.allergenes||[]).map(a=>`<span class="allerg-badge">${escHTML(a)}</span>`).join('');
+    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div>${allergBadges?`<div style="margin-top:0.5rem">${allergBadges}</div>`:''}</div>`;
     c.onclick=()=>openFD(f.id);
     grid.appendChild(c);
   });
@@ -681,11 +792,17 @@ function closeModal(id){
 }
 
 // ── FICHE CRUD ──
+function renderAllergChips(selected=[]){
+  const el=document.getElementById('f-allerg');if(!el)return;
+  el.innerHTML=ALLERGENES.map(a=>`<button type="button" class="allerg-chip${selected.includes(a)?' active':''}" onclick="this.classList.toggle('active')">${escHTML(a)}</button>`).join('');
+}
+
 function openNewFiche(){
   editId=null;
   document.getElementById('mf-title').textContent='Nouvelle fiche';
   ['f-nom','f-qte'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cond-il').innerHTML='';addCondRow();
+  renderAllergChips();
   document.getElementById('il').innerHTML='';document.getElementById('sl').innerHTML='';
   addIR();addSR();openModal('modal-fiche');
 }
@@ -757,11 +874,22 @@ function addSR(t=''){
 function renum(){document.querySelectorAll('#sl .sn').forEach((e,i)=>e.textContent=i+1)}
 
 
+async function logAudit(action,ficheNom){
+  try{
+    const{data}=await sb.from('lava_config').select('*').eq('id','audit_log').single();
+    const log=(data&&data.data&&Array.isArray(data.data.entries))?data.data.entries:[];
+    log.push({ts:Date.now(),action,ficheNom,profil});
+    while(log.length>500)log.shift();
+    await sb.from('lava_config').upsert({id:'audit_log',data:{entries:log}});
+  }catch(e){}
+}
+
 async function saveRecord(table,id,data,{modalId,successMsg,updateMsg}){
   setSyncing(true);
   try{
     const res=id?await sb.from(table).update(data).eq('id',id):await sb.from(table).insert(data);
     if(res.error){toast('Erreur : '+res.error.message,'err');return false}
+    if(table==='fiches')await logAudit(id?'modification':'création',data.nom);
     toast(id?updateMsg:successMsg,'ok');
     closeModal(modalId);await loadAll();
     return true;
@@ -773,9 +901,15 @@ async function saveRecord(table,id,data,{modalId,successMsg,updateMsg}){
   }
 }
 
+function normName(s){
+  return String(s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').trim().toUpperCase();
+}
+
 async function saveFiche(){
   const nom=document.getElementById('f-nom').value.trim();
   if(!nom){toast('Le nom est obligatoire','err');return}
+  const dup=fiches.find(f=>f.id!==editId&&normName(f.nom)===normName(nom));
+  if(dup){toast(`Une fiche "${dup.nom}" existe déjà`,'err');return}
   setBusy('btn-save-fiche',true);
   try{
     const ings=[];
@@ -804,6 +938,9 @@ async function saveFiche(){
     });
     const conditionnement=JSON.stringify(conds);
     const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),conditionnement,ingredients:ings,process:proc};
+    if(hasAllergenesCol){
+      data.allergenes=Array.from(document.querySelectorAll('#f-allerg .allerg-chip.active')).map(b=>b.textContent);
+    }
     await saveRecord('fiches',editId,data,{modalId:'modal-fiche',successMsg:'Fiche enregistrée ✓',updateMsg:'Fiche modifiée ✓'});
   }catch(e){
     toast('Erreur — réessaie','err');
@@ -826,6 +963,7 @@ async function editFiche(id){
     conds.forEach(c=>{const m=CT.find(t=>c.startsWith(t));addCondRow(m||'',m?c.replace(m,'').replace(/^\s*—\s*/,'').trim():c);});
   }else{addCondRow();}
   document.getElementById('f-cat').value=f.categorie;
+  renderAllergChips(f.allergenes||[]);
   document.getElementById('il').innerHTML='';
   (f.ingredients||[]).forEach(i=>addIR(i.nom,i.quantite,i.unite,i.ficheId||'',i.brut||false,i.quantite_net||''));
   document.getElementById('sl').innerHTML='';
@@ -838,8 +976,24 @@ async function deleteCurrentFiche(){if(curFicheId){const id=curFicheId;closeFD()
 async function duplicateCurrentFiche(){if(curFicheId){const id=curFicheId;closeFD();await duplicateFiche(id);}}
 
 async function deleteFiche(id){
-  if(!await confirmDialog('Supprimer cette fiche ?'))return;
-  setSyncing(true);await sb.from('fiches').delete().eq('id',id);setSyncing(false);
+  const target=fiches.find(f=>f.id===id);
+  const dependants=fiches.filter(f=>f.id!==id&&(f.ingredients||[]).some(i=>i.ficheId===id));
+  const msg=dependants.length
+    ?`"${target?target.nom:''}" est utilisée comme sous-recette dans : ${dependants.map(f=>f.nom).join(', ')}. La supprimer retirera le lien (l'ingrédient restera en texte simple). Continuer ?`
+    :'Supprimer cette fiche ?';
+  if(!await confirmDialog(msg))return;
+  setSyncing(true);
+  await sb.from('fiches').delete().eq('id',id);
+  for(const dep of dependants){
+    const ings=(dep.ingredients||[]).map(i=>{
+      if(i.ficheId!==id)return i;
+      const{ficheId,...rest}=i;
+      return rest;
+    });
+    await sb.from('fiches').update({ingredients:ings}).eq('id',dep.id);
+  }
+  setSyncing(false);
+  await logAudit('suppression',target?target.nom:'');
   toast('Fiche supprimée');await loadAll();
 }
 
@@ -858,7 +1012,8 @@ function buildFicheDoc(f,coef=1,mode='brut'){
     const hasNet=i.brut&&i.quantite_net;
     const showNet=mode==='net'&&hasNet;
     const badge=i.brut?mkBadge(showNet?'NET':'BRUT'):'';
-    const nameCell=i.ficheId
+    const linkValid=i.ficheId&&fiches.some(x=>x.id===i.ficheId);
+    const nameCell=linkValid
       ?`<td style="cursor:pointer" onclick="openFD('${escHTML(i.ficheId)}')"><span style="color:#B5433C;text-decoration:underline;font-weight:600">${escHTML((i.nom||'').toUpperCase())}</span>${badge}</td>`
       :`<td>${escHTML((i.nom||'').toUpperCase())}${badge}</td>`;
     let qtyCell;
@@ -876,6 +1031,7 @@ function buildFicheDoc(f,coef=1,mode='brut'){
     <div class="fdoc-hdr">
       <div class="fdoc-nom">${escHTML(f.nom)}</div>
       <div class="fdoc-sub">Fiche Technique</div>
+      ${(f.allergenes||[]).length?`<div style="margin-top:0.6rem">${f.allergenes.map(a=>`<span class="allerg-badge">${escHTML(a)}</span>`).join('')}</div>`:''}
     </div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
@@ -933,9 +1089,7 @@ function pdfFmtQty(v,coef){
   return r.toString().replace('.',',');
 }
 
-function buildFichePDF(f,coef=1,mode='brut'){
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({unit:'mm',format:'a4'});
+function addFicheToPDF(doc,f,coef=1,mode='brut'){
   const pageW=210,pageH=297,mX=20,mTop=15,mBottom=16,footerH=14;
   let y=mTop;
 
@@ -1027,7 +1181,12 @@ function buildFichePDF(f,coef=1,mode='brut'){
   let cond=[];
   try{cond=JSON.parse(f.conditionnement||'[]');}catch(e){cond=f.conditionnement?[f.conditionnement]:[];}
   doc.text(cond.length?cond.join(' / '):'—',pageW-mX,fy+6,{align:'right'});
+}
 
+function buildFichePDF(f,coef=1,mode='brut'){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  addFicheToPDF(doc,f,coef,mode);
   return doc;
 }
 
@@ -1074,7 +1233,7 @@ function setupDrag(containerId){
   c.addEventListener('pointerup',end);
   c.addEventListener('pointercancel',end);
 }
-document.addEventListener('DOMContentLoaded',()=>{setupDrag('il');setupDrag('sl')});
+document.addEventListener('DOMContentLoaded',()=>{setupDrag('il');setupDrag('sl');tryRestoreSession()});
 
 // ── TOAST ──
 function toast(msg,type=''){
