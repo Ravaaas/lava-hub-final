@@ -528,6 +528,53 @@ let fiches=[];
 let hasAllergenesCol=false;
 const ALLERGENES=['Gluten','Crustacés','Œufs','Poisson','Arachide','Soja','Lactose','Fruits à coque','Céleri','Moutarde','Sésame','Sulfites','Lupin','Mollusques'];
 
+// Détection automatique par mots-clés (aide, pas une certification — à vérifier pour les allergies sévères).
+const PLANT_MILK_EXC='(?!\\s*(DE\\s*)?(COCO|RIZ|AMANDE|AVOINE|SOJA|NOISETTE)\\b)';
+const ALLERGEN_KEYWORDS={
+  'Gluten':['FARINE','PAIN','MIE','PANURE','CHAPELURE','GATEAU','BISCUIT','COOKIE','GNOCCHIS?','RAVIOLES?','TEMPURA','SABLE','STREUSS?EL','DACQUOISE','FOCACCIA','PIZZA','MADELEINE','CRUMBLE','TUILE','CROUTONS?','COUSCOUS','BOULGOUR','SEMOULE','ORGE','SEIGLE','AVOINE','HUSHPUPPIES','BROWNIE','CAKE','OPALINE','CORN FLAKES'],
+  'Crustacés':['CREVETTES?','LANGOUSTINES?','HOMARDS?','CRABES?','ECREVISSES?','GAMBAS','BISQUE'],
+  'Œufs':["OEUFS?","OEUF D'?[A-Z]*",'MAYONNAISE','MERINGUE','SABAYON','MOUSSELINE'],
+  'Poisson':['POISSONS?','ANCHOIS','THON','SAUMON','BONITE','DASHI','NUOC NAM','FUMET',"ARETES?",'HADDOCK','AGEDASHI'],
+  'Arachide':['ARACHIDES?','CACAHUETES?'],
+  'Soja':['SOJA','TOFU','EDAMAME','MISO','TEMPEH'],
+  'Lactose':['LAIT'+PLANT_MILK_EXC,'CREME'+PLANT_MILK_EXC,'BEURRE(?! DE CACAO)','FROMAGE','PARMESAN','MASCARPONE','PHILADELPHIA','YAOURT','MOZZARELLA','CHOCOLAT','GANACHE','FAISSELLE'],
+  'Fruits à coque':['AMANDES?','NOISETTES?','NOIX','PECAN','PISTACHES?','CAJOU','MACADAMIA','PRALINES?','COCO'],
+  'Céleri':['CELERI'],
+  'Moutarde':['MOUTARDE'],
+  'Sésame':['SESAME','TAHINI'],
+  'Sulfites':['VIN ROUGE','VIN BLANC','VINAIGRE DE VIN','RAISINS? SECS?','ABRICOTS? SECS?','SAKE','MIRIN'],
+  'Lupin':['LUPIN'],
+  'Mollusques':['MOULES?','HUITRES?','COQUILLE','CALAMAR','POULPE','SEICHE'],
+};
+const ALLERGEN_REGEX={};
+for(const a in ALLERGEN_KEYWORDS)ALLERGEN_REGEX[a]=new RegExp('\\b(?:'+ALLERGEN_KEYWORDS[a].join('|')+')\\b');
+
+function normAllergText(s){
+  return String(s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toUpperCase();
+}
+
+function detectAllergensFromNames(names){
+  const text=names.map(normAllergText).join(' ');
+  const found=[];
+  for(const a in ALLERGEN_REGEX)if(ALLERGEN_REGEX[a].test(text))found.push(a);
+  return found;
+}
+
+function autoDetectAllergens(){
+  const el=document.getElementById('f-allerg');if(!el||!el.children.length)return;
+  const names=[];
+  document.querySelectorAll('#il .ir').forEach(r=>{
+    const sel=r.querySelector('.ing-fiche-sel');
+    if(sel){const f=fiches.find(f=>f.id===sel.value);if(f)names.push(f.nom);}
+    else{const n=r.querySelector('.ing-n');if(n)names.push(n.value);}
+  });
+  const detected=detectAllergensFromNames(names);
+  detected.forEach(a=>{
+    const btn=Array.from(el.querySelectorAll('.allerg-chip')).find(b=>b.textContent===a);
+    if(btn)btn.classList.add('active');
+  });
+}
+
 let cfg={
   cats:['Base','Sauce','Garniture','Dessert','Autre'],
   secs:['Entrées','Plats','Desserts']
@@ -827,9 +874,9 @@ function addIR(nom='',qty='',u='g',ficheId='',brut=false,netQty=''){
   const handle=`<div class="drag-handle" title="Déplacer">⠿</div>`;
   if(ficheId){
     const ficheOpts=fiches.map(f=>`<option value="${f.id}" ${f.id===ficheId?'selected':''}>${escHTML(f.nom)}</option>`).join('');
-    r.innerHTML=`${handle}<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`${handle}<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600" onchange="autoDetectAllergens()"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }else{
-    r.innerHTML=`${handle}<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`${handle}<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()" onblur="autoDetectAllergens()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }
   l.appendChild(r);if(!nom&&!ficheId)r.querySelector('.ing-n')?.focus();
 }
@@ -851,6 +898,7 @@ function switchToFiche(btn){
   const sel=document.createElement('select');
   sel.className='fsel ing-fiche-sel';sel.style.cssText='color:var(--rouge);font-weight:600';
   sel.innerHTML=`<option value="">— Choisir une fiche —</option>${ficheOpts}`;
+  sel.onchange=()=>autoDetectAllergens();
   inp.replaceWith(sel);
   btn.title='Délier';btn.textContent='🔗';btn.onclick=function(){switchToFree(this)};
 }
@@ -861,6 +909,7 @@ function switchToFree(btn){
   const inp=document.createElement('input');
   inp.className='fi2 ing-n';inp.type='text';inp.placeholder='Ingrédient';
   inp.oninput=function(){this.value=this.value.toUpperCase()};
+  inp.onblur=()=>autoDetectAllergens();
   sel.replaceWith(inp);
   btn.title='Lier une sous-recette';btn.textContent='↗';btn.onclick=function(){switchToFiche(this)};
 }
