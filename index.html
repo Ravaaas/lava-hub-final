@@ -165,9 +165,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .drag-handle{cursor:grab;display:flex;align-items:center;justify-content:center;color:var(--border);font-size:12px;user-select:none;touch-action:none}
 .drag-handle:active{cursor:grabbing}
 .ir.dragging,.sr.dragging{opacity:0.35}
-.allerg-chip{padding:0.35rem 0.7rem;border:1.5px solid var(--border);border-radius:20px;background:#fff;color:var(--gt);font-family:'Poppins',sans-serif;font-size:0.66rem;font-weight:600;cursor:pointer;transition:all .15s}
-.allerg-chip.active{background:var(--rose);border-color:var(--rouge);color:var(--rouge)}
-.allerg-badge{display:inline-block;font-size:0.58rem;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;background:var(--rose);color:var(--rouge);border:1px solid var(--rose-mid);border-radius:20px;padding:0.15rem 0.55rem;margin:0 0.3rem 0.3rem 0}
 .btn-brut{width:28px;height:28px;background:none;border:1.5px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--gt);font-size:0.6rem;font-weight:700;font-family:'Poppins',sans-serif;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
 .btn-brut:hover{border-color:var(--rouge);color:var(--rouge)}
 .btn-brut.active{background:var(--rose);border-color:var(--rouge);color:var(--rouge)}
@@ -466,8 +463,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
           <button class="btn-ar" onclick="addCondRow()" style="margin-top:0.4rem">+ Ajouter un conditionnement</button>
         </div>
       </div>
-      <div class="fsect" style="margin-top:0.25rem">Allergènes</div>
-      <div id="f-allerg" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.5rem"></div>
       <div class="fsect">Ingrédients</div>
       <div class="il" id="il"></div>
       <button class="btn-ar" onclick="addIR()">+ Ajouter un ingrédient</button>
@@ -525,55 +520,6 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
 
 let profil=null, editId=null, curFicheId=null;
 let fiches=[];
-let hasAllergenesCol=false;
-const ALLERGENES=['Gluten','Crustacés','Œufs','Poisson','Arachide','Soja','Lactose','Fruits à coque','Céleri','Moutarde','Sésame','Sulfites','Lupin','Mollusques'];
-
-// Détection automatique par mots-clés (aide, pas une certification — à vérifier pour les allergies sévères).
-const PLANT_MILK_EXC='(?!\\s*(DE\\s*)?(COCO|RIZ|AMANDE|AVOINE|SOJA|NOISETTE)\\b)';
-const ALLERGEN_KEYWORDS={
-  'Gluten':['FARINE','PAIN','MIE','PANURE','CHAPELURE','GATEAU','BISCUIT','COOKIE','GNOCCHIS?','RAVIOLES?','TEMPURA','SABLE','STREUSS?EL','DACQUOISE','FOCACCIA','PIZZA','MADELEINE','CRUMBLE','TUILE','CROUTONS?','COUSCOUS','BOULGOUR','SEMOULE','ORGE','SEIGLE','AVOINE','HUSHPUPPIES','BROWNIE','CAKE','OPALINE','CORN FLAKES'],
-  'Crustacés':['CREVETTES?','LANGOUSTINES?','HOMARDS?','CRABES?','ECREVISSES?','GAMBAS','BISQUE'],
-  'Œufs':["OEUFS?","OEUF D'?[A-Z]*",'MAYONNAISE','MERINGUE','SABAYON','MOUSSELINE'],
-  'Poisson':['POISSONS?','ANCHOIS','THON','SAUMON','BONITE','DASHI','NUOC NAM','FUMET',"ARETES?",'HADDOCK','AGEDASHI'],
-  'Arachide':['ARACHIDES?','CACAHUETES?'],
-  'Soja':['SOJA','TOFU','EDAMAME','MISO','TEMPEH'],
-  'Lactose':['LAIT'+PLANT_MILK_EXC,'CREME'+PLANT_MILK_EXC,'BEURRE(?! DE CACAO)','FROMAGE','PARMESAN','MASCARPONE','PHILADELPHIA','YAOURT','MOZZARELLA','CHOCOLAT','GANACHE','FAISSELLE'],
-  'Fruits à coque':['AMANDES?','NOISETTES?','NOIX','PECAN','PISTACHES?','CAJOU','MACADAMIA','PRALINES?','COCO'],
-  'Céleri':['CELERI'],
-  'Moutarde':['MOUTARDE'],
-  'Sésame':['SESAME','TAHINI'],
-  'Sulfites':['VIN ROUGE','VIN BLANC','VINAIGRE DE VIN','RAISINS? SECS?','ABRICOTS? SECS?','SAKE','MIRIN'],
-  'Lupin':['LUPIN'],
-  'Mollusques':['MOULES?','HUITRES?','COQUILLE','CALAMAR','POULPE','SEICHE'],
-};
-const ALLERGEN_REGEX={};
-for(const a in ALLERGEN_KEYWORDS)ALLERGEN_REGEX[a]=new RegExp('\\b(?:'+ALLERGEN_KEYWORDS[a].join('|')+')\\b');
-
-function normAllergText(s){
-  return String(s||'').normalize('NFKD').replace(/[̀-ͯ]/g,'').toUpperCase();
-}
-
-function detectAllergensFromNames(names){
-  const text=names.map(normAllergText).join(' ');
-  const found=[];
-  for(const a in ALLERGEN_REGEX)if(ALLERGEN_REGEX[a].test(text))found.push(a);
-  return found;
-}
-
-function autoDetectAllergens(){
-  const el=document.getElementById('f-allerg');if(!el||!el.children.length)return;
-  const names=[];
-  document.querySelectorAll('#il .ir').forEach(r=>{
-    const sel=r.querySelector('.ing-fiche-sel');
-    if(sel){const f=fiches.find(f=>f.id===sel.value);if(f)names.push(f.nom);}
-    else{const n=r.querySelector('.ing-n');if(n)names.push(n.value);}
-  });
-  const detected=detectAllergensFromNames(names);
-  detected.forEach(a=>{
-    const btn=Array.from(el.querySelectorAll('.allerg-chip')).find(b=>b.textContent===a);
-    if(btn)btn.classList.add('active');
-  });
-}
 
 let cfg={
   cats:['Base','Sauce','Garniture','Dessert','Autre'],
@@ -786,7 +732,6 @@ async function loadAll(){
   try{
     const{data:f}=await sb.from('fiches').select('*').order('nom',{ascending:true});
     fiches=f||[];
-    hasAllergenesCol=fiches.length>0&&fiches[0].allergenes!==undefined;
     renderFiches();
     document.getElementById('b-rec').textContent=fiches.length;
   }catch(e){toast('Erreur de connexion','err')}
@@ -811,8 +756,7 @@ function renderFiches(){
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
     const ingCount=(f.ingredients||[]).length;
-    const allergBadges=(f.allergenes||[]).map(a=>`<span class="allerg-badge">${escHTML(a)}</span>`).join('');
-    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div>${allergBadges?`<div style="margin-top:0.5rem">${allergBadges}</div>`:''}</div>`;
+    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
     c.onclick=()=>openFD(f.id);
     grid.appendChild(c);
   });
@@ -839,17 +783,11 @@ function closeModal(id){
 }
 
 // ── FICHE CRUD ──
-function renderAllergChips(selected=[]){
-  const el=document.getElementById('f-allerg');if(!el)return;
-  el.innerHTML=ALLERGENES.map(a=>`<button type="button" class="allerg-chip${selected.includes(a)?' active':''}" onclick="this.classList.toggle('active')">${escHTML(a)}</button>`).join('');
-}
-
 function openNewFiche(){
   editId=null;
   document.getElementById('mf-title').textContent='Nouvelle fiche';
   ['f-nom','f-qte'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cond-il').innerHTML='';addCondRow();
-  renderAllergChips();
   document.getElementById('il').innerHTML='';document.getElementById('sl').innerHTML='';
   addIR();addSR();openModal('modal-fiche');
 }
@@ -874,9 +812,9 @@ function addIR(nom='',qty='',u='g',ficheId='',brut=false,netQty=''){
   const handle=`<div class="drag-handle" title="Déplacer">⠿</div>`;
   if(ficheId){
     const ficheOpts=fiches.map(f=>`<option value="${f.id}" ${f.id===ficheId?'selected':''}>${escHTML(f.nom)}</option>`).join('');
-    r.innerHTML=`${handle}<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600" onchange="autoDetectAllergens()"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`${handle}<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }else{
-    r.innerHTML=`${handle}<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()" onblur="autoDetectAllergens()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`${handle}<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }
   l.appendChild(r);if(!nom&&!ficheId)r.querySelector('.ing-n')?.focus();
 }
@@ -898,7 +836,6 @@ function switchToFiche(btn){
   const sel=document.createElement('select');
   sel.className='fsel ing-fiche-sel';sel.style.cssText='color:var(--rouge);font-weight:600';
   sel.innerHTML=`<option value="">— Choisir une fiche —</option>${ficheOpts}`;
-  sel.onchange=()=>autoDetectAllergens();
   inp.replaceWith(sel);
   btn.title='Délier';btn.textContent='🔗';btn.onclick=function(){switchToFree(this)};
 }
@@ -909,7 +846,6 @@ function switchToFree(btn){
   const inp=document.createElement('input');
   inp.className='fi2 ing-n';inp.type='text';inp.placeholder='Ingrédient';
   inp.oninput=function(){this.value=this.value.toUpperCase()};
-  inp.onblur=()=>autoDetectAllergens();
   sel.replaceWith(inp);
   btn.title='Lier une sous-recette';btn.textContent='↗';btn.onclick=function(){switchToFiche(this)};
 }
@@ -987,9 +923,6 @@ async function saveFiche(){
     });
     const conditionnement=JSON.stringify(conds);
     const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),conditionnement,ingredients:ings,process:proc};
-    if(hasAllergenesCol){
-      data.allergenes=Array.from(document.querySelectorAll('#f-allerg .allerg-chip.active')).map(b=>b.textContent);
-    }
     await saveRecord('fiches',editId,data,{modalId:'modal-fiche',successMsg:'Fiche enregistrée ✓',updateMsg:'Fiche modifiée ✓'});
   }catch(e){
     toast('Erreur — réessaie','err');
@@ -1012,7 +945,6 @@ async function editFiche(id){
     conds.forEach(c=>{const m=CT.find(t=>c.startsWith(t));addCondRow(m||'',m?c.replace(m,'').replace(/^\s*—\s*/,'').trim():c);});
   }else{addCondRow();}
   document.getElementById('f-cat').value=f.categorie;
-  renderAllergChips(f.allergenes||[]);
   document.getElementById('il').innerHTML='';
   (f.ingredients||[]).forEach(i=>addIR(i.nom,i.quantite,i.unite,i.ficheId||'',i.brut||false,i.quantite_net||''));
   document.getElementById('sl').innerHTML='';
@@ -1080,7 +1012,6 @@ function buildFicheDoc(f,coef=1,mode='brut'){
     <div class="fdoc-hdr">
       <div class="fdoc-nom">${escHTML(f.nom)}</div>
       <div class="fdoc-sub">Fiche Technique</div>
-      ${(f.allergenes||[]).length?`<div style="margin-top:0.6rem">${f.allergenes.map(a=>`<span class="allerg-badge">${escHTML(a)}</span>`).join('')}</div>`:''}
     </div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
