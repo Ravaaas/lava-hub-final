@@ -582,7 +582,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 <script>
 const SB_URL='https://qmvxmxzsmpigvseuidcd.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtdnhteHpzbXBpZ3ZzZXVpZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTY1ODYsImV4cCI6MjA5NzI5MjU4Nn0._kDu_tyJbr9Hcckg_dC0OYsSqh23aPND96wMX_KLdAc';
-const sb=supabase.createClient(SB_URL,SB_KEY);
+const sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false}});
 
 let profil=null, editId=null, curFicheId=null;
 let fiches=[];
