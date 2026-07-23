@@ -364,7 +364,8 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     </div>
   </header>
   <nav class="tabs">
-    <button class="tb active" onclick="switchTab('recettes',this)">Fiches Recettes <span class="tbadge" id="b-rec">0</span></button>
+    <button class="tb active" onclick="switchTab('recettes',this)">Fiche Technique <span class="tbadge" id="b-rec">0</span></button>
+    <button class="tb" onclick="switchTab('fichesrecette',this)">Fiche Recette <span class="tbadge" id="b-fr">0</span></button>
     <button class="tb admin-only" onclick="switchTab('config',this)" style="display:none">Config</button>
   </nav>
   <main>
@@ -372,7 +373,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     <!-- RECETTES -->
     <div class="tc active" id="tab-recettes">
       <div class="ph">
-        <div><div class="ph-title">Fiches Recettes</div><div class="ph-sub" id="rec-sub">Chargement…</div></div>
+        <div><div class="ph-title">Fiche Technique</div><div class="ph-sub" id="rec-sub">Chargement…</div></div>
         <div class="ph-actions">
           <button class="btn btn-p admin-only" onclick="openNewFiche()" style="display:none">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nouvelle fiche
@@ -387,6 +388,25 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
         <select class="fs" id="f-cat-filter" onchange="renderFiches()"><option value="">Toutes les catégories</option></select>
       </div>
       <div class="fg" id="fiches-grid"><div class="es" style="grid-column:1/-1"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- FICHES RECETTE -->
+    <div class="tc" id="tab-fichesrecette">
+      <div class="ph">
+        <div><div class="ph-title">Fiche Recette</div><div class="ph-sub" id="fr-sub">Chargement…</div></div>
+        <div class="ph-actions">
+          <button class="btn btn-p admin-only" onclick="openNewFR()" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Nouvelle fiche recette
+          </button>
+        </div>
+      </div>
+      <div class="sb">
+        <div class="si-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="si" id="s-fr" type="text" placeholder="Rechercher…" oninput="renderFichesRecette()">
+        </div>
+      </div>
+      <div class="fg" id="fr-grid"><div class="es" style="grid-column:1/-1"><div class="spinner"></div></div></div>
     </div>
 
     <!-- CONFIG -->
@@ -447,6 +467,22 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   <div class="fd-content"><div id="fdoc-area"></div></div>
 </div>
 
+<!-- FICHE RECETTE DETAIL -->
+<div class="fd" id="frd">
+  <div class="fd-nav">
+    <button class="btn-back" onclick="closeFRD()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>Retour
+    </button>
+    <div style="flex:1;font-size:0.72rem;font-weight:600;color:var(--rouge)" id="frd-crumb"></div>
+    <div class="admin-only" id="frd-actions" style="display:none;gap:0.5rem;flex-wrap:wrap">
+      <button class="btn btn-g btn-sm" onclick="printFR()">🖨 Imprimer</button>
+      <button class="btn btn-g btn-sm" onclick="editCurrentFR()">Modifier</button>
+      <button class="btn btn-d btn-sm" onclick="deleteCurrentFR()">Supprimer</button>
+    </div>
+  </div>
+  <div class="fd-content"><div id="frdoc-area"></div></div>
+</div>
+
 <!-- MODAL FICHE -->
 <div class="mo" id="modal-fiche">
   <div class="modal">
@@ -473,6 +509,36 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     <div class="m-foot">
       <button class="btn btn-g" onclick="closeModal('modal-fiche')">Annuler</button>
       <button class="btn btn-p" id="btn-save-fiche" onclick="saveFiche()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FICHE RECETTE -->
+<div class="mo" id="modal-fr">
+  <div class="modal">
+    <div class="m-head"><div class="m-title" id="mfr-title">Nouvelle fiche recette</div><button class="m-close" onclick="closeModal('modal-fr')">✕</button></div>
+    <div class="m-body">
+      <div class="fg2"><label class="fl">Nom du plat *</label><input class="fi2" id="fr-nom" type="text" placeholder="ex: Cassolette de Saint-Jacques"></div>
+      <div class="fg2">
+        <label class="fl">Photo</label>
+        <div style="display:flex;align-items:center;gap:0.75rem">
+          <img id="fr-photo-preview" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:var(--r);border:1.5px solid var(--border)">
+          <input type="file" accept="image/*" id="fr-photo-input" onchange="handleFRPhoto(this)">
+          <button class="btn btn-g btn-sm" type="button" onclick="clearFRPhoto()">Retirer</button>
+        </div>
+      </div>
+      <div class="fg2"><label class="fl">Allergènes</label><textarea class="fta" id="fr-allergenes" placeholder="ex: Gluten, Crustacés, Lait"></textarea></div>
+      <div class="fsect">Sous-recettes principales</div>
+      <div class="si-wrap" style="margin-bottom:0.6rem">
+        <input class="si" style="padding-left:0.85rem" id="fr-sr-search" type="text" placeholder="Rechercher une fiche technique…" oninput="renderFRSrPicker()">
+      </div>
+      <div id="fr-sr-picker" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.75rem"></div>
+      <div class="fsect">Sélection (ordre d'apparition)</div>
+      <div class="il" id="fr-sr-selected"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-fr')">Annuler</button>
+      <button class="btn btn-p" id="btn-save-fr" onclick="saveFR()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -520,6 +586,7 @@ const sb=supabase.createClient(SB_URL,SB_KEY);
 
 let profil=null, editId=null, curFicheId=null;
 let fiches=[];
+let fichesRecette=[], editFRId=null, curFRId=null, frSelectedIds=[], frPhotoData='';
 
 let cfg={
   cats:['Base','Sauce','Garniture','Dessert','Autre'],
@@ -735,7 +802,39 @@ async function loadAll(){
     renderFiches();
     document.getElementById('b-rec').textContent=fiches.length;
   }catch(e){toast('Erreur de connexion','err')}
+  try{
+    const{data:fr,error:frErr}=await sb.from('fiches_recette').select('*').order('nom',{ascending:true});
+    if(frErr){
+      if(/relation .*fiches_recette.* does not exist/i.test(frErr.message||'')) showFRSetupSQL();
+    }else{
+      fichesRecette=fr||[];
+      renderFichesRecette();
+      document.getElementById('b-fr').textContent=fichesRecette.length;
+    }
+  }catch(e){}
   setSyncing(false);
+}
+
+function showFRSetupSQL(){
+  if(document.getElementById('fr-setup-sql'))return;
+  const sql=`create table fiches_recette (
+  id uuid primary key default gen_random_uuid(),
+  nom text not null,
+  photo text,
+  allergenes text,
+  sous_recettes jsonb default '[]'::jsonb,
+  created_at timestamptz default now()
+);
+alter table fiches_recette enable row level security;
+create policy "public read fiches_recette" on fiches_recette for select using (true);
+create policy "public write fiches_recette" on fiches_recette for insert with check (true);
+create policy "public update fiches_recette" on fiches_recette for update using (true);
+create policy "public delete fiches_recette" on fiches_recette for delete using (true);`;
+  const box=document.createElement('div');
+  box.id='fr-setup-sql';
+  box.style.cssText='position:fixed;bottom:16px;right:16px;max-width:480px;background:#1e1e1e;color:#eee;padding:16px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.4);z-index:9999;font-size:13px';
+  box.innerHTML=`<b>Table "fiches_recette" manquante</b><p style="margin:8px 0">Colle ce SQL une seule fois dans Supabase → SQL Editor, puis recharge la page.</p><pre style="white-space:pre-wrap;background:#111;padding:8px;border-radius:4px;max-height:200px;overflow:auto">${escHTML(sql)}</pre><button style="margin-top:8px" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);this.textContent='Copié !'">Copier le SQL</button> <button style="margin-top:8px" onclick="this.closest('#fr-setup-sql').remove()">Fermer</button>`;
+  document.body.appendChild(box);
 }
 
 // ── RENDER FICHES ──
@@ -762,6 +861,242 @@ function renderFiches(){
   });
 }
 
+// ── RENDER FICHES RECETTE ──
+function renderFichesRecette(){
+  const q=(document.getElementById('s-fr')?.value||'').toLowerCase();
+  const grid=document.getElementById('fr-grid');if(!grid)return;
+  const fil=fichesRecette.filter(f=>!q||f.nom.toLowerCase().includes(q));
+  const tot=fichesRecette.length;
+  document.getElementById('fr-sub').textContent=tot===0?'Aucune fiche':tot+' fiche'+(tot!==1?'s':'')+(fil.length!==tot?` · ${fil.length} résultat${fil.length!==1?'s':''}`:'');
+  document.getElementById('b-fr').textContent=tot;
+  grid.innerHTML='';
+  if(tot===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🍽</div><h3>Aucune fiche recette</h3><p>Crée la première fiche recette d\'un plat</p></div>';return}
+  if(fil.length===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🔍</div><h3>Aucun résultat</h3><p>Essaie un autre terme</p></div>';return}
+  fil.forEach(f=>{
+    const c=document.createElement('div');c.className='fc';
+    const nSr=(f.sous_recettes||[]).length;
+    c.innerHTML=`${f.photo?`<img src="${f.photo}" style="width:100%;height:140px;object-fit:cover;display:block">`:''}<div class="fc-top"><div class="fc-cat">${nSr} sous-recette${nSr!==1?'s':''}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
+    c.onclick=()=>openFRD(f.id);
+    grid.appendChild(c);
+  });
+}
+
+// ── FICHE RECETTE CRUD ──
+function handleFRPhoto(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    frPhotoData=reader.result;
+    const prev=document.getElementById('fr-photo-preview');
+    prev.src=frPhotoData;prev.style.display='block';
+  };
+  reader.readAsDataURL(file);
+}
+function clearFRPhoto(){
+  frPhotoData='';
+  document.getElementById('fr-photo-input').value='';
+  const prev=document.getElementById('fr-photo-preview');
+  prev.src='';prev.style.display='none';
+}
+
+function renderFRSrPicker(){
+  const q=(document.getElementById('fr-sr-search').value||'').toLowerCase();
+  const picker=document.getElementById('fr-sr-picker');
+  const fil=fiches.filter(f=>!frSelectedIds.includes(f.id)&&(!q||f.nom.toLowerCase().includes(q))).sort((a,b)=>a.nom.localeCompare(b.nom));
+  picker.innerHTML=fil.map(f=>`<div class="ci"><span class="ci-label">${escHTML(f.nom)}</span><button class="btn btn-o btn-sm" onclick="addFRSr('${f.id}')">+ Ajouter</button></div>`).join('')
+    ||'<div class="ci-label" style="color:var(--gt)">Aucune fiche technique disponible</div>';
+}
+
+function addFRSr(id){
+  if(frSelectedIds.includes(id))return;
+  frSelectedIds.push(id);
+  renderFRSelected();renderFRSrPicker();
+}
+function removeFRSr(id){
+  frSelectedIds=frSelectedIds.filter(x=>x!==id);
+  renderFRSelected();renderFRSrPicker();
+}
+
+function renderFRSelected(){
+  const l=document.getElementById('fr-sr-selected');
+  l.innerHTML=frSelectedIds.map(id=>{
+    const f=fiches.find(x=>x.id===id);
+    return `<div class="ir" style="grid-template-columns:14px 1fr 28px" data-id="${id}"><div class="drag-handle" title="Déplacer">⠿</div><div style="font-size:0.8rem;font-weight:500;color:var(--noir)">${escHTML(f?f.nom:'(fiche supprimée)')}</div><button class="btn-rm" onclick="removeFRSr('${id}')">×</button></div>`;
+  }).join('');
+}
+
+function openNewFR(){
+  editFRId=null;frSelectedIds=[];frPhotoData='';
+  document.getElementById('mfr-title').textContent='Nouvelle fiche recette';
+  document.getElementById('fr-nom').value='';
+  document.getElementById('fr-allergenes').value='';
+  document.getElementById('fr-sr-search').value='';
+  clearFRPhoto();
+  renderFRSrPicker();renderFRSelected();
+  openModal('modal-fr');
+}
+
+async function editFR(id){
+  const f=fichesRecette.find(f=>f.id===id);if(!f)return;
+  editFRId=id;
+  frSelectedIds=[...(f.sous_recettes||[])];
+  frPhotoData=f.photo||'';
+  document.getElementById('mfr-title').textContent='Modifier — '+f.nom;
+  document.getElementById('fr-nom').value=f.nom;
+  document.getElementById('fr-allergenes').value=f.allergenes||'';
+  document.getElementById('fr-sr-search').value='';
+  const prev=document.getElementById('fr-photo-preview');
+  document.getElementById('fr-photo-input').value='';
+  if(frPhotoData){prev.src=frPhotoData;prev.style.display='block'}else{prev.src='';prev.style.display='none'}
+  renderFRSrPicker();renderFRSelected();
+  openModal('modal-fr');
+}
+
+async function saveFR(){
+  const nom=document.getElementById('fr-nom').value.trim();
+  if(!nom){toast('Le nom est obligatoire','err');return}
+  setBusy('btn-save-fr',true);
+  try{
+    const order=[...document.querySelectorAll('#fr-sr-selected .ir')].map(r=>r.dataset.id);
+    const data={nom,photo:frPhotoData||null,allergenes:document.getElementById('fr-allergenes').value.trim(),sous_recettes:order};
+    const res=editFRId?await sb.from('fiches_recette').update(data).eq('id',editFRId):await sb.from('fiches_recette').insert(data);
+    if(res.error){toast('Erreur : '+res.error.message,'err');return}
+    await logAudit(editFRId?'modification fiche recette':'création fiche recette',nom);
+    toast(editFRId?'Fiche recette modifiée ✓':'Fiche recette enregistrée ✓','ok');
+    closeModal('modal-fr');await loadAll();
+  }catch(e){
+    toast('Erreur réseau — réessaie','err');
+  }finally{
+    setBusy('btn-save-fr',false);
+  }
+}
+
+function editCurrentFR(){if(curFRId)editFR(curFRId)}
+async function deleteCurrentFR(){if(curFRId){const id=curFRId;closeFRD();await deleteFR(id);}}
+
+async function deleteFR(id){
+  const target=fichesRecette.find(f=>f.id===id);
+  if(!await confirmDialog('Supprimer cette fiche recette ?'))return;
+  setSyncing(true);
+  await sb.from('fiches_recette').delete().eq('id',id);
+  setSyncing(false);
+  await logAudit('suppression fiche recette',target?target.nom:'');
+  toast('Fiche recette supprimée');await loadAll();
+}
+
+// ── FICHE RECETTE DOC ──
+function buildFicheRecetteDoc(fr){
+  const sousRecettes=(fr.sous_recettes||[]).map(id=>fiches.find(f=>f.id===id)).filter(Boolean);
+  const sections=sousRecettes.map(f=>{
+    const irows=(f.ingredients||[]).map(i=>{
+      const qty=i.unite==='pm'?'pm':(i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):'—');
+      return `<tr><td>${escHTML((i.nom||'').toUpperCase())}</td><td>${qty}</td></tr>`;
+    }).join('');
+    const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
+    return `<div class="fdoc-ptitle">${escHTML(f.nom)}</div>
+      <table class="fdoc-table"><thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th></tr></thead><tbody>${irows}</tbody></table>
+      <div class="fdoc-steps" style="margin-top:0.5rem">${steps}</div>`;
+  }).join('');
+  return `<div class="fdoc">
+    <div class="fdoc-hdr">
+      ${fr.photo?`<img src="${fr.photo}" style="width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-bottom:1rem">`:''}
+      <div class="fdoc-nom">${escHTML(fr.nom)}</div>
+      <div class="fdoc-sub">Fiche Recette</div>
+      ${fr.allergenes?`<div style="margin-top:0.6rem;font-size:0.72rem;color:#B5433C"><strong>Allergènes :</strong> ${escHTML(fr.allergenes)}</div>`:''}
+    </div>
+    <div class="fdoc-body">
+      <hr class="fdoc-sep">
+      ${sections||'<div class="ci-label" style="color:var(--gt)">Aucune sous-recette liée</div>'}
+    </div>
+  </div>`;
+}
+
+function openFRD(id){
+  const f=fichesRecette.find(f=>f.id===id);if(!f)return;
+  curFRId=id;
+  document.getElementById('frd-crumb').textContent=f.nom;
+  document.getElementById('frdoc-area').innerHTML=buildFicheRecetteDoc(f);
+  document.getElementById('frd').classList.add('open');
+}
+function closeFRD(){document.getElementById('frd').classList.remove('open');curFRId=null}
+
+// ── FICHE RECETTE PDF (2 pages A4 max, recto-verso) ──
+function buildFicheRecettePDF(fr){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const pageW=210,pageH=297,mX=18,mTop=14,mBottom=14;
+  let y=mTop;
+
+  if(fr.photo){
+    try{
+      const m=/^data:image\/(png|jpe?g|webp)/i.exec(fr.photo);
+      const fmt=m?m[1].toUpperCase().replace('JPG','JPEG'):'JPEG';
+      doc.addImage(fr.photo,fmt,mX,y,pageW-2*mX,45,undefined,'FAST');y+=49;
+    }catch(e){}
+  }
+  doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(...PDF_NOIR);
+  doc.text((fr.nom||'').toUpperCase(),mX,y+6);
+  doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...PDF_ROUGE);
+  doc.text('Fiche Recette',mX,y+11.5);
+  y+=15;
+  if(fr.allergenes){
+    doc.setFontSize(7.5);doc.setTextColor(...PDF_ROUGE);
+    doc.text('Allergènes : '+fr.allergenes,mX,y);
+    y+=5;
+  }
+  doc.setDrawColor(...PDF_ROUGE);doc.setLineWidth(0.6);doc.line(mX,y,pageW-mX,y);
+  y+=6;
+
+  const sousRecettes=(fr.sous_recettes||[]).map(id=>fiches.find(f=>f.id===id)).filter(Boolean);
+  sousRecettes.forEach(f=>{
+    if(y>pageH-mBottom-30){doc.addPage();y=mTop;}
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...PDF_ROUGE);
+    doc.text(f.nom.toUpperCase(),mX,y);
+    y+=2;
+    const rows=(f.ingredients||[]).map(i=>[
+      (i.nom||'').toUpperCase(),
+      i.unite==='pm'?'pm':(i.quantite?i.quantite+' '+(i.unite||''):'—')
+    ]);
+    doc.autoTable({
+      startY:y+2,
+      body:rows,
+      theme:'plain',
+      margin:{left:mX,right:mX,bottom:mBottom},
+      styles:{font:'helvetica',fontSize:7.5,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4,bottom:1.4,left:2.2,right:2.2}},
+      columnStyles:{1:{halign:'right',textColor:PDF_GRIS_FONCE,cellWidth:35}},
+      alternateRowStyles:{fillColor:PDF_ROSE_ALT}
+    });
+    y=doc.lastAutoTable.finalY+2;
+    const stepRows=(f.process||[]).map((s,i)=>[String(i+1),s]);
+    if(stepRows.length){
+      doc.autoTable({
+        startY:y,
+        body:stepRows,
+        theme:'plain',
+        margin:{left:mX,right:mX,bottom:mBottom},
+        styles:{font:'helvetica',fontSize:7.5,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4,bottom:1.4,left:2.2,right:2.2},valign:'middle'},
+        columnStyles:{0:{cellWidth:7,halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{cellWidth:'auto'}},
+        alternateRowStyles:{fillColor:PDF_ROSE_ALT},
+        didParseCell:(data)=>{ if(data.column.index===0) data.cell.styles.fillColor=PDF_ROUGE; }
+      });
+      y=doc.lastAutoTable.finalY;
+    }
+    y+=6;
+  });
+  return doc;
+}
+
+function printFR(){
+  if(!curFRId)return;
+  const f=fichesRecette.find(f=>f.id===curFRId);if(!f)return;
+  try{
+    const doc=buildFicheRecettePDF(f);
+    window.open(doc.output('bloburl'),'_blank');
+  }catch(e){
+    toast('Erreur à la génération du PDF','err');
+  }
+}
+
 // ── MODALS ──
 function openModal(id){document.getElementById(id).classList.add('open')}
 
@@ -780,6 +1115,7 @@ function resolveConfirm(v){
 function closeModal(id){
   document.getElementById(id).classList.remove('open');
   if(id==='modal-fiche')editId=null;
+  if(id==='modal-fr')editFRId=null;
 }
 
 // ── FICHE CRUD ──
@@ -1213,7 +1549,7 @@ function setupDrag(containerId){
   c.addEventListener('pointerup',end);
   c.addEventListener('pointercancel',end);
 }
-document.addEventListener('DOMContentLoaded',()=>{setupDrag('il');setupDrag('sl');tryRestoreSession()});
+document.addEventListener('DOMContentLoaded',()=>{setupDrag('il');setupDrag('sl');setupDrag('fr-sr-selected');tryRestoreSession()});
 
 // ── TOAST ──
 function toast(msg,type=''){
