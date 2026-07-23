@@ -217,6 +217,14 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .fdoc-footer{position:absolute;bottom:1.25cm;left:2cm;right:2cm;display:flex;justify-content:space-between;padding-top:0.6rem;border-top:1px solid #E0D0D0}
 .fdoc-fl{font-size:0.58rem;font-weight:400;color:#B5433C;margin-bottom:0.2rem}
 .fdoc-fv{font-size:1.1rem;font-weight:700;color:#221818}
+.fr-sr-title{font-size:0.68rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#B5433C;margin-bottom:1rem}
+.fr-sr-list{display:flex;flex-direction:column;gap:1.5rem}
+.fr-sr-card{border:1px solid #E0D0D0;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(34,24,24,0.06)}
+.fr-sr-head{display:flex;align-items:center;gap:0.65rem;padding:0.75rem 1rem;background:#FBF3F1;border-bottom:1px solid #E0D0D0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.fr-sr-badge{width:22px;height:22px;border-radius:50%;background:#B5433C;color:#fff;font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.fr-sr-name{font-size:0.82rem;font-weight:700;color:#221818;text-transform:uppercase;letter-spacing:0.02em}
+.fr-sr-card .fdoc-table{border:none}
+.fr-sr-card .fdoc-steps{border:none;border-top:1px solid #EDD8D8}
 
 
 
@@ -987,26 +995,29 @@ async function deleteFR(id){
 // ── FICHE RECETTE DOC ──
 function buildFicheRecetteDoc(fr){
   const sousRecettes=(fr.sous_recettes||[]).map(id=>fiches.find(f=>f.id===id)).filter(Boolean);
-  const sections=sousRecettes.map(f=>{
+  const sections=sousRecettes.map((f,idx)=>{
     const irows=(f.ingredients||[]).map(i=>{
       const qty=i.unite==='pm'?'pm':(i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):'—');
       return `<tr><td>${escHTML((i.nom||'').toUpperCase())}</td><td>${qty}</td></tr>`;
     }).join('');
     const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
-    return `<div class="fdoc-ptitle">${escHTML(f.nom)}</div>
+    return `<div class="fr-sr-card">
+      <div class="fr-sr-head"><span class="fr-sr-badge">${idx+1}</span><span class="fr-sr-name">${escHTML(f.nom)}</span></div>
       <table class="fdoc-table"><thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th></tr></thead><tbody>${irows}</tbody></table>
-      <div class="fdoc-steps" style="margin-top:0.5rem">${steps}</div>`;
+      ${steps?`<div class="fdoc-steps">${steps}</div>`:''}
+    </div>`;
   }).join('');
   return `<div class="fdoc">
     <div class="fdoc-hdr">
-      ${fr.photo?`<img src="${fr.photo}" style="width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-bottom:1rem">`:''}
       <div class="fdoc-nom">${escHTML(fr.nom)}</div>
       <div class="fdoc-sub">Fiche Recette</div>
       ${fr.allergenes?`<div style="margin-top:0.6rem;font-size:0.72rem;color:#B5433C"><strong>Allergènes :</strong> ${escHTML(fr.allergenes)}</div>`:''}
+      ${fr.photo?`<img src="${fr.photo}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-top:1.25rem">`:''}
     </div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
-      ${sections||'<div class="ci-label" style="color:var(--gt)">Aucune sous-recette liée</div>'}
+      ${sousRecettes.length?`<div class="fr-sr-title">Sous-recettes (${sousRecettes.length})</div>`:''}
+      <div class="fr-sr-list">${sections||'<div class="ci-label" style="color:var(--gt)">Aucune sous-recette liée</div>'}</div>
     </div>
   </div>`;
 }
