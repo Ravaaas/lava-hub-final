@@ -223,6 +223,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .fr-sr-head{display:flex;align-items:center;gap:0.65rem;padding:0.75rem 1rem;background:#FBF3F1;border-bottom:1px solid #E0D0D0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .fr-sr-badge{width:22px;height:22px;border-radius:50%;background:#B5433C;color:#fff;font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .fr-sr-name{font-size:0.82rem;font-weight:700;color:#221818;text-transform:uppercase;letter-spacing:0.02em}
+.fr-sr-gram{margin-left:auto;font-size:0.72rem;font-weight:600;color:#8a6a68;background:#fff;padding:2px 8px;border-radius:8px;border:1px solid #E0D0D0}
 .fr-sr-card .fdoc-table{border:none}
 .fr-sr-card .fdoc-steps{border:none;border-top:1px solid #EDD8D8}
 
@@ -507,6 +508,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
           <button class="btn-ar" onclick="addCondRow()" style="margin-top:0.4rem">+ Ajouter un conditionnement</button>
         </div>
       </div>
+      <div class="fg2"><label class="fl">Allergènes</label><textarea class="fta" id="f-allerg" placeholder="ex: Gluten, Lait"></textarea></div>
       <div class="fsect">Ingrédients</div>
       <div class="il" id="il"></div>
       <button class="btn-ar" onclick="addIR()">+ Ajouter un ingrédient</button>
@@ -535,8 +537,8 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
           <button class="btn btn-g btn-sm" type="button" onclick="clearFRPhoto()">Retirer</button>
         </div>
       </div>
-      <div class="fg2"><label class="fl">Allergènes</label><textarea class="fta" id="fr-allergenes" placeholder="ex: Gluten, Crustacés, Lait"></textarea></div>
-      <div class="fsect">Sous-recettes principales</div>
+      <div class="fg2"><label class="fl">Allergènes <span style="font-weight:400;color:var(--gt);font-size:0.7rem">(auto, d'après les recettes liées)</span></label><div class="fi2" id="fr-allergenes-auto" style="min-height:2.3rem;display:flex;align-items:center;color:var(--noir)">—</div></div>
+      <div class="fsect">Recettes principales</div>
       <div class="si-wrap" style="margin-bottom:0.6rem">
         <input class="si" style="padding-left:0.85rem" id="fr-sr-search" type="text" placeholder="Rechercher une fiche technique…" oninput="renderFRSrPicker()">
       </div>
@@ -883,7 +885,7 @@ function renderFichesRecette(){
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
     const nSr=(f.sous_recettes||[]).length;
-    c.innerHTML=`${f.photo?`<img src="${f.photo}" style="width:100%;height:140px;object-fit:cover;display:block">`:''}<div class="fc-top"><div class="fc-cat">${nSr} sous-recette${nSr!==1?'s':''}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
+    c.innerHTML=`${f.photo?`<img src="${f.photo}" style="width:100%;height:140px;object-fit:cover;display:block">`:''}<div class="fc-top"><div class="fc-cat">${nSr} recette${nSr!==1?'s':''}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
     c.onclick=()=>openFRD(f.id);
     grid.appendChild(c);
   });
@@ -910,53 +912,65 @@ function clearFRPhoto(){
 function renderFRSrPicker(){
   const q=(document.getElementById('fr-sr-search').value||'').toLowerCase();
   const picker=document.getElementById('fr-sr-picker');
-  const fil=fiches.filter(f=>!frSelectedIds.includes(f.id)&&(!q||f.nom.toLowerCase().includes(q))).sort((a,b)=>a.nom.localeCompare(b.nom));
+  const fil=fiches.filter(f=>!frSelectedIds.some(x=>x.id===f.id)&&(!q||f.nom.toLowerCase().includes(q))).sort((a,b)=>a.nom.localeCompare(b.nom));
   picker.innerHTML=fil.map(f=>`<div class="ci"><span class="ci-label">${escHTML(f.nom)}</span><button class="btn btn-o btn-sm" onclick="addFRSr('${f.id}')">+ Ajouter</button></div>`).join('')
     ||'<div class="ci-label" style="color:var(--gt)">Aucune fiche technique disponible</div>';
 }
 
 function addFRSr(id){
-  if(frSelectedIds.includes(id))return;
-  frSelectedIds.push(id);
-  renderFRSelected();renderFRSrPicker();
+  if(frSelectedIds.some(x=>x.id===id))return;
+  frSelectedIds.push({id,grammage:''});
+  renderFRSelected();renderFRSrPicker();renderFRAllergenes();
 }
 function removeFRSr(id){
-  frSelectedIds=frSelectedIds.filter(x=>x!==id);
-  renderFRSelected();renderFRSrPicker();
+  frSelectedIds=frSelectedIds.filter(x=>x.id!==id);
+  renderFRSelected();renderFRSrPicker();renderFRAllergenes();
 }
 
 function renderFRSelected(){
   const l=document.getElementById('fr-sr-selected');
-  l.innerHTML=frSelectedIds.map(id=>{
+  l.innerHTML=frSelectedIds.map(({id,grammage})=>{
     const f=fiches.find(x=>x.id===id);
-    return `<div class="ir" style="grid-template-columns:14px 1fr 28px" data-id="${id}"><div class="drag-handle" title="Déplacer">⠿</div><div style="font-size:0.8rem;font-weight:500;color:var(--noir)">${escHTML(f?f.nom:'(fiche supprimée)')}</div><button class="btn-rm" onclick="removeFRSr('${id}')">×</button></div>`;
+    return `<div class="ir" style="grid-template-columns:14px 1fr 110px 28px" data-id="${id}"><div class="drag-handle" title="Déplacer">⠿</div><div style="font-size:0.8rem;font-weight:500;color:var(--noir)">${escHTML(f?f.nom:'(fiche supprimée)')}</div><input class="fi2 fr-sr-gram-in" type="text" placeholder="Grammage" value="${escHTML(grammage||'')}" style="padding:0.3rem 0.5rem;font-size:0.78rem" oninput="updateFRGrammage('${id}',this.value)"><button class="btn-rm" onclick="removeFRSr('${id}')">×</button></div>`;
   }).join('');
+}
+function updateFRGrammage(id,val){
+  const e=frSelectedIds.find(x=>x.id===id);if(e)e.grammage=val;
+}
+function renderFRAllergenes(){
+  const set=new Set();
+  frSelectedIds.forEach(({id})=>{
+    const f=fiches.find(x=>x.id===id);
+    (f?.allergenes||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(a=>set.add(a));
+  });
+  const list=[...set].sort((a,b)=>a.localeCompare(b,'fr'));
+  const el=document.getElementById('fr-allergenes-auto');
+  if(el)el.textContent=list.length?list.join(', '):'—';
+  return list;
 }
 
 function openNewFR(){
   editFRId=null;frSelectedIds=[];frPhotoData='';
   document.getElementById('mfr-title').textContent='Nouvelle fiche recette';
   document.getElementById('fr-nom').value='';
-  document.getElementById('fr-allergenes').value='';
   document.getElementById('fr-sr-search').value='';
   clearFRPhoto();
-  renderFRSrPicker();renderFRSelected();
+  renderFRSrPicker();renderFRSelected();renderFRAllergenes();
   openModal('modal-fr');
 }
 
 async function editFR(id){
   const f=fichesRecette.find(f=>f.id===id);if(!f)return;
   editFRId=id;
-  frSelectedIds=[...(f.sous_recettes||[])];
+  frSelectedIds=(f.sous_recettes||[]).map(x=>typeof x==='string'?{id:x,grammage:''}:{id:x.id,grammage:x.grammage||''});
   frPhotoData=f.photo||'';
   document.getElementById('mfr-title').textContent='Modifier — '+f.nom;
   document.getElementById('fr-nom').value=f.nom;
-  document.getElementById('fr-allergenes').value=f.allergenes||'';
   document.getElementById('fr-sr-search').value='';
   const prev=document.getElementById('fr-photo-preview');
   document.getElementById('fr-photo-input').value='';
   if(frPhotoData){prev.src=frPhotoData;prev.style.display='block'}else{prev.src='';prev.style.display='none'}
-  renderFRSrPicker();renderFRSelected();
+  renderFRSrPicker();renderFRSelected();renderFRAllergenes();
   openModal('modal-fr');
 }
 
@@ -965,8 +979,8 @@ async function saveFR(){
   if(!nom){toast('Le nom est obligatoire','err');return}
   setBusy('btn-save-fr',true);
   try{
-    const order=[...document.querySelectorAll('#fr-sr-selected .ir')].map(r=>r.dataset.id);
-    const data={nom,photo:frPhotoData||null,allergenes:document.getElementById('fr-allergenes').value.trim(),sous_recettes:order};
+    const order=[...document.querySelectorAll('#fr-sr-selected .ir')].map(r=>({id:r.dataset.id,grammage:(r.querySelector('.fr-sr-gram-in')?.value||'').trim()}));
+    const data={nom,photo:frPhotoData||null,allergenes:renderFRAllergenes().join(', '),sous_recettes:order};
     const res=editFRId?await sb.from('fiches_recette').update(data).eq('id',editFRId):await sb.from('fiches_recette').insert(data);
     if(res.error){toast('Erreur : '+res.error.message,'err');return}
     await logAudit(editFRId?'modification fiche recette':'création fiche recette',nom);
@@ -993,16 +1007,19 @@ async function deleteFR(id){
 }
 
 // ── FICHE RECETTE DOC ──
+function normFRSousRecettes(fr){
+  return (fr.sous_recettes||[]).map(x=>typeof x==='string'?{id:x,grammage:''}:x).map(e=>({...e,ref:fiches.find(f=>f.id===e.id)})).filter(e=>e.ref);
+}
 function buildFicheRecetteDoc(fr){
-  const sousRecettes=(fr.sous_recettes||[]).map(id=>fiches.find(f=>f.id===id)).filter(Boolean);
-  const sections=sousRecettes.map((f,idx)=>{
+  const entries=normFRSousRecettes(fr);
+  const sections=entries.map(({ref:f,grammage},idx)=>{
     const irows=(f.ingredients||[]).map(i=>{
       const qty=i.unite==='pm'?'pm':(i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):'—');
       return `<tr><td>${escHTML((i.nom||'').toUpperCase())}</td><td>${qty}</td></tr>`;
     }).join('');
     const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
     return `<div class="fr-sr-card">
-      <div class="fr-sr-head"><span class="fr-sr-badge">${idx+1}</span><span class="fr-sr-name">${escHTML(f.nom)}</span></div>
+      <div class="fr-sr-head"><span class="fr-sr-badge">${idx+1}</span><span class="fr-sr-name">${escHTML(f.nom)}</span>${grammage?`<span class="fr-sr-gram">${escHTML(grammage)}</span>`:''}</div>
       <table class="fdoc-table"><thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th></tr></thead><tbody>${irows}</tbody></table>
       ${steps?`<div class="fdoc-steps">${steps}</div>`:''}
     </div>`;
@@ -1016,8 +1033,8 @@ function buildFicheRecetteDoc(fr){
     </div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
-      ${sousRecettes.length?`<div class="fr-sr-title">Sous-recettes (${sousRecettes.length})</div>`:''}
-      <div class="fr-sr-list">${sections||'<div class="ci-label" style="color:var(--gt)">Aucune sous-recette liée</div>'}</div>
+      ${entries.length?`<div class="fr-sr-title">Recettes (${entries.length})</div>`:''}
+      <div class="fr-sr-list">${sections||'<div class="ci-label" style="color:var(--gt)">Aucune recette liée</div>'}</div>
     </div>
   </div>`;
 }
@@ -1081,17 +1098,21 @@ function buildFicheRecettePDF(fr){
     return h+8;
   }
 
-  const sousRecettes=(fr.sous_recettes||[]).map(id=>fiches.find(f=>f.id===id)).filter(Boolean);
-  if(sousRecettes.length){
+  const srEntries=normFRSousRecettes(fr);
+  if(srEntries.length){
     doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...PDF_NOIR);
-    doc.text('Sous-recettes ('+sousRecettes.length+')',mX,y);
+    doc.text('Recettes ('+srEntries.length+')',mX,y);
     y+=7;
   }
-  sousRecettes.forEach((f,idx)=>{
+  srEntries.forEach(({ref:f,grammage},idx)=>{
     const estH=measureSRHeight(f);
     if(y+Math.min(estH,pageH-mTop-mBottom)>pageH-mBottom){doc.addPage();y=mTop;}
     doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...PDF_ROUGE);
     doc.text((idx+1)+'. '+f.nom.toUpperCase(),mX,y);
+    if(grammage){
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...PDF_GRIS_FONCE);
+      doc.text(String(grammage),pageW-mX,y,{align:'right'});
+    }
     y+=2;
     const rows=(f.ingredients||[]).map(i=>[
       (i.nom||'').toUpperCase(),
@@ -1162,7 +1183,7 @@ function closeModal(id){
 function openNewFiche(){
   editId=null;
   document.getElementById('mf-title').textContent='Nouvelle fiche';
-  ['f-nom','f-qte'].forEach(id=>document.getElementById(id).value='');
+  ['f-nom','f-qte','f-allerg'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('cond-il').innerHTML='';addCondRow();
   document.getElementById('il').innerHTML='';document.getElementById('sl').innerHTML='';
   addIR();addSR();openModal('modal-fiche');
@@ -1190,7 +1211,7 @@ function addIR(nom='',qty='',u='g',ficheId='',brut=false,netQty=''){
     const ficheOpts=fiches.map(f=>`<option value="${f.id}" ${f.id===ficheId?'selected':''}>${escHTML(f.nom)}</option>`).join('');
     r.innerHTML=`${handle}<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }else{
-    r.innerHTML=`${handle}<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une sous-recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`${handle}<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
   }
   l.appendChild(r);if(!nom&&!ficheId)r.querySelector('.ing-n')?.focus();
 }
@@ -1223,7 +1244,7 @@ function switchToFree(btn){
   inp.className='fi2 ing-n';inp.type='text';inp.placeholder='Ingrédient';
   inp.oninput=function(){this.value=this.value.toUpperCase()};
   sel.replaceWith(inp);
-  btn.title='Lier une sous-recette';btn.textContent='↗';btn.onclick=function(){switchToFiche(this)};
+  btn.title='Lier une recette';btn.textContent='↗';btn.onclick=function(){switchToFiche(this)};
 }
 
 function addSR(t=''){
@@ -1298,7 +1319,7 @@ async function saveFiche(){
       if(t)conds.push(t+(q?' — '+q:''));
     });
     const conditionnement=JSON.stringify(conds);
-    const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),conditionnement,ingredients:ings,process:proc};
+    const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),allergenes:document.getElementById('f-allerg').value.trim(),conditionnement,ingredients:ings,process:proc};
     await saveRecord('fiches',editId,data,{modalId:'modal-fiche',successMsg:'Fiche enregistrée ✓',updateMsg:'Fiche modifiée ✓'});
   }catch(e){
     toast('Erreur — réessaie','err');
@@ -1313,6 +1334,7 @@ async function editFiche(id){
   document.getElementById('mf-title').textContent='Modifier — '+f.nom;
   document.getElementById('f-nom').value=f.nom;
   document.getElementById('f-qte').value=f.quantite_nette||'';
+  document.getElementById('f-allerg').value=f.allergenes||'';
   document.getElementById('cond-il').innerHTML='';
   let conds=[];
   try{conds=JSON.parse(f.conditionnement||'[]');}catch(e){if(f.conditionnement)conds=[f.conditionnement];}
@@ -1336,7 +1358,7 @@ async function deleteFiche(id){
   const target=fiches.find(f=>f.id===id);
   const dependants=fiches.filter(f=>f.id!==id&&(f.ingredients||[]).some(i=>i.ficheId===id));
   const msg=dependants.length
-    ?`"${target?target.nom:''}" est utilisée comme sous-recette dans : ${dependants.map(f=>f.nom).join(', ')}. La supprimer retirera le lien (l'ingrédient restera en texte simple). Continuer ?`
+    ?`"${target?target.nom:''}" est utilisée comme recette dans : ${dependants.map(f=>f.nom).join(', ')}. La supprimer retirera le lien (l'ingrédient restera en texte simple). Continuer ?`
     :'Supprimer cette fiche ?';
   if(!await confirmDialog(msg))return;
   setSyncing(true);
