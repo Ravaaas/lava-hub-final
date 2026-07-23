@@ -1052,7 +1052,11 @@ function buildFicheRecettePDF(fr){
     try{
       const m=/^data:image\/(png|jpe?g|webp)/i.exec(fr.photo);
       const fmt=m?m[1].toUpperCase().replace('JPG','JPEG'):'JPEG';
-      doc.addImage(fr.photo,fmt,mX,y,pageW-2*mX,45,undefined,'FAST');y+=49;
+      const props=doc.getImageProperties(fr.photo);
+      const maxW=pageW-2*mX,maxH=70;
+      let iw=maxW,ih=iw*props.height/props.width;
+      if(ih>maxH){ih=maxH;iw=ih*props.width/props.height;}
+      doc.addImage(fr.photo,fmt,mX+(maxW-iw)/2,y,iw,ih,undefined,'FAST');y+=ih+4;
     }catch(e){}
   }
   doc.setDrawColor(...PDF_ROUGE);doc.setLineWidth(0.6);doc.line(mX,y,pageW-mX,y);
