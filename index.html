@@ -1060,7 +1060,9 @@ function buildFicheRecettePDF(fr){
 
   const sousRecettes=(fr.sous_recettes||[]).map(id=>fiches.find(f=>f.id===id)).filter(Boolean);
   sousRecettes.forEach(f=>{
-    if(y>pageH-mBottom-30){doc.addPage();y=mTop;}
+    const ingN=(f.ingredients||[]).length,stepN=(f.process||[]).length;
+    const estH=8+(ingN+1)*6+(stepN?stepN*6+2:0)+8;
+    if(y+Math.min(estH,pageH-mTop-mBottom)>pageH-mBottom){doc.addPage();y=mTop;}
     doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...PDF_ROUGE);
     doc.text(f.nom.toUpperCase(),mX,y);
     y+=2;
