@@ -1009,10 +1009,10 @@ function buildFicheRecetteDoc(fr){
   }).join('');
   return `<div class="fdoc">
     <div class="fdoc-hdr">
+      ${fr.photo?`<img src="${fr.photo}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-bottom:1.25rem">`:''}
       <div class="fdoc-nom">${escHTML(fr.nom)}</div>
       <div class="fdoc-sub">Fiche Recette</div>
       ${fr.allergenes?`<div style="margin-top:0.6rem;font-size:0.72rem;color:#B5433C"><strong>Allergènes :</strong> ${escHTML(fr.allergenes)}</div>`:''}
-      ${fr.photo?`<img src="${fr.photo}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-top:1.25rem">`:''}
     </div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
