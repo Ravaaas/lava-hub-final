@@ -1178,7 +1178,7 @@ function buildFicheRecettePDF(fr){
   const colX=[mX,mX+colW+gutter];
 
   function measureSRHeight(f,scale){
-    const nameColW=colW-qtyColW-5,stepColW=colW-7-5;
+    const nameColW=colW-qtyColW-5;
     const fs=7.5*scale;
     const lineH=fs*0.3527*1.15;
     doc.setFont('helvetica','normal');doc.setFontSize(fs);
@@ -1186,7 +1186,7 @@ function buildFicheRecettePDF(fr){
     const pad=2.8*scale;
     const cardAllerg=allergArr(f?.allergenes);
     if(cardAllerg.length){
-      h+=measureAllergChipsHeight(doc,cardAllerg,colW-6,Math.max(4.5,5.2*scale))+2.4*scale;
+      h+=3.4*scale+measureAllergChipsHeight(doc,cardAllerg,colW-13,Math.max(4.5,5.2*scale))+2.4*scale;
     }
     (f?.ingredients||[]).forEach(i=>{
       const lines=doc.splitTextToSize((i.nom||'').toUpperCase(),nameColW).length;
@@ -1194,9 +1194,11 @@ function buildFicheRecettePDF(fr){
     });
     if((f?.process||[]).length){
       h+=7*scale;
+      const stepBadgeR=Math.max(2.4,3.2*scale);
+      const stepTextW=colW-4-stepBadgeR*2-3*scale;
       f.process.forEach(s=>{
-        const lines=doc.splitTextToSize(String(s),stepColW).length;
-        h+=lines*lineH+pad;
+        const lines=doc.splitTextToSize(String(s),stepTextW).length;
+        h+=Math.max(lines*lineH+pad,stepBadgeR*2+1*scale);
       });
     }
     return h+8*scale;
@@ -1227,7 +1229,7 @@ function buildFicheRecettePDF(fr){
   // ── Trouve une mise en page qui tient toujours en 2 pages (2 colonnes ×
   // 2 pages) : réduit d'abord la photo, puis (si besoin) l'échelle des
   // cartes, jusqu'à ce que le contenu total tienne dans le budget.
-  const sectionH=srEntries.length?7:0;
+  const sectionH=srEntries.length?10.5:0;
   const total1=measureAllAt(1);
   let photoMaxH=70,headerH=headerHeightWithPhoto(photoMaxH);
   let budget=0.9*(2*(usableH-headerH-sectionH)+2*usableH);
@@ -1261,7 +1263,7 @@ function buildFicheRecettePDF(fr){
     doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...PDF_ROUGE);
     doc.text('ALLERGÈNES',mX,y+2.2);
     y+=5;
-    y=drawAllergChips(doc,topAllerg,mX,y,pageW-2*mX,7,[251,237,236],[237,216,216],PDF_ROUGE);
+    y=drawAllergChips(doc,topAllerg,mX,y,pageW-2*mX,7,[255,255,255],PDF_ROUGE,PDF_ROUGE);
     y+=4;
   }
   if(fr.photo&&photoMaxH>0){
@@ -1281,7 +1283,10 @@ function buildFicheRecettePDF(fr){
   if(srEntries.length){
     doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...PDF_NOIR);
     doc.text('Recettes ('+srEntries.length+')',mX,y);
-    y+=7;
+    y+=5;
+    doc.setFont('helvetica','italic');doc.setFontSize(6.5);doc.setTextColor(...PDF_GRIS_FONCE);
+    doc.text("Numérotées selon l'ordre de dressage",mX,y);
+    y+=5.5;
   }
 
   // ── Grille : place chaque carte dans la colonne la moins remplie, passe
@@ -1308,9 +1313,10 @@ function buildFicheRecettePDF(fr){
     const c=placeCard(estH);
     const x0=colX[c];
     let yy=colY[c];
-    const cardTop=yy,headH=Math.max(5.5,8*scale),badgeR=Math.max(1.8,3*scale),bcx=x0+5,bcy=yy+headH/2;
+    const cardTop=yy,headH=Math.max(5.5,8*scale),badgeR=Math.max(1.8,3*scale),bcx=x0+5,bcy=yy+headH/2,cardR=1.5;
     doc.setFillColor(251,243,241);
-    doc.rect(x0,yy,colW,headH,'F');
+    doc.roundedRect(x0,yy,colW,headH,cardR,cardR,'F');
+    doc.rect(x0,yy+headH-cardR,colW,cardR,'F');
     doc.setFillColor(...PDF_ROUGE);
     doc.circle(bcx,bcy,badgeR,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(Math.max(6,8.5*scale));doc.setTextColor(255,255,255);
@@ -1325,7 +1331,10 @@ function buildFicheRecettePDF(fr){
 
     const cardAllerg=allergArr(f?.allergenes);
     if(cardAllerg.length){
-      yy=drawAllergChips(doc,cardAllerg,x0+11,yy,colW-13,Math.max(4.5,5.2*scale),[251,237,236],[237,216,216],PDF_ROUGE);
+      doc.setFont('helvetica','bold');doc.setFontSize(Math.max(4.2,5*scale));doc.setTextColor(...PDF_ROUGE);
+      doc.text('ALLERGÈNES',x0+11,yy+2*scale);
+      yy+=3.4*scale;
+      yy=drawAllergChips(doc,cardAllerg,x0+11,yy,colW-13,Math.max(4.5,5.2*scale),[255,255,255],PDF_ROUGE,PDF_ROUGE);
       yy+=2.4*scale;
     }
 
@@ -1336,13 +1345,13 @@ function buildFicheRecettePDF(fr){
       // notre suivi de colonnes et provoque un chevauchement visuel). On ne
       // passe donc jamais à autoTable plus de lignes que ce que la mesure
       // réelle garantit tenir dans l'espace restant de la page.
-      const nameColW=colW-qtyColW-5,stepColW=colW-7-5;
+      const nameColW=colW-qtyColW-5;
       const fs=7.5*scale,lineH=fs*0.3527*1.15,pad=2.8*scale;
       doc.setFont('helvetica','normal');doc.setFontSize(fs);
-      const clampToHeight=(items,widthFn,availH)=>{
+      const clampToHeight=(items,widthFn,availH,wrapW)=>{
         let h=0,n=0;
         for(;n<items.length;n++){
-          const lines=doc.splitTextToSize(widthFn(items[n]),nameColW).length;
+          const lines=doc.splitTextToSize(widthFn(items[n]),wrapW).length;
           const rh=lines*lineH+pad;
           if(h+rh>availH)break;
           h+=rh;
@@ -1353,7 +1362,7 @@ function buildFicheRecettePDF(fr){
       const ingList=f.ingredients||[];
       const availIng=colBottom-yy;
       if(availIng>lineH+pad){
-        const ingCount=clampToHeight(ingList,i=>(i.nom||'').toUpperCase(),availIng);
+        const ingCount=clampToHeight(ingList,i=>(i.nom||'').toUpperCase(),availIng,nameColW);
         const rows=ingList.slice(0,ingCount).map(i=>[
           (i.nom||'').toUpperCase(),
           i.unite==='pm'?'pm':(i.quantite?i.quantite+' '+(i.unite||''):'—')
@@ -1386,26 +1395,39 @@ function buildFicheRecettePDF(fr){
           yy+=1.2*scale;
           doc.setDrawColor(237,216,216);doc.setLineWidth(0.2);
           doc.line(x0+2,yy,x0+colW-2,yy);
-          yy+=2*scale;
+          yy+=3*scale;
           doc.setFont('helvetica','normal');doc.setFontSize(fs);
+          // Pastille circulaire (au lieu d'une cellule rectangulaire) pour
+          // épouser le contour arrondi de la carte, sans coin qui dépasse.
+          const stepBadgeR=Math.max(2.4,3.2*scale);
+          const stepTextX=x0+2+stepBadgeR*2+3*scale;
+          const stepTextW=colW-4-stepBadgeR*2-3*scale;
           const availProc=colBottom-yy;
           if(availProc>lineH+pad){
-            const procCount=clampToHeight(procList,s=>String(s),availProc);
-            const stepRows=procList.slice(0,procCount).map((s,i)=>[String(i+1),s]);
-            if(procCount<procList.length){
-              stepRows.push([{content:'+ '+(procList.length-procCount)+' étape(s) supplémentaire(s)',colSpan:2,styles:{fontStyle:'italic',textColor:PDF_GRIS_FONCE,halign:'center',fillColor:[255,255,255]}}]);
-            }
-            doc.autoTable({
-              startY:yy,
-              body:stepRows,
-              theme:'plain',
-              margin:{left:x0,right:pageW-(x0+colW),bottom:mBottom},
-              styles:{font:'helvetica',fontSize:7.5*scale,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4*scale,bottom:1.4*scale,left:2*scale,right:2*scale},valign:'middle'},
-              columnStyles:{0:{cellWidth:Math.max(5,7*scale),halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{cellWidth:'auto'}},
-              alternateRowStyles:{fillColor:PDF_ROSE_ALT},
-              didParseCell:(data)=>{ if(data.column.index===0&&data.row.section==='body'&&typeof data.row.raw[0]!=='object')data.cell.styles.fillColor=PDF_ROUGE; }
+            const procCount=clampToHeight(procList,s=>String(s),availProc,stepTextW);
+            procList.slice(0,procCount).forEach((s,i)=>{
+              const lines=doc.splitTextToSize(String(s),stepTextW);
+              const rh=Math.max(lines.length*lineH+pad,stepBadgeR*2+1*scale);
+              const cy=yy+rh/2;
+              doc.setFillColor(...PDF_ROUGE);
+              doc.circle(x0+2+stepBadgeR,cy,stepBadgeR,'F');
+              doc.setFont('helvetica','bold');doc.setFontSize(Math.max(5,6.5*scale));doc.setTextColor(255,255,255);
+              doc.text(String(i+1),x0+2+stepBadgeR,cy,{align:'center',baseline:'middle'});
+              doc.setFont('helvetica','normal');doc.setFontSize(fs);doc.setTextColor(...PDF_NOIR);
+              let ty=yy+pad/2+lineH*0.78;
+              lines.forEach(ln=>{doc.text(ln,stepTextX,ty);ty+=lineH;});
+              if(i<procCount-1){
+                doc.setDrawColor(...PDF_BORDER);doc.setLineWidth(0.1);
+                doc.line(x0+2,yy+rh,x0+colW-2,yy+rh);
+              }
+              yy+=rh;
             });
-            yy=doc.lastAutoTable.finalY;
+            if(procCount<procList.length){
+              yy+=1*scale;
+              doc.setFont('helvetica','italic');doc.setFontSize(Math.max(5,6*scale));doc.setTextColor(...PDF_GRIS_FONCE);
+              doc.text('+ '+(procList.length-procCount)+' étape(s) supplémentaire(s)',x0+colW/2,yy+lineH*0.78,{align:'center'});
+              yy+=lineH+pad;
+            }
           }
         }
       }
