@@ -543,8 +543,12 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
         <input class="si" style="padding-left:0.85rem" id="fr-sr-search" type="text" placeholder="Rechercher une fiche technique…" oninput="renderFRSrPicker()">
       </div>
       <div id="fr-sr-picker" style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:0.3rem;margin-bottom:0.75rem"></div>
-      <div class="fsect">Sélection (ordre d'apparition)</div>
+      <div class="fsect">Sélection (ordre de dressage)</div>
       <div class="il" id="fr-sr-selected"></div>
+      <div style="display:flex;gap:0.4rem;margin-top:0.5rem">
+        <input class="fi2" id="fr-sr-freetext" type="text" placeholder="Élément libre (ex: sésame noir en topping)" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addFRFreeText()}">
+        <button class="btn btn-o btn-sm" type="button" onclick="addFRFreeText()">+ Ajouter</button>
+      </div>
     </div>
     <div class="m-foot">
       <button class="btn btn-g" onclick="closeModal('modal-fr')">Annuler</button>
@@ -925,20 +929,35 @@ function addFRSr(id){
   frSelectedIds.push({id,grammage:''});
   renderFRSelected();renderFRSrPicker();renderFRAllergenes();
 }
-function removeFRSr(id){
-  frSelectedIds=frSelectedIds.filter(x=>x.id!==id);
+function addFRFreeText(){
+  const inp=document.getElementById('fr-sr-freetext');
+  const val=(inp.value||'').trim();
+  if(!val)return;
+  frSelectedIds.push({text:val,grammage:'',_key:'free_'+Date.now()+Math.random().toString(36).slice(2)});
+  inp.value='';
+  renderFRSelected();
+}
+function removeFRSr(key){
+  frSelectedIds=frSelectedIds.filter(x=>(x.id||x._key)!==key);
   renderFRSelected();renderFRSrPicker();renderFRAllergenes();
 }
 
 function renderFRSelected(){
   const l=document.getElementById('fr-sr-selected');
-  l.innerHTML=frSelectedIds.map(({id,grammage})=>{
-    const f=fiches.find(x=>x.id===id);
-    return `<div class="ir" style="grid-template-columns:14px 1fr 110px 28px" data-id="${id}"><div class="drag-handle" title="Déplacer">⠿</div><div style="font-size:0.8rem;font-weight:500;color:var(--noir)">${escHTML(f?f.nom:'(fiche supprimée)')}</div><input class="fi2 fr-sr-gram-in" type="text" placeholder="Grammage" value="${escHTML(grammage||'')}" style="padding:0.3rem 0.5rem;font-size:0.78rem" oninput="updateFRGrammage('${id}',this.value)"><button class="btn-rm" onclick="removeFRSr('${id}')">×</button></div>`;
+  l.innerHTML=frSelectedIds.map(e=>{
+    const key=e.id||e._key;
+    if(e.id){
+      const f=fiches.find(x=>x.id===e.id);
+      return `<div class="ir" style="grid-template-columns:14px 1fr 110px 28px" data-id="${key}"><div class="drag-handle" title="Déplacer">⠿</div><div style="font-size:0.8rem;font-weight:500;color:var(--noir)">${escHTML(f?f.nom:'(fiche supprimée)')}</div><input class="fi2 fr-sr-gram-in" type="text" placeholder="Grammage" value="${escHTML(e.grammage||'')}" style="padding:0.3rem 0.5rem;font-size:0.78rem" oninput="updateFRGrammage('${key}',this.value)"><button class="btn-rm" onclick="removeFRSr('${key}')">×</button></div>`;
+    }
+    return `<div class="ir" style="grid-template-columns:14px 1fr 110px 28px" data-free-key="${key}"><div class="drag-handle" title="Déplacer">⠿</div><input class="fi2 fr-sr-text-in" type="text" placeholder="Élément libre" value="${escHTML(e.text||'')}" style="padding:0.3rem 0.5rem;font-size:0.8rem;font-weight:500" oninput="updateFRFreeText('${key}',this.value)"><input class="fi2 fr-sr-gram-in" type="text" placeholder="Grammage" value="${escHTML(e.grammage||'')}" style="padding:0.3rem 0.5rem;font-size:0.78rem" oninput="updateFRGrammage('${key}',this.value)"><button class="btn-rm" onclick="removeFRSr('${key}')">×</button></div>`;
   }).join('');
 }
-function updateFRGrammage(id,val){
-  const e=frSelectedIds.find(x=>x.id===id);if(e)e.grammage=val;
+function updateFRGrammage(key,val){
+  const e=frSelectedIds.find(x=>(x.id||x._key)===key);if(e)e.grammage=val;
+}
+function updateFRFreeText(key,val){
+  const e=frSelectedIds.find(x=>x._key===key);if(e)e.text=val;
 }
 function renderFRAllergenes(){
   const set=new Set();
@@ -957,6 +976,7 @@ function openNewFR(){
   document.getElementById('mfr-title').textContent='Nouvelle fiche recette';
   document.getElementById('fr-nom').value='';
   document.getElementById('fr-sr-search').value='';
+  document.getElementById('fr-sr-freetext').value='';
   clearFRPhoto();
   renderFRSrPicker();renderFRSelected();renderFRAllergenes();
   openModal('modal-fr');
@@ -965,11 +985,16 @@ function openNewFR(){
 async function editFR(id){
   const f=fichesRecette.find(f=>f.id===id);if(!f)return;
   editFRId=id;
-  frSelectedIds=(f.sous_recettes||[]).map(x=>typeof x==='string'?{id:x,grammage:''}:{id:x.id,grammage:x.grammage||''});
+  frSelectedIds=(f.sous_recettes||[]).map(x=>{
+    if(typeof x==='string')return{id:x,grammage:''};
+    if(x.id)return{id:x.id,grammage:x.grammage||''};
+    return{text:x.text||'',grammage:x.grammage||'',_key:'free_'+Date.now()+Math.random().toString(36).slice(2)};
+  });
   frPhotoData=f.photo||'';
   document.getElementById('mfr-title').textContent='Modifier — '+f.nom;
   document.getElementById('fr-nom').value=f.nom;
   document.getElementById('fr-sr-search').value='';
+  document.getElementById('fr-sr-freetext').value='';
   const prev=document.getElementById('fr-photo-preview');
   document.getElementById('fr-photo-input').value='';
   if(frPhotoData){prev.src=frPhotoData;prev.style.display='block'}else{prev.src='';prev.style.display='none'}
@@ -982,7 +1007,11 @@ async function saveFR(){
   if(!nom){toast('Le nom est obligatoire','err');return}
   setBusy('btn-save-fr',true);
   try{
-    const order=[...document.querySelectorAll('#fr-sr-selected .ir')].map(r=>({id:r.dataset.id,grammage:(r.querySelector('.fr-sr-gram-in')?.value||'').trim()}));
+    const order=[...document.querySelectorAll('#fr-sr-selected .ir')].map(r=>{
+      const gram=(r.querySelector('.fr-sr-gram-in')?.value||'').trim();
+      if(r.dataset.id)return{id:r.dataset.id,grammage:gram};
+      return{text:(r.querySelector('.fr-sr-text-in')?.value||'').trim(),grammage:gram};
+    }).filter(e=>e.id||e.text);
     const data={nom,photo:frPhotoData||null,allergenes:renderFRAllergenes().join(', '),sous_recettes:order};
     const res=editFRId?await sb.from('fiches_recette').update(data).eq('id',editFRId):await sb.from('fiches_recette').insert(data);
     if(res.error){toast('Erreur : '+res.error.message,'err');return}
@@ -1011,11 +1040,18 @@ async function deleteFR(id){
 
 // ── FICHE RECETTE DOC ──
 function normFRSousRecettes(fr){
-  return (fr.sous_recettes||[]).map(x=>typeof x==='string'?{id:x,grammage:''}:x).map(e=>({...e,ref:fiches.find(f=>f.id===e.id)})).filter(e=>e.ref);
+  return (fr.sous_recettes||[]).map(x=>typeof x==='string'?{id:x,grammage:''}:x)
+    .map(e=>e.id?{...e,ref:fiches.find(f=>f.id===e.id)}:{...e,ref:null})
+    .filter(e=>e.id?!!e.ref:!!(e.text&&e.text.trim()));
 }
 function buildFicheRecetteDoc(fr){
   const entries=normFRSousRecettes(fr);
-  const sections=entries.map(({ref:f,grammage},idx)=>{
+  const sections=entries.map(({ref:f,grammage,text},idx)=>{
+    if(!f){
+      return `<div class="fr-sr-card">
+        <div class="fr-sr-head"><span class="fr-sr-badge">${idx+1}</span><span class="fr-sr-name">${escHTML(text)}</span>${grammage?`<span class="fr-sr-gram">${escHTML(grammage)}</span>`:''}</div>
+      </div>`;
+    }
     const irows=(f.ingredients||[]).map(i=>{
       const qty=i.unite==='pm'?'pm':(i.quantite?escHTML(i.quantite)+' '+escHTML(i.unite||''):'—');
       return `<tr><td>${escHTML((i.nom||'').toUpperCase())}</td><td>${qty}</td></tr>`;
@@ -1086,11 +1122,11 @@ function buildFicheRecettePDF(fr){
     doc.setFont('helvetica','normal');doc.setFontSize(fs);
     let h=(9+6)*scale;
     const pad=2.8*scale;
-    (f.ingredients||[]).forEach(i=>{
+    (f?.ingredients||[]).forEach(i=>{
       const lines=doc.splitTextToSize((i.nom||'').toUpperCase(),nameColW).length;
       h+=lines*lineH+pad;
     });
-    if((f.process||[]).length){
+    if((f?.process||[]).length){
       h+=7*scale;
       f.process.forEach(s=>{
         const lines=doc.splitTextToSize(String(s),stepColW).length;
@@ -1197,7 +1233,7 @@ function buildFicheRecettePDF(fr){
     return c;
   }
 
-  srEntries.forEach(({ref:f,grammage},idx)=>{
+  srEntries.forEach(({ref:f,grammage,text},idx)=>{
     const estH=measureSRHeight(f,scale);
     const c=placeCard(estH);
     const x0=colX[c];
@@ -1210,89 +1246,91 @@ function buildFicheRecettePDF(fr){
     doc.setFont('helvetica','bold');doc.setFontSize(Math.max(6,8.5*scale));doc.setTextColor(255,255,255);
     doc.text(String(idx+1),bcx,bcy+1.1,{align:'center'});
     doc.setFont('helvetica','bold');doc.setFontSize(Math.max(6.5,9.5*scale));doc.setTextColor(...PDF_NOIR);
-    doc.text(f.nom.toUpperCase(),x0+11,bcy+1.1);
+    doc.text((f?f.nom:text||'').toUpperCase(),x0+11,bcy+1.1);
     if(grammage){
       doc.setFont('helvetica','normal');doc.setFontSize(Math.max(6,8*scale));doc.setTextColor(...PDF_GRIS_FONCE);
       doc.text(String(grammage),x0+colW-3,bcy+1.1,{align:'right'});
     }
     yy+=headH+Math.max(1,2*scale);
 
-    // Filet de sécurité ultime : si un cas extrême (volume de contenu
-    // irréaliste) laisse moins de place qu'il n'en faut, on tronque plutôt
-    // que de laisser autoTable tenter une pagination interne (qui désync
-    // notre suivi de colonnes et provoque un chevauchement visuel). On ne
-    // passe donc jamais à autoTable plus de lignes que ce que la mesure
-    // réelle garantit tenir dans l'espace restant de la page.
-    const nameColW=colW-qtyColW-5,stepColW=colW-7-5;
-    const fs=7.5*scale,lineH=fs*0.3527*1.15,pad=2.8*scale;
-    doc.setFont('helvetica','normal');doc.setFontSize(fs);
-    function clampToHeight(items,widthFn,availH){
-      let h=0,n=0;
-      for(;n<items.length;n++){
-        const lines=doc.splitTextToSize(widthFn(items[n]),nameColW).length;
-        const rh=lines*lineH+pad;
-        if(h+rh>availH)break;
-        h+=rh;
-      }
-      return n;
-    }
+    if(f){
+      // Filet de sécurité ultime : si un cas extrême (volume de contenu
+      // irréaliste) laisse moins de place qu'il n'en faut, on tronque plutôt
+      // que de laisser autoTable tenter une pagination interne (qui désync
+      // notre suivi de colonnes et provoque un chevauchement visuel). On ne
+      // passe donc jamais à autoTable plus de lignes que ce que la mesure
+      // réelle garantit tenir dans l'espace restant de la page.
+      const nameColW=colW-qtyColW-5,stepColW=colW-7-5;
+      const fs=7.5*scale,lineH=fs*0.3527*1.15,pad=2.8*scale;
+      doc.setFont('helvetica','normal');doc.setFontSize(fs);
+      const clampToHeight=(items,widthFn,availH)=>{
+        let h=0,n=0;
+        for(;n<items.length;n++){
+          const lines=doc.splitTextToSize(widthFn(items[n]),nameColW).length;
+          const rh=lines*lineH+pad;
+          if(h+rh>availH)break;
+          h+=rh;
+        }
+        return n;
+      };
 
-    const ingList=f.ingredients||[];
-    const availIng=colBottom-yy;
-    if(availIng>lineH+pad){
-      const ingCount=clampToHeight(ingList,i=>(i.nom||'').toUpperCase(),availIng);
-      const rows=ingList.slice(0,ingCount).map(i=>[
-        (i.nom||'').toUpperCase(),
-        i.unite==='pm'?'pm':(i.quantite?i.quantite+' '+(i.unite||''):'—')
-      ]);
-      if(ingCount<ingList.length){
-        rows.push([{content:'+ '+(ingList.length-ingCount)+' ingrédient(s) supplémentaire(s)',colSpan:2,styles:{fontStyle:'italic',textColor:PDF_GRIS_FONCE,halign:'center'}}]);
+      const ingList=f.ingredients||[];
+      const availIng=colBottom-yy;
+      if(availIng>lineH+pad){
+        const ingCount=clampToHeight(ingList,i=>(i.nom||'').toUpperCase(),availIng);
+        const rows=ingList.slice(0,ingCount).map(i=>[
+          (i.nom||'').toUpperCase(),
+          i.unite==='pm'?'pm':(i.quantite?i.quantite+' '+(i.unite||''):'—')
+        ]);
+        if(ingCount<ingList.length){
+          rows.push([{content:'+ '+(ingList.length-ingCount)+' ingrédient(s) supplémentaire(s)',colSpan:2,styles:{fontStyle:'italic',textColor:PDF_GRIS_FONCE,halign:'center'}}]);
+        }
+        doc.autoTable({
+          startY:yy,
+          head:[['Ingrédient','Quantité']],
+          body:rows,
+          theme:'plain',
+          margin:{left:x0,right:pageW-(x0+colW),bottom:mBottom},
+          styles:{font:'helvetica',fontSize:7.5*scale,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4*scale,bottom:1.4*scale,left:2*scale,right:2*scale}},
+          headStyles:{textColor:PDF_ROUGE,fontStyle:'bold',fontSize:6.8*scale,fillColor:[255,255,255],lineWidth:{bottom:0.2},halign:'left'},
+          columnStyles:{1:{halign:'right',textColor:PDF_GRIS_FONCE,cellWidth:qtyColW}},
+          alternateRowStyles:{fillColor:PDF_ROSE_ALT},
+          didParseCell:(data)=>{ if(data.section==='head'&&data.column.index===1) data.cell.styles.halign='right'; }
+        });
+        yy=doc.lastAutoTable.finalY;
       }
-      doc.autoTable({
-        startY:yy,
-        head:[['Ingrédient','Quantité']],
-        body:rows,
-        theme:'plain',
-        margin:{left:x0,right:pageW-(x0+colW),bottom:mBottom},
-        styles:{font:'helvetica',fontSize:7.5*scale,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4*scale,bottom:1.4*scale,left:2*scale,right:2*scale}},
-        headStyles:{textColor:PDF_ROUGE,fontStyle:'bold',fontSize:6.8*scale,fillColor:[255,255,255],lineWidth:{bottom:0.2},halign:'left'},
-        columnStyles:{1:{halign:'right',textColor:PDF_GRIS_FONCE,cellWidth:qtyColW}},
-        alternateRowStyles:{fillColor:PDF_ROSE_ALT},
-        didParseCell:(data)=>{ if(data.section==='head'&&data.column.index===1) data.cell.styles.halign='right'; }
-      });
-      yy=doc.lastAutoTable.finalY;
-    }
 
-    const procList=f.process||[];
-    if(procList.length){
-      const availHead=colBottom-yy;
-      if(availHead>6*scale+lineH+pad){
-        yy+=3*scale;
-        doc.setFont('helvetica','bold');doc.setFontSize(Math.max(5,6.5*scale));doc.setTextColor(...PDF_ROUGE);
-        doc.text('PROCESS',x0+2,yy);
-        yy+=1.2*scale;
-        doc.setDrawColor(237,216,216);doc.setLineWidth(0.2);
-        doc.line(x0+2,yy,x0+colW-2,yy);
-        yy+=2*scale;
-        doc.setFont('helvetica','normal');doc.setFontSize(fs);
-        const availProc=colBottom-yy;
-        if(availProc>lineH+pad){
-          const procCount=clampToHeight(procList,s=>String(s),availProc);
-          const stepRows=procList.slice(0,procCount).map((s,i)=>[String(i+1),s]);
-          if(procCount<procList.length){
-            stepRows.push([{content:'+ '+(procList.length-procCount)+' étape(s) supplémentaire(s)',colSpan:2,styles:{fontStyle:'italic',textColor:PDF_GRIS_FONCE,halign:'center',fillColor:[255,255,255]}}]);
+      const procList=f.process||[];
+      if(procList.length){
+        const availHead=colBottom-yy;
+        if(availHead>6*scale+lineH+pad){
+          yy+=3*scale;
+          doc.setFont('helvetica','bold');doc.setFontSize(Math.max(5,6.5*scale));doc.setTextColor(...PDF_ROUGE);
+          doc.text('PROCESS',x0+2,yy);
+          yy+=1.2*scale;
+          doc.setDrawColor(237,216,216);doc.setLineWidth(0.2);
+          doc.line(x0+2,yy,x0+colW-2,yy);
+          yy+=2*scale;
+          doc.setFont('helvetica','normal');doc.setFontSize(fs);
+          const availProc=colBottom-yy;
+          if(availProc>lineH+pad){
+            const procCount=clampToHeight(procList,s=>String(s),availProc);
+            const stepRows=procList.slice(0,procCount).map((s,i)=>[String(i+1),s]);
+            if(procCount<procList.length){
+              stepRows.push([{content:'+ '+(procList.length-procCount)+' étape(s) supplémentaire(s)',colSpan:2,styles:{fontStyle:'italic',textColor:PDF_GRIS_FONCE,halign:'center',fillColor:[255,255,255]}}]);
+            }
+            doc.autoTable({
+              startY:yy,
+              body:stepRows,
+              theme:'plain',
+              margin:{left:x0,right:pageW-(x0+colW),bottom:mBottom},
+              styles:{font:'helvetica',fontSize:7.5*scale,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4*scale,bottom:1.4*scale,left:2*scale,right:2*scale},valign:'middle'},
+              columnStyles:{0:{cellWidth:Math.max(5,7*scale),halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{cellWidth:'auto'}},
+              alternateRowStyles:{fillColor:PDF_ROSE_ALT},
+              didParseCell:(data)=>{ if(data.column.index===0&&data.row.section==='body'&&typeof data.row.raw[0]!=='object')data.cell.styles.fillColor=PDF_ROUGE; }
+            });
+            yy=doc.lastAutoTable.finalY;
           }
-          doc.autoTable({
-            startY:yy,
-            body:stepRows,
-            theme:'plain',
-            margin:{left:x0,right:pageW-(x0+colW),bottom:mBottom},
-            styles:{font:'helvetica',fontSize:7.5*scale,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4*scale,bottom:1.4*scale,left:2*scale,right:2*scale},valign:'middle'},
-            columnStyles:{0:{cellWidth:Math.max(5,7*scale),halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{cellWidth:'auto'}},
-            alternateRowStyles:{fillColor:PDF_ROSE_ALT},
-            didParseCell:(data)=>{ if(data.column.index===0&&data.row.section==='body'&&typeof data.row.raw[0]!=='object')data.cell.styles.fillColor=PDF_ROUGE; }
-          });
-          yy=doc.lastAutoTable.finalY;
         }
       }
     }
