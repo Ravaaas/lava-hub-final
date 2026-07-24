@@ -1056,8 +1056,90 @@ function buildFicheRecettePDF(fr){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const pageW=210,pageH=297,mX=18,mTop=14,mBottom=14;
-  let y=mTop;
+  const usableH=pageH-mTop-mBottom;
 
+  // Verrou dur : quoi qu'il arrive, le document ne dépasse jamais 2 pages.
+  // Le calcul d'échelle ci-dessous vise à ce que ça ne soit jamais nécessaire,
+  // mais si un cas extrême dépasse quand même le budget estimé, on bloque
+  // toute 3e page plutôt que de laisser autoTable en ajouter une.
+  let pagesUsed=1;
+  const origAddPage=doc.addPage.bind(doc);
+  doc.addPage=function(...args){
+    if(pagesUsed>=2)return doc;
+    pagesUsed++;
+    return origAddPage(...args);
+  };
+
+  const srEntries=normFRSousRecettes(fr);
+
+  function measureSRHeight(f,scale){
+    const nameColW=(pageW-2*mX)-35-5,stepColW=(pageW-2*mX)-7-5;
+    const fs=7.5*scale;
+    const lineH=fs*0.3527*1.15;
+    doc.setFont('helvetica','normal');doc.setFontSize(fs);
+    let h=(9+6)*scale;
+    const pad=2.8*scale;
+    (f.ingredients||[]).forEach(i=>{
+      const lines=doc.splitTextToSize((i.nom||'').toUpperCase(),nameColW).length;
+      h+=lines*lineH+pad;
+    });
+    if((f.process||[]).length){
+      h+=7*scale;
+      f.process.forEach(s=>{
+        const lines=doc.splitTextToSize(String(s),stepColW).length;
+        h+=lines*lineH+pad;
+      });
+    }
+    return h+8*scale;
+  }
+  function cardGapAt(scale){ return Math.max(2,6*scale); }
+  function measureAllAt(scale){
+    let t=0;
+    srEntries.forEach(({ref:f})=>{ t+=measureSRHeight(f,scale)+cardGapAt(scale); });
+    return t;
+  }
+  function headerHeightWithPhoto(photoMaxH){
+    let h=15;
+    if(fr.allergenes)h+=5;
+    let ph=0;
+    if(fr.photo&&photoMaxH>0){
+      try{
+        const props=doc.getImageProperties(fr.photo);
+        let ih=(pageW-2*mX)*props.height/props.width;
+        if(ih>photoMaxH)ih=photoMaxH;
+        ph=ih;
+      }catch(e){}
+    }
+    if(ph>0)h+=ph+4;
+    return h+6;
+  }
+
+  // ── Trouve une mise en page qui tient toujours en 2 pages : réduit d'abord
+  // la photo, puis (si besoin) l'échelle des cartes de recette, jusqu'à ce que
+  // le contenu total tienne dans le budget de 2 pages.
+  const sectionH=srEntries.length?7:0;
+  const total1=measureAllAt(1);
+  let photoMaxH=70,headerH=headerHeightWithPhoto(photoMaxH),budget=2*usableH*0.96-headerH-sectionH;
+  if(fr.photo&&total1>budget){
+    for(const c of [55,42,30,18,0]){
+      headerH=headerHeightWithPhoto(c);
+      budget=2*usableH*0.96-headerH-sectionH;
+      photoMaxH=c;
+      if(total1<=budget)break;
+    }
+  }
+  let scale=1;
+  if(total1>budget){
+    scale=Math.max(0.15,budget/total1);
+    for(let i=0;i<6;i++){
+      const t2=measureAllAt(scale);
+      if(t2<=budget||scale<=0.15)break;
+      scale=Math.max(0.15,scale*(budget/t2)*0.97);
+    }
+  }
+
+  // ── Header ──
+  let y=mTop;
   doc.setFont('helvetica','bold');doc.setFontSize(18);doc.setTextColor(...PDF_NOIR);
   doc.text((fr.nom||'').toUpperCase(),mX,y+6);
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...PDF_ROUGE);
@@ -1068,62 +1150,43 @@ function buildFicheRecettePDF(fr){
     doc.text('Allergènes : '+fr.allergenes,mX,y);
     y+=5;
   }
-  if(fr.photo){
+  if(fr.photo&&photoMaxH>0){
     try{
       const m=/^data:image\/(png|jpe?g|webp)/i.exec(fr.photo);
       const fmt=m?m[1].toUpperCase().replace('JPG','JPEG'):'JPEG';
       const props=doc.getImageProperties(fr.photo);
-      const maxW=pageW-2*mX,maxH=70;
+      const maxW=pageW-2*mX;
       let iw=maxW,ih=iw*props.height/props.width;
-      if(ih>maxH){ih=maxH;iw=ih*props.width/props.height;}
+      if(ih>photoMaxH){ih=photoMaxH;iw=ih*props.width/props.height;}
       doc.addImage(fr.photo,fmt,mX+(maxW-iw)/2,y,iw,ih,undefined,'FAST');y+=ih+4;
     }catch(e){}
   }
   doc.setDrawColor(...PDF_ROUGE);doc.setLineWidth(0.6);doc.line(mX,y,pageW-mX,y);
   y+=6;
 
-  function measureSRHeight(f){
-    const nameColW=(pageW-2*mX)-35-5,stepColW=(pageW-2*mX)-7-5;
-    const lineH=7.5*0.3527*1.15;
-    doc.setFont('helvetica','normal');doc.setFontSize(7.5);
-    let h=9+6;
-    (f.ingredients||[]).forEach(i=>{
-      const lines=doc.splitTextToSize((i.nom||'').toUpperCase(),nameColW).length;
-      h+=lines*lineH+2.8;
-    });
-    if((f.process||[]).length){
-      h+=7;
-      f.process.forEach(s=>{
-        const lines=doc.splitTextToSize(String(s),stepColW).length;
-        h+=lines*lineH+2.8;
-      });
-    }
-    return h+8;
-  }
-
-  const srEntries=normFRSousRecettes(fr);
   if(srEntries.length){
     doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...PDF_NOIR);
     doc.text('Recettes ('+srEntries.length+')',mX,y);
     y+=7;
   }
+
   srEntries.forEach(({ref:f,grammage},idx)=>{
-    const estH=measureSRHeight(f);
-    if(y+Math.min(estH,pageH-mTop-mBottom)>pageH-mBottom){doc.addPage();y=mTop;}
-    const cardTop=y,headH=8,cx=mX+5,cy=y+headH/2;
+    const estH=measureSRHeight(f,scale);
+    if(y+estH>pageH-mBottom){const before=pagesUsed;doc.addPage();if(pagesUsed>before)y=mTop;}
+    const cardTop=y,headH=Math.max(5.5,8*scale),badgeR=Math.max(1.8,3*scale),cx=mX+5,cy=y+headH/2;
     doc.setFillColor(251,243,241);
     doc.rect(mX,y,pageW-2*mX,headH,'F');
     doc.setFillColor(...PDF_ROUGE);
-    doc.circle(cx,cy,3,'F');
-    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(255,255,255);
+    doc.circle(cx,cy,badgeR,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(Math.max(6,8.5*scale));doc.setTextColor(255,255,255);
     doc.text(String(idx+1),cx,cy+1.1,{align:'center'});
-    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...PDF_NOIR);
+    doc.setFont('helvetica','bold');doc.setFontSize(Math.max(6.5,9.5*scale));doc.setTextColor(...PDF_NOIR);
     doc.text(f.nom.toUpperCase(),mX+11,cy+1.1);
     if(grammage){
-      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...PDF_GRIS_FONCE);
+      doc.setFont('helvetica','normal');doc.setFontSize(Math.max(6,8*scale));doc.setTextColor(...PDF_GRIS_FONCE);
       doc.text(String(grammage),pageW-mX-3,cy+1.1,{align:'right'});
     }
-    y+=headH+2;
+    y+=headH+Math.max(1,2*scale);
     const rows=(f.ingredients||[]).map(i=>[
       (i.nom||'').toUpperCase(),
       i.unite==='pm'?'pm':(i.quantite?i.quantite+' '+(i.unite||''):'—')
@@ -1134,8 +1197,8 @@ function buildFicheRecettePDF(fr){
       body:rows,
       theme:'plain',
       margin:{left:mX,right:mX,bottom:mBottom},
-      styles:{font:'helvetica',fontSize:7.5,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4,bottom:1.4,left:2.5,right:2.5}},
-      headStyles:{textColor:PDF_ROUGE,fontStyle:'bold',fontSize:6.8,fillColor:[255,255,255],lineWidth:{bottom:0.2},halign:'left'},
+      styles:{font:'helvetica',fontSize:7.5*scale,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4*scale,bottom:1.4*scale,left:2.5*scale,right:2.5*scale}},
+      headStyles:{textColor:PDF_ROUGE,fontStyle:'bold',fontSize:6.8*scale,fillColor:[255,255,255],lineWidth:{bottom:0.2},halign:'left'},
       columnStyles:{1:{halign:'right',textColor:PDF_GRIS_FONCE,cellWidth:35}},
       alternateRowStyles:{fillColor:PDF_ROSE_ALT},
       didParseCell:(data)=>{ if(data.section==='head'&&data.column.index===1) data.cell.styles.halign='right'; }
@@ -1143,29 +1206,29 @@ function buildFicheRecettePDF(fr){
     y=doc.lastAutoTable.finalY;
     const stepRows=(f.process||[]).map((s,i)=>[String(i+1),s]);
     if(stepRows.length){
-      y+=3;
-      doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...PDF_ROUGE);
+      y+=3*scale;
+      doc.setFont('helvetica','bold');doc.setFontSize(Math.max(5,6.5*scale));doc.setTextColor(...PDF_ROUGE);
       doc.text('PROCESS',mX+2.5,y);
-      y+=1.2;
+      y+=1.2*scale;
       doc.setDrawColor(237,216,216);doc.setLineWidth(0.2);
       doc.line(mX+2.5,y,pageW-mX-2.5,y);
-      y+=2;
+      y+=2*scale;
       doc.autoTable({
         startY:y,
         body:stepRows,
         theme:'plain',
         margin:{left:mX,right:mX,bottom:mBottom},
-        styles:{font:'helvetica',fontSize:7.5,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4,bottom:1.4,left:2.5,right:2.5},valign:'middle'},
-        columnStyles:{0:{cellWidth:7,halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{cellWidth:'auto'}},
+        styles:{font:'helvetica',fontSize:7.5*scale,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4*scale,bottom:1.4*scale,left:2.5*scale,right:2.5*scale},valign:'middle'},
+        columnStyles:{0:{cellWidth:Math.max(5,7*scale),halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{cellWidth:'auto'}},
         alternateRowStyles:{fillColor:PDF_ROSE_ALT},
         didParseCell:(data)=>{ if(data.column.index===0) data.cell.styles.fillColor=PDF_ROUGE; }
       });
       y=doc.lastAutoTable.finalY;
     }
-    y+=2;
+    y+=Math.max(1,2*scale);
     doc.setDrawColor(...PDF_BORDER);doc.setLineWidth(0.25);
-    doc.roundedRect(mX,cardTop,pageW-2*mX,y-cardTop,2,2,'S');
-    y+=6;
+    doc.roundedRect(mX,cardTop,pageW-2*mX,y-cardTop,Math.max(1,2*scale),Math.max(1,2*scale),'S');
+    y+=cardGapAt(scale);
   });
   return doc;
 }
