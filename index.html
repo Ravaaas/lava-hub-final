@@ -135,6 +135,21 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .ca-row input{flex:1;padding:0.6rem 0.85rem;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.78rem;background:var(--rose);color:var(--noir);outline:none;transition:border-color .15s}
 .ca-row input:focus{border-color:var(--rouge);background:var(--blanc)}
 
+/* ALLERGEN PICKER */
+.allerg-picker{display:flex;flex-wrap:wrap;gap:0.5rem}
+.allerg-chip{display:flex;align-items:center;gap:0.35rem;padding:0.45rem 0.85rem;border:1.5px solid var(--border);border-radius:20px;background:var(--blanc);color:var(--gt);font-family:'Poppins',sans-serif;font-size:0.74rem;font-weight:600;cursor:pointer;transition:all .15s;user-select:none}
+.allerg-chip:hover{border-color:var(--rouge-lt)}
+.allerg-chip.active{background:var(--rouge);border-color:var(--rouge);color:#fff}
+.allerg-chip .achk{width:14px;height:14px;border-radius:50%;border:1.5px solid currentColor;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.6rem}
+.allerg-chip.active .achk{background:#fff;color:var(--rouge)}
+
+/* ALLERGEN TAGS — Fiche Recette only */
+.fr-allerg-sub{display:flex;flex-wrap:wrap;align-items:center;gap:0.4rem;margin-top:0.7rem}
+.fr-allerg-sub-lbl{font-size:0.62rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#B5433C}
+.fr-allerg-tag{font-size:0.68rem;font-weight:600;color:#B5433C;background:#FBEDEC;border:1px solid #EDD8D8;border-radius:20px;padding:0.18rem 0.65rem;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.fr-sr-allerg{width:100%;margin:0.35rem 0 0 2.05rem;display:flex;flex-wrap:wrap;gap:0.3rem}
+.fr-sr-allerg .fr-allerg-tag{font-size:0.58rem;padding:0.1rem 0.5rem}
+
 /* MODAL */
 .mo{display:none;position:fixed;inset:0;background:rgba(20,10,10,.5);backdrop-filter:blur(4px);z-index:200;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
 .mo.open{display:flex}
@@ -220,7 +235,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .fr-sr-title{font-size:0.68rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#B5433C;margin-bottom:1rem}
 .fr-sr-list{display:flex;flex-direction:column;gap:1.5rem}
 .fr-sr-card{border:1px solid #E0D0D0;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(34,24,24,0.06)}
-.fr-sr-head{display:flex;align-items:center;gap:0.65rem;padding:0.75rem 1rem;background:#FBF3F1;border-bottom:1px solid #E0D0D0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.fr-sr-head{display:flex;flex-wrap:wrap;align-items:center;gap:0.65rem;padding:0.75rem 1rem;background:#FBF3F1;border-bottom:1px solid #E0D0D0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .fr-sr-badge{width:22px;height:22px;border-radius:50%;background:#B5433C;color:#fff;font-size:0.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .fr-sr-name{font-size:0.82rem;font-weight:700;color:#221818;text-transform:uppercase;letter-spacing:0.02em}
 .fr-sr-gram{margin-left:auto;font-size:0.72rem;font-weight:600;color:#8a6a68;background:#fff;padding:2px 8px;border-radius:8px;border:1px solid #E0D0D0}
@@ -508,7 +523,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
           <button class="btn-ar" onclick="addCondRow()" style="margin-top:0.4rem">+ Ajouter un conditionnement</button>
         </div>
       </div>
-      <div class="fg2"><label class="fl">Allergènes</label><textarea class="fta" id="f-allerg" placeholder="ex: Gluten, Lait"></textarea></div>
+      <div class="fg2"><label class="fl">Allergènes</label><div class="allerg-picker" id="f-allerg-picker"></div></div>
       <div class="fsect">Ingrédients</div>
       <div class="il" id="il"></div>
       <button class="btn-ar" onclick="addIR()">+ Ajouter un ingrédient</button>
@@ -602,6 +617,9 @@ let profil=null, editId=null, curFicheId=null;
 let fiches=[];
 let fichesRecette=[], editFRId=null, curFRId=null, frSelectedIds=[], frPhotoData='';
 
+const ALLERGENES_LIST=['Gluten','Crustacé','Œuf','Arachide','Fruit à coque','Lactose','Mollusque'];
+let fAllergSelected=[];
+
 let cfg={
   cats:['Base','Sauce','Garniture','Dessert','Autre'],
   secs:['Entrées','Plats','Desserts']
@@ -613,6 +631,19 @@ function escHTML(s){
 }
 function allergArr(v){
   return Array.isArray(v)?v.map(s=>String(s).trim()).filter(Boolean):String(v||'').split(',').map(s=>s.trim()).filter(Boolean);
+}
+
+function renderFAllergPicker(){
+  const el=document.getElementById('f-allerg-picker');if(!el)return;
+  el.innerHTML=ALLERGENES_LIST.map(a=>{
+    const on=fAllergSelected.includes(a);
+    return `<div class="allerg-chip${on?' active':''}" onclick="toggleFAllerg('${a.replace(/'/g,"\\'")}')"><span class="achk">${on?'✓':''}</span>${escHTML(a)}</div>`;
+  }).join('');
+}
+function toggleFAllerg(a){
+  const i=fAllergSelected.indexOf(a);
+  if(i>-1)fAllergSelected.splice(i,1);else fAllergSelected.push(a);
+  renderFAllergPicker();
 }
 
 function setBusy(btnId,v){
@@ -1057,17 +1088,19 @@ function buildFicheRecetteDoc(fr){
       return `<tr><td>${escHTML((i.nom||'').toUpperCase())}</td><td>${qty}</td></tr>`;
     }).join('');
     const steps=(f.process||[]).map((s,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(s)}</div></div>`).join('');
+    const cardAllerg=allergArr(f.allergenes);
     return `<div class="fr-sr-card">
-      <div class="fr-sr-head"><span class="fr-sr-badge">${idx+1}</span><span class="fr-sr-name">${escHTML(f.nom)}</span>${grammage?`<span class="fr-sr-gram">${escHTML(grammage)}</span>`:''}</div>
+      <div class="fr-sr-head"><span class="fr-sr-badge">${idx+1}</span><span class="fr-sr-name">${escHTML(f.nom)}</span>${grammage?`<span class="fr-sr-gram">${escHTML(grammage)}</span>`:''}${cardAllerg.length?`<div class="fr-sr-allerg">${cardAllerg.map(a=>`<span class="fr-allerg-tag">${escHTML(a)}</span>`).join('')}</div>`:''}</div>
       <table class="fdoc-table"><thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th></tr></thead><tbody>${irows}</tbody></table>
       ${steps?`<div class="fdoc-ptitle" style="margin:1rem 1rem 0.5rem">Process</div><div class="fdoc-steps">${steps}</div>`:''}
     </div>`;
   }).join('');
+  const allergList=allergArr(fr.allergenes);
   return `<div class="fdoc">
     <div class="fdoc-hdr">
       <div class="fdoc-nom">${escHTML(fr.nom)}</div>
       <div class="fdoc-sub">Fiche Recette</div>
-      ${fr.allergenes?`<div style="margin-top:0.6rem;font-size:0.72rem;color:#B5433C"><strong>Allergènes :</strong> ${escHTML(fr.allergenes)}</div>`:''}
+      ${allergList.length?`<div class="fr-allerg-sub"><span class="fr-allerg-sub-lbl">Allergènes</span>${allergList.map(a=>`<span class="fr-allerg-tag">${escHTML(a)}</span>`).join('')}</div>`:''}
       ${fr.photo?`<img src="${fr.photo}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-top:1.25rem">`:''}
     </div>
     <div class="fdoc-body">
@@ -1088,6 +1121,35 @@ function openFRD(id){
 function closeFRD(){document.getElementById('frd').classList.remove('open');curFRId=null}
 
 // ── FICHE RECETTE PDF (2 pages A4 max, recto-verso) ──
+// ── Pastilles allergènes (jsPDF) — utilisées uniquement dans la Fiche Recette ──
+function measureAllergChipsHeight(doc,chips,maxW,fontSize){
+  if(!chips.length)return 0;
+  doc.setFont('helvetica','bold');doc.setFontSize(fontSize);
+  const padX=2.2,gap=1.8,h=fontSize*0.3527*1.5+1.6;
+  let lines=1,x=0;
+  chips.forEach(c=>{
+    const w=doc.getTextWidth(c)+padX*2;
+    if(x>0&&x+gap+w>maxW){lines++;x=w;}else{x+=(x>0?gap:0)+w;}
+  });
+  return lines*(h+1.2)-1.2;
+}
+function drawAllergChips(doc,chips,x0,y0,maxW,fontSize,fill,border,color){
+  if(!chips.length)return y0;
+  doc.setFont('helvetica','bold');doc.setFontSize(fontSize);
+  const padX=2.2,gap=1.8,h=fontSize*0.3527*1.5+1.6;
+  let x=x0,y=y0;
+  chips.forEach(c=>{
+    const w=doc.getTextWidth(c)+padX*2;
+    if(x>x0&&x+w>x0+maxW){x=x0;y+=h+1.2;}
+    doc.setFillColor(...fill);doc.setDrawColor(...border);doc.setLineWidth(0.15);
+    doc.roundedRect(x,y,w,h,h/2,h/2,'FD');
+    doc.setTextColor(...color);
+    doc.text(c,x+padX,y+h/2,{baseline:'middle'});
+    x+=w+gap;
+  });
+  return y+h;
+}
+
 function buildFicheRecettePDF(fr){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
@@ -1122,6 +1184,10 @@ function buildFicheRecettePDF(fr){
     doc.setFont('helvetica','normal');doc.setFontSize(fs);
     let h=(9+6)*scale;
     const pad=2.8*scale;
+    const cardAllerg=allergArr(f?.allergenes);
+    if(cardAllerg.length){
+      h+=measureAllergChipsHeight(doc,cardAllerg,colW-6,Math.max(4.5,5.2*scale))+2.4*scale;
+    }
     (f?.ingredients||[]).forEach(i=>{
       const lines=doc.splitTextToSize((i.nom||'').toUpperCase(),nameColW).length;
       h+=lines*lineH+pad;
@@ -1143,7 +1209,8 @@ function buildFicheRecettePDF(fr){
   }
   function headerHeightWithPhoto(photoMaxH){
     let h=15;
-    if(fr.allergenes)h+=5;
+    const topAllerg=allergArr(fr.allergenes);
+    if(topAllerg.length)h+=measureAllergChipsHeight(doc,topAllerg,pageW-2*mX,7)+9;
     let ph=0;
     if(fr.photo&&photoMaxH>0){
       try{
@@ -1189,10 +1256,13 @@ function buildFicheRecettePDF(fr){
   doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...PDF_ROUGE);
   doc.text('Fiche Recette',mX,y+11.5);
   y+=15;
-  if(fr.allergenes){
-    doc.setFontSize(7.5);doc.setTextColor(...PDF_ROUGE);
-    doc.text('Allergènes : '+fr.allergenes,mX,y);
+  const topAllerg=allergArr(fr.allergenes);
+  if(topAllerg.length){
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...PDF_ROUGE);
+    doc.text('ALLERGÈNES',mX,y+2.2);
     y+=5;
+    y=drawAllergChips(doc,topAllerg,mX,y,pageW-2*mX,7,[251,237,236],[237,216,216],PDF_ROUGE);
+    y+=4;
   }
   if(fr.photo&&photoMaxH>0){
     try{
@@ -1252,6 +1322,12 @@ function buildFicheRecettePDF(fr){
       doc.text(String(grammage),x0+colW-3,bcy+1.1,{align:'right'});
     }
     yy+=headH+Math.max(1,2*scale);
+
+    const cardAllerg=allergArr(f?.allergenes);
+    if(cardAllerg.length){
+      yy=drawAllergChips(doc,cardAllerg,x0+11,yy,colW-13,Math.max(4.5,5.2*scale),[251,237,236],[237,216,216],PDF_ROUGE);
+      yy+=2.4*scale;
+    }
 
     if(f){
       // Filet de sécurité ultime : si un cas extrême (volume de contenu
@@ -1378,7 +1454,8 @@ function closeModal(id){
 function openNewFiche(){
   editId=null;
   document.getElementById('mf-title').textContent='Nouvelle fiche';
-  ['f-nom','f-qte','f-allerg'].forEach(id=>document.getElementById(id).value='');
+  ['f-nom','f-qte'].forEach(id=>document.getElementById(id).value='');
+  fAllergSelected=[];renderFAllergPicker();
   document.getElementById('cond-il').innerHTML='';addCondRow();
   document.getElementById('il').innerHTML='';document.getElementById('sl').innerHTML='';
   addIR();addSR();openModal('modal-fiche');
@@ -1514,7 +1591,7 @@ async function saveFiche(){
       if(t)conds.push(t+(q?' — '+q:''));
     });
     const conditionnement=JSON.stringify(conds);
-    const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),allergenes:document.getElementById('f-allerg').value.trim(),conditionnement,ingredients:ings,process:proc};
+    const data={nom,categorie:document.getElementById('f-cat').value,quantite_nette:document.getElementById('f-qte').value.trim(),allergenes:fAllergSelected.join(', '),conditionnement,ingredients:ings,process:proc};
     await saveRecord('fiches',editId,data,{modalId:'modal-fiche',successMsg:'Fiche enregistrée ✓',updateMsg:'Fiche modifiée ✓'});
   }catch(e){
     toast('Erreur — réessaie','err');
@@ -1529,7 +1606,8 @@ async function editFiche(id){
   document.getElementById('mf-title').textContent='Modifier — '+f.nom;
   document.getElementById('f-nom').value=f.nom;
   document.getElementById('f-qte').value=f.quantite_nette||'';
-  document.getElementById('f-allerg').value=allergArr(f.allergenes).join(', ');
+  fAllergSelected=allergArr(f.allergenes).filter(a=>ALLERGENES_LIST.includes(a));
+  renderFAllergPicker();
   document.getElementById('cond-il').innerHTML='';
   let conds=[];
   try{conds=JSON.parse(f.conditionnement||'[]');}catch(e){if(f.conditionnement)conds=[f.conditionnement];}
