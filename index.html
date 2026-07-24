@@ -1144,7 +1144,7 @@ function drawAllergChips(doc,chips,x0,y0,maxW,fontSize,fill,border,color){
     doc.setFillColor(...fill);doc.setDrawColor(...border);doc.setLineWidth(0.15);
     doc.roundedRect(x,y,w,h,h/2,h/2,'FD');
     doc.setTextColor(...color);
-    doc.text(c,x+padX,y+h/2,{baseline:'middle'});
+    doc.text(c,x+padX,y+h/2+fontSize*0.13);
     x+=w+gap;
   });
   return y+h;
@@ -1198,7 +1198,7 @@ function buildFicheRecettePDF(fr){
       const stepTextW=colW-stepBadgeW-5*scale;
       f.process.forEach(s=>{
         const lines=doc.splitTextToSize(String(s),stepTextW).length;
-        h+=Math.max(lines*lineH+pad,stepBadgeW+1*scale);
+        h+=lines*lineH+pad;
       });
     }
     return h+8*scale;
@@ -1329,13 +1329,14 @@ function buildFicheRecettePDF(fr){
     doc.text((f?f.nom:text||'').toUpperCase(),x0+11,bcy+1.1);
     if(grammage){
       const gtext=String(grammage);
-      doc.setFont('helvetica','normal');doc.setFontSize(Math.max(6,7.5*scale));
+      const gfs=Math.max(6,7.5*scale);
+      doc.setFont('helvetica','normal');doc.setFontSize(gfs);
       const gw=doc.getTextWidth(gtext)+4.8*scale,gh=Math.max(4.2,5.6*scale);
       const gx=x0+colW-3-gw,gy=bcy-gh/2;
       doc.setFillColor(255,255,255);doc.setDrawColor(...PDF_BORDER);doc.setLineWidth(0.2);
       doc.roundedRect(gx,gy,gw,gh,gh/2,gh/2,'FD');
       doc.setTextColor(...PDF_GRIS_FONCE);
-      doc.text(gtext,gx+gw/2,bcy+0.3,{align:'center',baseline:'middle'});
+      doc.text(gtext,gx+gw/2,bcy+gfs*0.13,{align:'center'});
     }
     if(cardAllerg.length){
       drawAllergChips(doc,cardAllerg,x0+11,yy+badgeRowH+2*scale,colW-13,Math.max(4.5,5.2*scale),[251,237,236],[237,216,216],PDF_ROUGE);
@@ -1365,7 +1366,7 @@ function buildFicheRecettePDF(fr){
 
       const ingList=f.ingredients||[];
       const availIng=colBottom-yy;
-      if(availIng>lineH+pad){
+      if(ingList.length&&availIng>lineH+pad){
         const ingCount=clampToHeight(ingList,i=>(i.nom||'').toUpperCase(),availIng,nameColW);
         const rows=ingList.slice(0,ingCount).map(i=>[
           (i.nom||'').toUpperCase(),
@@ -1409,12 +1410,13 @@ function buildFicheRecettePDF(fr){
             const procCount=clampToHeight(procList,s=>String(s),availProc,stepTextW);
             procList.slice(0,procCount).forEach((s,i)=>{
               const lines=doc.splitTextToSize(String(s),stepTextW);
-              const rh=Math.max(lines.length*lineH+pad,stepBadgeW+1*scale);
+              const rh=lines.length*lineH+pad;
+              const stepFs=Math.max(5,6.5*scale);
               if(i%2===0){doc.setFillColor(...PDF_ROSE_ALT);doc.rect(x0,yy,colW,rh,'F');}
               doc.setFillColor(...PDF_ROUGE);
               doc.rect(x0,yy,stepBadgeW,rh,'F');
-              doc.setFont('helvetica','bold');doc.setFontSize(Math.max(5,6.5*scale));doc.setTextColor(255,255,255);
-              doc.text(String(i+1),x0+stepBadgeW/2,yy+rh/2,{align:'center',baseline:'middle'});
+              doc.setFont('helvetica','bold');doc.setFontSize(stepFs);doc.setTextColor(255,255,255);
+              doc.text(String(i+1),x0+stepBadgeW/2,yy+rh/2+stepFs*0.13,{align:'center'});
               doc.setFont('helvetica','normal');doc.setFontSize(fs);doc.setTextColor(...PDF_NOIR);
               let ty=yy+pad/2+lineH*0.78;
               lines.forEach(ln=>{doc.text(ln,stepTextX,ty);ty+=lineH;});
