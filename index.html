@@ -1343,6 +1343,7 @@ function buildFicheRecettePDF(fr){
     }
     const hasBody=f&&((f.ingredients||[]).length||(f.process||[]).length);
     yy+=headH+(hasBody?Math.max(0.8,1.6*scale):0);
+    const headOnly=!hasBody;
 
     if(f){
       // Filet de sécurité ultime : si un cas extrême (volume de contenu
@@ -1437,7 +1438,7 @@ function buildFicheRecettePDF(fr){
         }
       }
     }
-    yy+=Math.max(0.8,1.6*scale);
+    if(!headOnly)yy+=Math.max(0.8,1.6*scale);
     doc.setDrawColor(...PDF_BORDER);doc.setLineWidth(0.25);
     doc.roundedRect(x0,cardTop,colW,yy-cardTop,cardR,cardR,'S');
     colY[c]=yy+cardGapAt(scale);
