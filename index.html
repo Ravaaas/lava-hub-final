@@ -886,14 +886,17 @@ create policy "public delete fiches_recette" on fiches_recette for delete using 
 }
 
 // ── RENDER FICHES ──
-function renderFiches(){
+function filteredFiches(){
   const q=(document.getElementById('s-rec')?.value||'').toLowerCase();
   const cat=document.getElementById('f-cat-filter')?.value||'';
-  const grid=document.getElementById('fiches-grid');
-  let fil=fiches.filter(f=>{
+  return fiches.filter(f=>{
     const mq=!q||f.nom.toLowerCase().includes(q)||(f.ingredients||[]).some(i=>i.nom?.toLowerCase().includes(q));
     return mq&&(!cat||f.categorie===cat);
   });
+}
+function renderFiches(){
+  const grid=document.getElementById('fiches-grid');
+  let fil=filteredFiches();
   const tot=fiches.length;
   document.getElementById('rec-sub').textContent=tot===0?'Aucune fiche':tot+' fiche'+(tot!==1?'s':'')+(fil.length!==tot?` · ${fil.length} résultat${fil.length!==1?'s':''}`:'');
   document.getElementById('b-rec').textContent=tot;
@@ -1742,6 +1745,22 @@ function openFD(id){
   document.getElementById('fd').classList.add('open');
 }
 function closeFD(){document.getElementById('fd').classList.remove('open');curFicheId=null}
+function navigateFD(dir){
+  if(!curFicheId)return;
+  const list=filteredFiches();
+  const idx=list.findIndex(f=>f.id===curFicheId);
+  if(idx===-1)return;
+  const next=list[idx+dir];
+  if(next)openFD(next.id);
+}
+document.addEventListener('keydown',(e)=>{
+  if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;
+  if(!document.getElementById('fd')?.classList.contains('open'))return;
+  const tag=(document.activeElement?.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea'||tag==='select')return;
+  e.preventDefault();
+  navigateFD(e.key==='ArrowLeft'?-1:1);
+});
 function applyCoef(){
   const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
   const coef=parseFloat(document.getElementById('fd-coef').value)||1;
