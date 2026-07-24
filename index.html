@@ -607,6 +607,9 @@ let cfg={
 function escHTML(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+function allergArr(v){
+  return Array.isArray(v)?v.map(s=>String(s).trim()).filter(Boolean):String(v||'').split(',').map(s=>s.trim()).filter(Boolean);
+}
 
 function setBusy(btnId,v){
   const b=document.getElementById(btnId);
@@ -941,7 +944,7 @@ function renderFRAllergenes(){
   const set=new Set();
   frSelectedIds.forEach(({id})=>{
     const f=fiches.find(x=>x.id===id);
-    (f?.allergenes||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(a=>set.add(a));
+    allergArr(f?.allergenes).forEach(a=>set.add(a));
   });
   const list=[...set].sort((a,b)=>a.localeCompare(b,'fr'));
   const el=document.getElementById('fr-allergenes-auto');
@@ -1021,7 +1024,7 @@ function buildFicheRecetteDoc(fr){
     return `<div class="fr-sr-card">
       <div class="fr-sr-head"><span class="fr-sr-badge">${idx+1}</span><span class="fr-sr-name">${escHTML(f.nom)}</span>${grammage?`<span class="fr-sr-gram">${escHTML(grammage)}</span>`:''}</div>
       <table class="fdoc-table"><thead><tr><th>Ingrédient</th><th style="text-align:right">Quantité</th></tr></thead><tbody>${irows}</tbody></table>
-      ${steps?`<div class="fdoc-steps">${steps}</div>`:''}
+      ${steps?`<div class="fdoc-ptitle" style="margin:1rem 1rem 0.5rem">Process</div><div class="fdoc-steps">${steps}</div>`:''}
     </div>`;
   }).join('');
   return `<div class="fdoc">
@@ -1080,16 +1083,16 @@ function buildFicheRecettePDF(fr){
   y+=6;
 
   function measureSRHeight(f){
-    const nameColW=(pageW-2*mX)-35-4.4,stepColW=(pageW-2*mX)-7-4.4;
+    const nameColW=(pageW-2*mX)-35-5,stepColW=(pageW-2*mX)-7-5;
     const lineH=7.5*0.3527*1.15;
     doc.setFont('helvetica','normal');doc.setFontSize(7.5);
-    let h=8;
+    let h=9+6;
     (f.ingredients||[]).forEach(i=>{
       const lines=doc.splitTextToSize((i.nom||'').toUpperCase(),nameColW).length;
       h+=lines*lineH+2.8;
     });
     if((f.process||[]).length){
-      h+=2;
+      h+=7;
       f.process.forEach(s=>{
         const lines=doc.splitTextToSize(String(s),stepColW).length;
         h+=lines*lineH+2.8;
@@ -1107,41 +1110,61 @@ function buildFicheRecettePDF(fr){
   srEntries.forEach(({ref:f,grammage},idx)=>{
     const estH=measureSRHeight(f);
     if(y+Math.min(estH,pageH-mTop-mBottom)>pageH-mBottom){doc.addPage();y=mTop;}
-    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...PDF_ROUGE);
-    doc.text((idx+1)+'. '+f.nom.toUpperCase(),mX,y);
+    const cardTop=y,headH=8,cx=mX+5,cy=y+headH/2;
+    doc.setFillColor(251,243,241);
+    doc.rect(mX,y,pageW-2*mX,headH,'F');
+    doc.setFillColor(...PDF_ROUGE);
+    doc.circle(cx,cy,3,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(255,255,255);
+    doc.text(String(idx+1),cx,cy+1.1,{align:'center'});
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...PDF_NOIR);
+    doc.text(f.nom.toUpperCase(),mX+11,cy+1.1);
     if(grammage){
       doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...PDF_GRIS_FONCE);
-      doc.text(String(grammage),pageW-mX,y,{align:'right'});
+      doc.text(String(grammage),pageW-mX-3,cy+1.1,{align:'right'});
     }
-    y+=2;
+    y+=headH+2;
     const rows=(f.ingredients||[]).map(i=>[
       (i.nom||'').toUpperCase(),
       i.unite==='pm'?'pm':(i.quantite?i.quantite+' '+(i.unite||''):'—')
     ]);
     doc.autoTable({
-      startY:y+2,
+      startY:y,
+      head:[['Ingrédient','Quantité']],
       body:rows,
       theme:'plain',
       margin:{left:mX,right:mX,bottom:mBottom},
-      styles:{font:'helvetica',fontSize:7.5,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4,bottom:1.4,left:2.2,right:2.2}},
+      styles:{font:'helvetica',fontSize:7.5,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4,bottom:1.4,left:2.5,right:2.5}},
+      headStyles:{textColor:PDF_ROUGE,fontStyle:'bold',fontSize:6.8,fillColor:[255,255,255],lineWidth:{bottom:0.2},halign:'left'},
       columnStyles:{1:{halign:'right',textColor:PDF_GRIS_FONCE,cellWidth:35}},
-      alternateRowStyles:{fillColor:PDF_ROSE_ALT}
+      alternateRowStyles:{fillColor:PDF_ROSE_ALT},
+      didParseCell:(data)=>{ if(data.section==='head'&&data.column.index===1) data.cell.styles.halign='right'; }
     });
-    y=doc.lastAutoTable.finalY+2;
+    y=doc.lastAutoTable.finalY;
     const stepRows=(f.process||[]).map((s,i)=>[String(i+1),s]);
     if(stepRows.length){
+      y+=3;
+      doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...PDF_ROUGE);
+      doc.text('PROCESS',mX+2.5,y);
+      y+=1.2;
+      doc.setDrawColor(237,216,216);doc.setLineWidth(0.2);
+      doc.line(mX+2.5,y,pageW-mX-2.5,y);
+      y+=2;
       doc.autoTable({
         startY:y,
         body:stepRows,
         theme:'plain',
         margin:{left:mX,right:mX,bottom:mBottom},
-        styles:{font:'helvetica',fontSize:7.5,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4,bottom:1.4,left:2.2,right:2.2},valign:'middle'},
+        styles:{font:'helvetica',fontSize:7.5,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:1.4,bottom:1.4,left:2.5,right:2.5},valign:'middle'},
         columnStyles:{0:{cellWidth:7,halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{cellWidth:'auto'}},
         alternateRowStyles:{fillColor:PDF_ROSE_ALT},
         didParseCell:(data)=>{ if(data.column.index===0) data.cell.styles.fillColor=PDF_ROUGE; }
       });
       y=doc.lastAutoTable.finalY;
     }
+    y+=2;
+    doc.setDrawColor(...PDF_BORDER);doc.setLineWidth(0.25);
+    doc.roundedRect(mX,cardTop,pageW-2*mX,y-cardTop,2,2,'S');
     y+=6;
   });
   return doc;
@@ -1334,7 +1357,7 @@ async function editFiche(id){
   document.getElementById('mf-title').textContent='Modifier — '+f.nom;
   document.getElementById('f-nom').value=f.nom;
   document.getElementById('f-qte').value=f.quantite_nette||'';
-  document.getElementById('f-allerg').value=f.allergenes||'';
+  document.getElementById('f-allerg').value=allergArr(f.allergenes).join(', ');
   document.getElementById('cond-il').innerHTML='';
   let conds=[];
   try{conds=JSON.parse(f.conditionnement||'[]');}catch(e){if(f.conditionnement)conds=[f.conditionnement];}
