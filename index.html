@@ -1409,9 +1409,9 @@ function buildFicheRecettePDF(fr){
               const lines=doc.splitTextToSize(String(s),stepTextW);
               const rh=Math.max(lines.length*lineH+pad,stepBadgeR*2+1*scale);
               const cy=yy+rh/2;
-              doc.setFillColor(...PDF_ROUGE);
-              doc.circle(x0+2+stepBadgeR,cy,stepBadgeR,'F');
-              doc.setFont('helvetica','bold');doc.setFontSize(Math.max(5,6.5*scale));doc.setTextColor(255,255,255);
+              doc.setFillColor(255,255,255);doc.setDrawColor(...PDF_ROUGE);doc.setLineWidth(0.4);
+              doc.circle(x0+2+stepBadgeR,cy,stepBadgeR,'FD');
+              doc.setFont('helvetica','bold');doc.setFontSize(Math.max(5,6.5*scale));doc.setTextColor(...PDF_ROUGE);
               doc.text(String(i+1),x0+2+stepBadgeR,cy,{align:'center',baseline:'middle'});
               doc.setFont('helvetica','normal');doc.setFontSize(fs);doc.setTextColor(...PDF_NOIR);
               let ty=yy+pad/2+lineH*0.78;
