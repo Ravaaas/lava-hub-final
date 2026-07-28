@@ -388,11 +388,20 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     </div>
   </header>
   <nav class="tabs">
+    <button class="tb admin-only" onclick="switchTab('log',this)" style="display:none">Journal <span class="tbadge" id="b-log">0</span></button>
     <button class="tb active" onclick="switchTab('recettes',this)">Fiche Technique <span class="tbadge" id="b-rec">0</span></button>
     <button class="tb" onclick="switchTab('fichesrecette',this)">Fiche Recette <span class="tbadge" id="b-fr">0</span></button>
     <button class="tb admin-only" onclick="switchTab('config',this)" style="display:none">Config</button>
   </nav>
   <main>
+
+    <!-- JOURNAL -->
+    <div class="tc" id="tab-log">
+      <div class="ph">
+        <div><div class="ph-title">Journal</div><div class="ph-sub">Toutes les mises à jour de l'application et toutes les modifications de fiches, dans l'ordre</div></div>
+      </div>
+      <div class="cl" id="log-list" style="max-height:none"></div>
+    </div>
 
     <!-- RECETTES -->
     <div class="tc active" id="tab-recettes">
@@ -455,10 +464,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
       <div class="cs">
         <div class="cs-title">Sauvegarde</div>
         <button class="btn btn-o btn-sm" onclick="exportFiches()">⬇ Exporter toutes les fiches (JSON)</button>
-      </div>
-      <div class="cs">
-        <div class="cs-title">Historique</div>
-        <div class="cl" id="cfg-audit" style="max-height:320px;overflow-y:auto"></div>
       </div>
     </div>
 
@@ -780,22 +785,45 @@ function switchTab(n,b){
   document.querySelectorAll('.tb').forEach(x=>x.classList.remove('active'));
   document.getElementById('tab-'+n).classList.add('active');
   b.classList.add('active');
-  if(n==='config')renderAudit();
+  if(n==='log')renderLog();
 }
 
-async function renderAudit(){
-  const el=document.getElementById('cfg-audit');if(!el)return;
+// ── JOURNAL : mises à jour de l'application (fixe, tenu à jour à chaque évolution) ──
+const APP_CHANGELOG=[
+  {date:'2026-07-24',titre:'Navigation au clavier dans les fiches techniques',desc:"Dans le détail d'une fiche technique, les flèches gauche/droite du clavier permettent de passer directement à la fiche précédente ou suivante."},
+  {date:'2026-07-24',titre:'PDF Fiche Recette : mise en page nettoyée',desc:"Les cartes de recette (bandeau, pastilles d'allergènes, étapes de process) sont réalignées et les espaces vides inutiles ont été supprimés."},
+  {date:'2026-07-24',titre:'Allergènes normalisés',desc:"Seuls 7 allergènes sont désormais disponibles (Gluten, Crustacé, Œuf, Arachide, Fruit à coque, Lactose, Mollusque), sélectionnables en un clic. Ils s'affichent en sous-titre et par recette liée, uniquement sur la Fiche Recette."},
+  {date:'2026-07-23',titre:'"Éléments" à la place de "Recettes (N)"',desc:'Le titre de la liste des composants d\'une Fiche Recette est simplifié, sans le compteur entre parenthèses.'},
+  {date:'2026-07-23',titre:'Ordre de dressage et éléments libres',desc:"Chaque recette liée dans une Fiche Recette est numérotée selon l'ordre de dressage, et on peut ajouter un élément libre (sans fiche technique liée, ex: une garniture simple)."},
+  {date:'2026-07-23',titre:'PDF Fiche Recette en grille 2 colonnes',desc:"Le PDF tient toujours en 2 pages maximum, avec une mise en page en 2 colonnes propre et sans chevauchement."},
+];
+
+async function renderLog(){
+  const el=document.getElementById('log-list');if(!el)return;
   el.innerHTML='<div class="es-icon" style="font-size:1rem;padding:0.5rem 0">Chargement…</div>';
+  let dataEntries=[];
   try{
     const{data}=await sb.from('lava_config').select('*').eq('id','audit_log').single();
-    const log=(data&&data.data&&Array.isArray(data.data.entries))?data.data.entries:[];
-    if(!log.length){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Aucun historique pour l\'instant.</div>';return}
-    el.innerHTML=log.slice().reverse().map(e=>{
-      const d=new Date(e.ts);
-      const when=d.toLocaleDateString('fr-FR')+' '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-      return `<div class="ci"><span class="ci-label">${escHTML(when)} — ${escHTML(e.action)} — ${escHTML(e.ficheNom||'')}</span></div>`;
-    }).join('');
-  }catch(e){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Aucun historique pour l\'instant.</div>';}
+    dataEntries=(data&&data.data&&Array.isArray(data.data.entries))?data.data.entries:[];
+  }catch(e){}
+  const items=[
+    ...APP_CHANGELOG.map(c=>({ts:new Date(c.date).getTime(),type:'app',titre:c.titre,desc:c.desc})),
+    ...dataEntries.map(e=>({ts:new Date(e.ts).getTime(),type:'data',titre:e.action,desc:e.ficheNom||''}))
+  ].sort((a,b)=>b.ts-a.ts);
+  document.getElementById('b-log').textContent=items.length;
+  if(!items.length){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Aucun événement pour l\'instant.</div>';return}
+  el.innerHTML=items.map(it=>{
+    const d=new Date(it.ts);
+    const when=isNaN(d)?'':d.toLocaleDateString('fr-FR')+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const tag=it.type==='app'
+      ?`<span style="font-size:0.6rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--gt);background:var(--gc);border-radius:6px;padding:0.15rem 0.5rem;flex-shrink:0">Mise à jour app</span>`
+      :`<span style="font-size:0.6rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--rouge);background:var(--rose);border-radius:6px;padding:0.15rem 0.5rem;flex-shrink:0">Modification</span>`;
+    return `<div class="ci" style="flex-direction:column;align-items:flex-start;gap:0.35rem">
+      <div style="display:flex;align-items:center;gap:0.5rem;width:100%">${tag}<span style="font-size:0.68rem;color:var(--gt);margin-left:auto">${escHTML(when)}</span></div>
+      <div class="ci-label" style="font-weight:600">${escHTML(it.titre||'')}</div>
+      ${it.desc?`<div style="font-size:0.78rem;color:var(--gt);line-height:1.5">${escHTML(it.desc)}</div>`:''}
+    </div>`;
+  }).join('');
 }
 
 let exportSelectedIds=new Set();
