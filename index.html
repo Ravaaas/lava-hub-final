@@ -142,11 +142,14 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .log-filter.active{background:var(--rouge);border-color:var(--rouge);color:#fff}
 .log-day{font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gt);margin:1.5rem 0 0.5rem}
 .log-day:first-child{margin-top:0}
-.log-row{display:flex;align-items:baseline;gap:0.6rem;padding:0.45rem 0.1rem;border-bottom:1px solid var(--border)}
-.log-row:last-child{border-bottom:none}
-.log-time{font-size:0.68rem;color:var(--gt);flex-shrink:0;width:2.6rem}
-.log-action{font-size:0.68rem;color:var(--gt);flex-shrink:0}
+.log-row-wrap{padding:0.45rem 0.1rem;border-bottom:1px solid var(--border)}
+.log-row-wrap:last-child{border-bottom:none}
+.log-row{display:flex;align-items:baseline;gap:0.6rem}
+.log-time{font-size:0.68rem;color:var(--gt);flex-shrink:0;min-width:2.6rem}
+.log-action{font-size:0.68rem;flex-shrink:0;display:inline-flex;align-items:center;gap:0.35rem;font-weight:600}
+.log-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
 .log-name{font-size:0.8rem;color:var(--noir);font-weight:500}
+.log-detail{margin:0.3rem 0 0 3.2rem;font-size:0.68rem;color:var(--gt);line-height:1.45}
 .log-app{display:flex;flex-direction:column;gap:0.3rem;padding:0.7rem 0.85rem;background:var(--rose);border-radius:var(--r);margin-bottom:0.5rem}
 .log-app-titre{font-size:0.82rem;font-weight:700;color:var(--rouge)}
 .log-app-desc{font-size:0.76rem;color:var(--noir);line-height:1.5}
@@ -836,24 +839,61 @@ function setLogFilter(f){
   paintLog();
 }
 
+// Type d'action (creation / modification / suppression) → couleur + libellé distincts
+function actionMeta(action){
+  const a=(action||'').toLowerCase();
+  if(a.includes('suppression'))return{label:'Suppression',color:'var(--rouge)'};
+  if(a.includes('création'))return{label:'Création',color:'#3F7A5D'};
+  return{label:'Modification',color:'var(--gt)'};
+}
+
+// Fusionne les modifications rapprochées (même fiche, même action, < 3 min d'écart)
+function groupBursts(items){
+  const GAP_MS=3*60*1000;
+  const out=[];
+  items.forEach(it=>{
+    const last=out[out.length-1];
+    if(it.type==='data'&&last&&last.type==='data'&&last.action===it.action&&last.ficheNom===it.ficheNom&&(last.tsStart-it.ts)<=GAP_MS){
+      last.count++;
+      last.tsStart=it.ts;
+      if(it.detail&&it.detail.length)last.detail=Array.from(new Set([...(last.detail||[]),...it.detail]));
+    }else{
+      out.push({...it,count:1,tsStart:it.ts,tsEnd:it.ts});
+    }
+  });
+  return out;
+}
+
+function fmtTime(ts){
+  const d=new Date(ts);
+  return isNaN(d)?'':d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+}
+
 function paintLog(){
   const el=document.getElementById('log-list');if(!el)return;
-  const items=logFilter==='all'?logItems:logItems.filter(it=>it.type===logFilter);
+  const filtered=logFilter==='all'?logItems:logItems.filter(it=>it.type===logFilter);
+  const items=groupBursts(filtered);
   if(!items.length){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Aucun événement.</div>';return}
   let html='',lastDay='';
   items.forEach(it=>{
     const d=new Date(it.ts);
-    const time=isNaN(d)?'':d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
     const day=isNaN(d)?'':dayLabel(d);
     if(day&&day!==lastDay){html+=`<div class="log-day">${escHTML(day)}</div>`;lastDay=day;}
     if(it.type==='app'){
       html+=`<div class="log-app">
         <div class="log-app-titre">${escHTML(it.titre||'')}</div>
         ${it.desc?`<div class="log-app-desc">${escHTML(it.desc)}</div>`:''}
-        <div class="log-app-time">${escHTML(time)}</div>
+        <div class="log-app-time">${escHTML(fmtTime(it.ts))}</div>
       </div>`;
     }else{
-      html+=`<div class="log-row"><span class="log-time">${escHTML(time)}</span><span class="log-action">${escHTML(it.titre||'')}</span><span class="log-name">${escHTML(it.desc||'')}</span></div>`;
+      const meta=actionMeta(it.action);
+      const time=it.count>1?`${fmtTime(it.tsStart)}–${fmtTime(it.tsEnd)}`:fmtTime(it.ts);
+      const countTxt=it.count>1?` ×${it.count}`:'';
+      const detailLine=it.detail&&it.detail.length?`<div class="log-detail">${escHTML(it.detail.join(' · '))}</div>`:'';
+      html+=`<div class="log-row-wrap">
+        <div class="log-row"><span class="log-time">${escHTML(time)}</span><span class="log-action" style="color:${meta.color}"><span class="log-dot" style="background:${meta.color}"></span>${escHTML(meta.label)}${countTxt}</span><span class="log-name">${escHTML(it.ficheNom||'')}</span></div>
+        ${detailLine}
+      </div>`;
     }
   });
   el.innerHTML=html;
@@ -869,7 +909,7 @@ async function renderLog(){
   }catch(e){}
   logItems=[
     ...APP_CHANGELOG.map(c=>({ts:new Date(c.date).getTime(),type:'app',titre:c.titre,desc:c.desc})),
-    ...dataEntries.map(e=>({ts:new Date(e.ts).getTime(),type:'data',titre:e.action,desc:e.ficheNom||''}))
+    ...dataEntries.map(e=>({ts:new Date(e.ts).getTime(),type:'data',action:e.action,ficheNom:e.ficheNom||'',detail:e.detail}))
   ].sort((a,b)=>b.ts-a.ts);
   document.getElementById('b-log').textContent=logItems.length;
   paintLog();
@@ -1124,9 +1164,10 @@ async function saveFR(){
       return{text:(r.querySelector('.fr-sr-text-in')?.value||'').trim(),grammage:gram};
     }).filter(e=>e.id||e.text);
     const data={nom,photo:frPhotoData||null,allergenes:renderFRAllergenes().join(', '),sous_recettes:order};
+    const oldFR=editFRId?fichesRecette.find(f=>f.id===editFRId):null;
     const res=editFRId?await sb.from('fiches_recette').update(data).eq('id',editFRId):await sb.from('fiches_recette').insert(data);
     if(res.error){toast('Erreur : '+res.error.message,'err');return}
-    await logAudit(editFRId?'modification fiche recette':'création fiche recette',nom);
+    await logAudit(editFRId?'modification fiche recette':'création fiche recette',nom,editFRId?diffFicheRecette(oldFR,data):[]);
     toast(editFRId?'Fiche recette modifiée ✓':'Fiche recette enregistrée ✓','ok');
     closeModal('modal-fr');await loadAll();
   }catch(e){
@@ -1636,22 +1677,69 @@ function addSR(t=''){
 function renum(){document.querySelectorAll('#sl .sn').forEach((e,i)=>e.textContent=i+1)}
 
 
-async function logAudit(action,ficheNom){
+async function logAudit(action,ficheNom,detail){
   try{
     const{data}=await sb.from('lava_config').select('*').eq('id','audit_log').single();
     const log=(data&&data.data&&Array.isArray(data.data.entries))?data.data.entries:[];
-    log.push({ts:Date.now(),action,ficheNom,profil});
+    log.push({ts:Date.now(),action,ficheNom,profil,detail:(detail&&detail.length)?detail:undefined});
     while(log.length>500)log.shift();
     await sb.from('lava_config').upsert({id:'audit_log',data:{entries:log}});
   }catch(e){}
 }
 
+// ── DIFF : compare l'ancienne et la nouvelle version d'une fiche pour un journal precis ──
+function diffIngredients(oldList,newList){
+  const changes=[];
+  const oldMap=new Map((oldList||[]).map(i=>[normName(i.nom||''),i]));
+  const newMap=new Map((newList||[]).map(i=>[normName(i.nom||''),i]));
+  newMap.forEach((ni,key)=>{
+    const oi=oldMap.get(key);
+    if(!oi){changes.push(`+ ${ni.nom}`);return}
+    const oq=`${oi.quantite||''} ${oi.unite||''}`.trim();
+    const nq=`${ni.quantite||''} ${ni.unite||''}`.trim();
+    if(oq!==nq)changes.push(`${ni.nom} : ${oq||'—'} → ${nq||'—'}`);
+  });
+  oldMap.forEach((oi,key)=>{ if(!newMap.has(key))changes.push(`− ${oi.nom}`); });
+  return changes;
+}
+function diffFiche(oldF,newData){
+  if(!oldF)return[];
+  const changes=[];
+  if((oldF.nom||'')!==(newData.nom||''))changes.push(`Nom : ${oldF.nom||'—'} → ${newData.nom||'—'}`);
+  if((oldF.categorie||'')!==(newData.categorie||''))changes.push(`Catégorie : ${oldF.categorie||'—'} → ${newData.categorie||'—'}`);
+  if((oldF.quantite_nette||'')!==(newData.quantite_nette||''))changes.push(`Quantité nette : ${oldF.quantite_nette||'—'} → ${newData.quantite_nette||'—'}`);
+  if((oldF.allergenes||'')!==(newData.allergenes||''))changes.push(`Allergènes : ${oldF.allergenes||'—'} → ${newData.allergenes||'—'}`);
+  changes.push(...diffIngredients(oldF.ingredients,newData.ingredients));
+  const op=oldF.process||[],np=newData.process||[];
+  if(JSON.stringify(op)!==JSON.stringify(np)){
+    changes.push(op.length!==np.length?`Process : ${op.length} → ${np.length} étape(s)`:'Process modifié');
+  }
+  return changes;
+}
+function diffFicheRecette(oldFR,newData){
+  if(!oldFR)return[];
+  const changes=[];
+  if((oldFR.nom||'')!==(newData.nom||''))changes.push(`Nom : ${oldFR.nom||'—'} → ${newData.nom||'—'}`);
+  const key=e=>e.id||e.text||'';
+  const label=e=>e.id?(fiches.find(f=>f.id===e.id)?.nom||'élément lié'):e.text;
+  const oldMap=new Map((oldFR.sous_recettes||[]).map(e=>[key(e),e]));
+  const newMap=new Map((newData.sous_recettes||[]).map(e=>[key(e),e]));
+  newMap.forEach((ne,k)=>{
+    const oe=oldMap.get(k);
+    if(!oe){changes.push(`+ ${label(ne)}`);return}
+    if((oe.grammage||'')!==(ne.grammage||''))changes.push(`${label(ne)} : ${oe.grammage||'—'} → ${ne.grammage||'—'}`);
+  });
+  oldMap.forEach((oe,k)=>{ if(!newMap.has(k))changes.push(`− ${label(oe)}`); });
+  return changes;
+}
+
 async function saveRecord(table,id,data,{modalId,successMsg,updateMsg}){
   setSyncing(true);
   try{
+    const oldF=(id&&table==='fiches')?fiches.find(f=>f.id===id):null;
     const res=id?await sb.from(table).update(data).eq('id',id):await sb.from(table).insert(data);
     if(res.error){toast('Erreur : '+res.error.message,'err');return false}
-    if(table==='fiches')await logAudit(id?'modification':'création',data.nom);
+    if(table==='fiches')await logAudit(id?'modification':'création',data.nom,id?diffFiche(oldF,data):[]);
     toast(id?updateMsg:successMsg,'ok');
     closeModal(modalId);await loadAll();
     return true;
