@@ -543,7 +543,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     <div class="m-head"><div class="m-title" id="mf-title">Nouvelle fiche</div><button class="m-close" onclick="closeModal('modal-fiche')">✕</button></div>
     <div class="m-body">
       <div class="fr">
-        <div class="fg2"><label class="fl">Nom *</label><input class="fi2" id="f-nom" type="text" placeholder="ex: Velouté Curry"></div>
+        <div class="fg2"><label class="fl">Nom *</label><input class="fi2" id="f-nom" type="text" placeholder="ex: Velouté Curry" oninput="this.value=this.value.toUpperCase()"></div>
         <div class="fg2"><label class="fl">Catégorie</label><select class="fsel" id="f-cat"></select></div>
       </div>
       <div class="fr">
@@ -1756,7 +1756,7 @@ function normName(s){
 }
 
 async function saveFiche(){
-  const nom=document.getElementById('f-nom').value.trim();
+  const nom=document.getElementById('f-nom').value.trim().toUpperCase();
   if(!nom){toast('Le nom est obligatoire','err');return}
   const dup=fiches.find(f=>f.id!==editId&&normName(f.nom)===normName(nom));
   if(dup){toast(`Une fiche "${dup.nom}" existe déjà`,'err');return}
