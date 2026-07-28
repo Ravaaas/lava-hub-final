@@ -135,6 +135,23 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .ca-row input{flex:1;padding:0.6rem 0.85rem;border:1.5px solid var(--border);border-radius:var(--r);font-family:'Poppins',sans-serif;font-size:0.78rem;background:var(--rose);color:var(--noir);outline:none;transition:border-color .15s}
 .ca-row input:focus{border-color:var(--rouge);background:var(--blanc)}
 
+/* JOURNAL */
+.log-filters{display:flex;gap:0.4rem;margin-bottom:1.25rem}
+.log-filter{padding:0.4rem 0.85rem;border:1.5px solid var(--border);background:var(--blanc);border-radius:20px;font-family:'Poppins',sans-serif;font-size:0.72rem;font-weight:600;color:var(--gt);cursor:pointer;transition:all .15s}
+.log-filter:hover{border-color:var(--rouge-lt)}
+.log-filter.active{background:var(--rouge);border-color:var(--rouge);color:#fff}
+.log-day{font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--gt);margin:1.5rem 0 0.5rem}
+.log-day:first-child{margin-top:0}
+.log-row{display:flex;align-items:baseline;gap:0.6rem;padding:0.45rem 0.1rem;border-bottom:1px solid var(--border)}
+.log-row:last-child{border-bottom:none}
+.log-time{font-size:0.68rem;color:var(--gt);flex-shrink:0;width:2.6rem}
+.log-action{font-size:0.68rem;color:var(--gt);flex-shrink:0}
+.log-name{font-size:0.8rem;color:var(--noir);font-weight:500}
+.log-app{display:flex;flex-direction:column;gap:0.3rem;padding:0.7rem 0.85rem;background:var(--rose);border-radius:var(--r);margin-bottom:0.5rem}
+.log-app-titre{font-size:0.82rem;font-weight:700;color:var(--rouge)}
+.log-app-desc{font-size:0.76rem;color:var(--noir);line-height:1.5}
+.log-app-time{font-size:0.62rem;color:var(--gt)}
+
 /* ALLERGEN PICKER */
 .allerg-picker{display:flex;flex-wrap:wrap;gap:0.5rem}
 .allerg-chip{display:flex;align-items:center;gap:0.35rem;padding:0.45rem 0.85rem;border:1.5px solid var(--border);border-radius:20px;background:var(--blanc);color:var(--gt);font-family:'Poppins',sans-serif;font-size:0.74rem;font-weight:600;cursor:pointer;transition:all .15s;user-select:none}
@@ -398,9 +415,14 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     <!-- JOURNAL -->
     <div class="tc" id="tab-log">
       <div class="ph">
-        <div><div class="ph-title">Journal</div><div class="ph-sub">Toutes les mises à jour de l'application et toutes les modifications de fiches, dans l'ordre</div></div>
+        <div><div class="ph-title">Journal</div><div class="ph-sub">Mises à jour de l'application et modifications de fiches, dans l'ordre</div></div>
       </div>
-      <div class="cl" id="log-list" style="max-height:none"></div>
+      <div class="log-filters" id="log-filters">
+        <button class="log-filter active" data-f="all" onclick="setLogFilter('all')">Tout</button>
+        <button class="log-filter" data-f="app" onclick="setLogFilter('app')">Mises à jour app</button>
+        <button class="log-filter" data-f="data" onclick="setLogFilter('data')">Modifications</button>
+      </div>
+      <div id="log-list"></div>
     </div>
 
     <!-- RECETTES -->
@@ -798,6 +820,45 @@ const APP_CHANGELOG=[
   {date:'2026-07-23',titre:'PDF Fiche Recette en grille 2 colonnes',desc:"Le PDF tient toujours en 2 pages maximum, avec une mise en page en 2 colonnes propre et sans chevauchement."},
 ];
 
+let logItems=[], logFilter='all';
+
+function dayLabel(d){
+  const now=new Date();
+  const days=Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/86400000);
+  if(days===0)return "Aujourd'hui";
+  if(days===1)return 'Hier';
+  return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+}
+
+function setLogFilter(f){
+  logFilter=f;
+  document.querySelectorAll('.log-filter').forEach(b=>b.classList.toggle('active',b.dataset.f===f));
+  paintLog();
+}
+
+function paintLog(){
+  const el=document.getElementById('log-list');if(!el)return;
+  const items=logFilter==='all'?logItems:logItems.filter(it=>it.type===logFilter);
+  if(!items.length){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Aucun événement.</div>';return}
+  let html='',lastDay='';
+  items.forEach(it=>{
+    const d=new Date(it.ts);
+    const time=isNaN(d)?'':d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    const day=isNaN(d)?'':dayLabel(d);
+    if(day&&day!==lastDay){html+=`<div class="log-day">${escHTML(day)}</div>`;lastDay=day;}
+    if(it.type==='app'){
+      html+=`<div class="log-app">
+        <div class="log-app-titre">${escHTML(it.titre||'')}</div>
+        ${it.desc?`<div class="log-app-desc">${escHTML(it.desc)}</div>`:''}
+        <div class="log-app-time">${escHTML(time)}</div>
+      </div>`;
+    }else{
+      html+=`<div class="log-row"><span class="log-time">${escHTML(time)}</span><span class="log-action">${escHTML(it.titre||'')}</span><span class="log-name">${escHTML(it.desc||'')}</span></div>`;
+    }
+  });
+  el.innerHTML=html;
+}
+
 async function renderLog(){
   const el=document.getElementById('log-list');if(!el)return;
   el.innerHTML='<div class="es-icon" style="font-size:1rem;padding:0.5rem 0">Chargement…</div>';
@@ -806,24 +867,12 @@ async function renderLog(){
     const{data}=await sb.from('lava_config').select('*').eq('id','audit_log').single();
     dataEntries=(data&&data.data&&Array.isArray(data.data.entries))?data.data.entries:[];
   }catch(e){}
-  const items=[
+  logItems=[
     ...APP_CHANGELOG.map(c=>({ts:new Date(c.date).getTime(),type:'app',titre:c.titre,desc:c.desc})),
     ...dataEntries.map(e=>({ts:new Date(e.ts).getTime(),type:'data',titre:e.action,desc:e.ficheNom||''}))
   ].sort((a,b)=>b.ts-a.ts);
-  document.getElementById('b-log').textContent=items.length;
-  if(!items.length){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Aucun événement pour l\'instant.</div>';return}
-  el.innerHTML=items.map(it=>{
-    const d=new Date(it.ts);
-    const when=isNaN(d)?'':d.toLocaleDateString('fr-FR')+' · '+d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-    const tag=it.type==='app'
-      ?`<span style="font-size:0.6rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--gt);background:var(--gc);border-radius:6px;padding:0.15rem 0.5rem;flex-shrink:0">Mise à jour app</span>`
-      :`<span style="font-size:0.6rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--rouge);background:var(--rose);border-radius:6px;padding:0.15rem 0.5rem;flex-shrink:0">Modification</span>`;
-    return `<div class="ci" style="flex-direction:column;align-items:flex-start;gap:0.35rem">
-      <div style="display:flex;align-items:center;gap:0.5rem;width:100%">${tag}<span style="font-size:0.68rem;color:var(--gt);margin-left:auto">${escHTML(when)}</span></div>
-      <div class="ci-label" style="font-weight:600">${escHTML(it.titre||'')}</div>
-      ${it.desc?`<div style="font-size:0.78rem;color:var(--gt);line-height:1.5">${escHTML(it.desc)}</div>`:''}
-    </div>`;
-  }).join('');
+  document.getElementById('b-log').textContent=logItems.length;
+  paintLog();
 }
 
 let exportSelectedIds=new Set();
