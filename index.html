@@ -815,6 +815,11 @@ function switchTab(n,b){
 
 // ── JOURNAL : mises à jour de l'application (fixe, tenu à jour à chaque évolution) ──
 const APP_CHANGELOG=[
+  {date:'2026-07-28',titre:'Allergènes élargis à 13',desc:"La liste fixe d'allergènes passe de 7 à 13 pour couvrir tous ceux réellement utilisés dans les fiches (ajout de Poisson, Soja, Céleri, Moutarde, Sésame, Sulfites)."},
+  {date:'2026-07-28',titre:'Fiche Technique : nom toujours en majuscules',desc:"Le nom d'une fiche technique est automatiquement mis en majuscules à la saisie et à l'enregistrement, pour une cohérence d'affichage partout dans l'app."},
+  {date:'2026-07-28',titre:'Journal : précision des modifications',desc:"Chaque modification de fiche affiche désormais le détail des changements (diff), une couleur selon le type d'action (création, modification, suppression), et les modifications rapprochées sont regroupées."},
+  {date:'2026-07-28',titre:'Journal : mise en page épurée',desc:"Les événements sont présentés en lignes plates, regroupées par jour, avec un filtre par type."},
+  {date:'2026-07-28',titre:'Nouvel onglet Journal',desc:"Un onglet Journal (réservé aux admins) liste les mises à jour de l'application et les modifications de fiches, dans l'ordre chronologique."},
   {date:'2026-07-24',titre:'Navigation au clavier dans les fiches techniques',desc:"Dans le détail d'une fiche technique, les flèches gauche/droite du clavier permettent de passer directement à la fiche précédente ou suivante."},
   {date:'2026-07-24',titre:'PDF Fiche Recette : mise en page nettoyée',desc:"Les cartes de recette (bandeau, pastilles d'allergènes, étapes de process) sont réalignées et les espaces vides inutiles ont été supprimés."},
   {date:'2026-07-24',titre:'Allergènes normalisés',desc:"Seuls 7 allergènes sont désormais disponibles (Gluten, Crustacé, Œuf, Arachide, Fruit à coque, Lactose, Mollusque), sélectionnables en un clic. Ils s'affichent en sous-titre et par recette liée, uniquement sur la Fiche Recette."},
