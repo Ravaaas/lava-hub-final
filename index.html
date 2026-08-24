@@ -1063,7 +1063,7 @@ function renderFichesRecette(){
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
     const nSr=(f.sous_recettes||[]).length;
-    c.innerHTML=`${f.photo?`<img src="${f.photo}" style="width:100%;height:140px;object-fit:cover;display:block">`:''}<div class="fc-top"><div class="fc-cat">${nSr} recette${nSr!==1?'s':''}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
+    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${nSr} recette${nSr!==1?'s':''}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
     c.onclick=()=>openFRD(f.id);
     grid.appendChild(c);
   });
