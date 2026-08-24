@@ -115,11 +115,13 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 
 /* FICHE CARDS */
 .fg{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem}
-.fc{background:var(--rose);border:1.5px solid var(--rose-mid);border-radius:16px;overflow:hidden;transition:all .25s;cursor:pointer;box-shadow:var(--sh-sm)}
+.fc{background:var(--rose);border:1.5px solid var(--rose-mid);border-radius:16px;overflow:hidden;transition:border-color .2s,box-shadow .2s,transform .2s;cursor:pointer;box-shadow:var(--sh-sm);animation:fi .3s ease backwards}
 .fc:hover{border-color:var(--rouge);box-shadow:var(--sh-md);transform:translateY(-4px)}
-.fc-top{padding:1.25rem 1.4rem 1rem}
+.fc:active{transform:translateY(-1px)}
+.fc-top{padding:1.25rem 1.4rem 1rem;display:flex;align-items:flex-start;justify-content:space-between;gap:0.75rem}
 .fc-cat{font-size:0.55rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--rouge);margin-bottom:0.35rem;opacity:.8}
 .fc-name{font-size:1rem;font-weight:700;color:var(--noir);line-height:1.25;text-transform:uppercase}
+.fc-icon{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:var(--rose-mid);color:var(--rouge);display:flex;align-items:center;justify-content:center;opacity:.75}
 .fc-body{padding:0.9rem 1.4rem}
 .fc-meta{font-size:0.67rem;color:var(--gt);display:flex;justify-content:space-between;margin-bottom:0.55rem}
 .fc-prev{font-size:0.69rem;color:var(--gt);line-height:1.5}
@@ -1031,7 +1033,7 @@ function renderFiches(){
   document.getElementById('rec-sub').textContent=tot===0?'Aucune fiche':tot+' fiche'+(tot!==1?'s':'')+(fil.length!==tot?` · ${fil.length} résultat${fil.length!==1?'s':''}`:'');
   document.getElementById('b-rec').textContent=tot;
   grid.innerHTML='';
-  if(tot===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">📋</div><h3>Aucune fiche</h3><p>Crée ta première fiche ou importe depuis une photo</p></div>';return}
+  if(tot===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">📋</div><h3>Aucune fiche</h3><p>Crée ta première fiche technique</p></div>';return}
   if(fil.length===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🔍</div><h3>Aucun résultat</h3><p>Essaie un autre terme</p></div>';return}
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
@@ -1060,10 +1062,10 @@ function renderFichesRecette(){
   grid.innerHTML='';
   if(tot===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🍽</div><h3>Aucune fiche recette</h3><p>Aucune fiche dans cette catégorie</p></div>';return}
   if(fil.length===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🔍</div><h3>Aucun résultat</h3><p>Essaie un autre terme</p></div>';return}
-  fil.forEach(f=>{
-    const c=document.createElement('div');c.className='fc';
+  fil.forEach((f,i)=>{
+    const c=document.createElement('div');c.className='fc';c.style.animationDelay=Math.min(i*0.03,0.3)+'s';
     const nSr=(f.sous_recettes||[]).length;
-    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${nSr} recette${nSr!==1?'s':''}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
+    c.innerHTML=`<div class="fc-top"><div><div class="fc-cat">${nSr} recette${nSr!==1?'s':''}</div><div class="fc-name">${escHTML(f.nom)}</div></div><div class="fc-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 2v6a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V2M7 2v20M7 10V2"/><path d="M17 2c-1.7 0-3 1.8-3 4v4c0 1.4.9 2 2 2h1v12M17 2v20"/></svg></div></div>`;
     c.onclick=()=>openFRD(f.id);
     grid.appendChild(c);
   });
