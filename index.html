@@ -458,6 +458,11 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
           </button>
         </div>
       </div>
+      <div class="log-filters" id="fr-status-filters">
+        <button class="log-filter active" data-fs="carte" onclick="setFRStatusFilter('carte')">Carte actuelle</button>
+        <button class="log-filter admin-only" style="display:none" data-fs="bestof" onclick="setFRStatusFilter('bestof')">Best of</button>
+        <button class="log-filter admin-only" style="display:none" data-fs="archive" onclick="setFRStatusFilter('archive')">Archive</button>
+      </div>
       <div class="sb">
         <div class="si-wrap">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -574,6 +579,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     <div class="m-head"><div class="m-title" id="mfr-title">Nouvelle fiche recette</div><button class="m-close" onclick="closeModal('modal-fr')">✕</button></div>
     <div class="m-body">
       <div class="fg2"><label class="fl">Nom du plat *</label><input class="fi2" id="fr-nom" type="text" placeholder="ex: Cassolette de Saint-Jacques"></div>
+      <div class="fg2"><label class="fl">Statut</label><select class="fsel" id="fr-statut"><option value="carte">Carte actuelle</option><option value="bestof">Best of</option><option value="archive">Archive</option></select></div>
       <div class="fg2">
         <label class="fl">Photo</label>
         <div style="display:flex;align-items:center;gap:0.75rem">
@@ -729,12 +735,14 @@ function loginAs(p){
   document.getElementById('app').style.display='flex';
   document.getElementById('prof-badge').textContent=p==='admin'?'Admin':'Cuisine';
   if(p==='admin')document.querySelectorAll('.admin-only').forEach(el=>el.style.display='flex');
+  else setFRStatusFilter('carte');
   loadCfg().then(()=>loadAll());
 }
 
 async function logout(){
   if(profil==='admin'){try{await sb.auth.signOut();}catch(e){}}
   profil=null;
+  setFRStatusFilter('carte');
   document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
@@ -1035,15 +1043,22 @@ function renderFiches(){
 }
 
 // ── RENDER FICHES RECETTE ──
+let frStatusFilter='carte';
+function setFRStatusFilter(s){
+  frStatusFilter=s;
+  document.querySelectorAll('#fr-status-filters .log-filter').forEach(b=>b.classList.toggle('active',b.dataset.fs===s));
+  renderFichesRecette();
+}
 function renderFichesRecette(){
   const q=(document.getElementById('s-fr')?.value||'').toLowerCase();
   const grid=document.getElementById('fr-grid');if(!grid)return;
-  const fil=fichesRecette.filter(f=>!q||f.nom.toLowerCase().includes(q));
-  const tot=fichesRecette.length;
+  const byStatus=fichesRecette.filter(f=>(f.statut||'carte')===frStatusFilter);
+  const fil=byStatus.filter(f=>!q||f.nom.toLowerCase().includes(q));
+  const tot=byStatus.length;
   document.getElementById('fr-sub').textContent=tot===0?'Aucune fiche':tot+' fiche'+(tot!==1?'s':'')+(fil.length!==tot?` · ${fil.length} résultat${fil.length!==1?'s':''}`:'');
-  document.getElementById('b-fr').textContent=tot;
+  document.getElementById('b-fr').textContent=fichesRecette.length;
   grid.innerHTML='';
-  if(tot===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🍽</div><h3>Aucune fiche recette</h3><p>Crée la première fiche recette d\'un plat</p></div>';return}
+  if(tot===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🍽</div><h3>Aucune fiche recette</h3><p>Aucune fiche dans cette catégorie</p></div>';return}
   if(fil.length===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🔍</div><h3>Aucun résultat</h3><p>Essaie un autre terme</p></div>';return}
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
@@ -1131,6 +1146,7 @@ function openNewFR(){
   editFRId=null;frSelectedIds=[];frPhotoData='';
   document.getElementById('mfr-title').textContent='Nouvelle fiche recette';
   document.getElementById('fr-nom').value='';
+  document.getElementById('fr-statut').value=frStatusFilter;
   document.getElementById('fr-sr-search').value='';
   document.getElementById('fr-sr-freetext').value='';
   clearFRPhoto();
@@ -1149,6 +1165,7 @@ async function editFR(id){
   frPhotoData=f.photo||'';
   document.getElementById('mfr-title').textContent='Modifier — '+f.nom;
   document.getElementById('fr-nom').value=f.nom;
+  document.getElementById('fr-statut').value=f.statut||'carte';
   document.getElementById('fr-sr-search').value='';
   document.getElementById('fr-sr-freetext').value='';
   const prev=document.getElementById('fr-photo-preview');
@@ -1168,7 +1185,8 @@ async function saveFR(){
       if(r.dataset.id)return{id:r.dataset.id,grammage:gram};
       return{text:(r.querySelector('.fr-sr-text-in')?.value||'').trim(),grammage:gram};
     }).filter(e=>e.id||e.text);
-    const data={nom,photo:frPhotoData||null,allergenes:renderFRAllergenes().join(', '),sous_recettes:order};
+    const statut=document.getElementById('fr-statut').value;
+    const data={nom,statut,photo:frPhotoData||null,allergenes:renderFRAllergenes().join(', '),sous_recettes:order};
     const oldFR=editFRId?fichesRecette.find(f=>f.id===editFRId):null;
     const res=editFRId?await sb.from('fiches_recette').update(data).eq('id',editFRId):await sb.from('fiches_recette').insert(data);
     if(res.error){toast('Erreur : '+res.error.message,'err');return}
@@ -1721,10 +1739,12 @@ function diffFiche(oldF,newData){
   }
   return changes;
 }
+const FR_STATUT_LABELS={carte:'Carte actuelle',bestof:'Best of',archive:'Archive'};
 function diffFicheRecette(oldFR,newData){
   if(!oldFR)return[];
   const changes=[];
   if((oldFR.nom||'')!==(newData.nom||''))changes.push(`Nom : ${oldFR.nom||'—'} → ${newData.nom||'—'}`);
+  if((oldFR.statut||'carte')!==(newData.statut||'carte'))changes.push(`Statut : ${FR_STATUT_LABELS[oldFR.statut||'carte']} → ${FR_STATUT_LABELS[newData.statut||'carte']}`);
   const key=e=>e.id||e.text||'';
   const label=e=>e.id?(fiches.find(f=>f.id===e.id)?.nom||'élément lié'):e.text;
   const oldMap=new Map((oldFR.sous_recettes||[]).map(e=>[key(e),e]));
