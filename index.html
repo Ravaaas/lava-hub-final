@@ -27,6 +27,7 @@
 input[type="number"]{-moz-appearance:textfield}
 input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 html{scroll-behavior:smooth}
+:focus-visible{outline:2px solid var(--rouge);outline-offset:2px}
 body{font-family:'Poppins',sans-serif;background:var(--creme);color:var(--noir);min-height:100vh;-webkit-font-smoothing:antialiased}
 
 /* LOGIN */
@@ -483,7 +484,11 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
       </div>
       <div class="cs">
         <div class="cs-title">Sauvegarde</div>
-        <button class="btn btn-o btn-sm" onclick="exportFiches()">⬇ Exporter toutes les fiches (JSON)</button>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn btn-o btn-sm" onclick="backupJSON()">⬇ Sauvegarde complète (JSON)</button>
+          <button class="btn btn-o btn-sm" onclick="exportFiches()">⬇ Exporter des fiches (PDF)</button>
+          <button class="btn btn-g btn-sm" onclick="optimizePhotos()">Alléger les photos existantes</button>
+        </div>
       </div>
     </div>
 
@@ -535,7 +540,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 <!-- MODAL FICHE -->
 <div class="mo" id="modal-fiche">
   <div class="modal">
-    <div class="m-head"><div class="m-title" id="mf-title">Nouvelle fiche</div><button class="m-close" onclick="closeModal('modal-fiche')">✕</button></div>
+    <div class="m-head"><div class="m-title" id="mf-title">Nouvelle fiche</div><button class="m-close" aria-label="Fermer" onclick="closeModal('modal-fiche')">✕</button></div>
     <div class="m-body">
       <div class="fr">
         <div class="fg2"><label class="fl">Nom *</label><input class="fi2" id="f-nom" type="text" placeholder="ex: Velouté Curry" oninput="this.value=this.value.toUpperCase()"></div>
@@ -566,7 +571,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 <!-- MODAL FICHE RECETTE -->
 <div class="mo" id="modal-fr">
   <div class="modal">
-    <div class="m-head"><div class="m-title" id="mfr-title">Nouvelle fiche recette</div><button class="m-close" onclick="closeModal('modal-fr')">✕</button></div>
+    <div class="m-head"><div class="m-title" id="mfr-title">Nouvelle fiche recette</div><button class="m-close" aria-label="Fermer" onclick="closeModal('modal-fr')">✕</button></div>
     <div class="m-body">
       <div class="fg2"><label class="fl">Nom du plat *</label><input class="fi2" id="fr-nom" type="text" placeholder="ex: Cassolette de Saint-Jacques"></div>
       <div class="fg2"><label class="fl">Statut</label><select class="fsel" id="fr-statut"><option value="carte">Carte actuelle</option><option value="bestof">Best of</option><option value="archive">Archive</option></select></div>
@@ -601,7 +606,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 <!-- MODAL CONFIRM -->
 <div class="mo" id="modal-confirm">
   <div class="modal" style="max-width:400px">
-    <div class="m-head"><div class="m-title" id="mc-title">Confirmer</div><button class="m-close" onclick="resolveConfirm(false)">✕</button></div>
+    <div class="m-head"><div class="m-title" id="mc-title">Confirmer</div><button class="m-close" aria-label="Fermer" onclick="resolveConfirm(false)">✕</button></div>
     <div class="m-body"><p id="mc-msg" style="font-size:0.82rem;color:var(--noir);line-height:1.6"></p></div>
     <div class="m-foot">
       <button class="btn btn-g" onclick="resolveConfirm(false)">Annuler</button>
@@ -613,7 +618,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 <!-- MODAL EXPORT -->
 <div class="mo" id="modal-export">
   <div class="modal" style="max-width:520px">
-    <div class="m-head"><div class="m-title">Exporter en PDF</div><button class="m-close" onclick="closeModal('modal-export')">✕</button></div>
+    <div class="m-head"><div class="m-title">Exporter en PDF</div><button class="m-close" aria-label="Fermer" onclick="closeModal('modal-export')">✕</button></div>
     <div class="m-body">
       <div class="si-wrap" style="margin-bottom:0.75rem">
         <input class="si" style="padding-left:0.85rem" id="export-search" type="text" placeholder="Rechercher…" oninput="renderExportList()">
@@ -685,7 +690,7 @@ function renderFAllergPicker(){
   const el=document.getElementById('f-allerg-picker');if(!el)return;
   el.innerHTML=ALLERGENES_LIST.map(a=>{
     const on=fAllergSelected.includes(a);
-    return `<div class="allerg-chip${on?' active':''}" onclick="toggleFAllerg('${a.replace(/'/g,"\\'")}')"><span class="achk">${on?'✓':''}</span>${escHTML(a)}</div>`;
+    return `<div class="allerg-chip${on?' active':''}" tabindex="0" role="checkbox" aria-checked="${on}" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click()}" onclick="toggleFAllerg('${a.replace(/'/g,"\\'")}')"><span class="achk">${on?'✓':''}</span>${escHTML(a)}</div>`;
   }).join('');
 }
 function toggleFAllerg(a){
@@ -998,7 +1003,24 @@ async function ensurePhoto(f){
   return f;
 }
 
+let lastLoad=0;
+// Rafraîchit au retour sur l'onglet (30 s min), sauf si un formulaire ou une fiche est ouvert.
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden||!profil||Date.now()-lastLoad<30000)return;
+  if(document.querySelector('.mo.open,.fd.open'))return;
+  loadAll();
+});
+// Échap ferme la modale ouverte, sinon la fiche détaillée.
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  const m=document.querySelector('.mo.open');
+  if(m){m.id==='modal-confirm'?resolveConfirm(false):closeModal(m.id);return}
+  if(document.getElementById('frd').classList.contains('open'))closeFRD();
+  else if(document.getElementById('fd').classList.contains('open'))closeFD();
+});
+
 async function loadAll(){
+  lastLoad=Date.now();
   setSyncing(true);
   const pF=Promise.resolve(sb.from('fiches').select('*').order('nom',{ascending:true})),pFR=fetchFR();
   try{
@@ -1062,6 +1084,8 @@ function renderFiches(){
     const c=document.createElement('div');c.className='fc';
     c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
     c.onclick=()=>openFD(f.id);
+    c.tabIndex=0;c.setAttribute('role','button');
+    c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFD(f.id)}};
     grid.appendChild(c);
   });
 }
@@ -1089,6 +1113,8 @@ function renderFichesRecette(){
     const nSr=(f.sous_recettes||[]).length;
     c.innerHTML=`<div class="fc-top"><div class="fc-cat">${nSr} recette${nSr!==1?'s':''}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
     c.onclick=()=>openFRD(f.id);
+    c.tabIndex=0;c.setAttribute('role','button');
+    c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFRD(f.id)}};
     grid.appendChild(c);
   });
 }
@@ -1096,22 +1122,69 @@ function renderFichesRecette(){
 // ── FICHE RECETTE CRUD ──
 function handleFRPhoto(input){
   const file=input.files&&input.files[0];if(!file)return;
-  // Redimensionne (max 1200 px) et recompresse en JPEG : ~100 Ko au lieu de plusieurs Mo.
-  const img=new Image(),url=URL.createObjectURL(file);
-  img.onload=()=>{
-    const k=Math.min(1,1200/Math.max(img.width,img.height));
-    const c=document.createElement('canvas');
-    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
-    const ctx=c.getContext('2d');
-    ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
-    ctx.drawImage(img,0,0,c.width,c.height);
-    URL.revokeObjectURL(url);
-    frPhotoData=c.toDataURL('image/jpeg',0.8);
+  const url=URL.createObjectURL(file);
+  shrinkImage(url).then(d=>{
+    frPhotoData=d;
     const prev=document.getElementById('fr-photo-preview');
-    prev.src=frPhotoData;prev.style.display='block';
-  };
-  img.onerror=()=>{URL.revokeObjectURL(url);toast('Image illisible','err')};
-  img.src=url;
+    prev.src=d;prev.style.display='block';
+  }).catch(()=>toast('Image illisible','err')).finally(()=>URL.revokeObjectURL(url));
+}
+// Redimensionne (max 1200 px) et recompresse en JPEG : ~100 Ko au lieu de plusieurs Mo.
+function shrinkImage(src){
+  return new Promise((ok,ko)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const k=Math.min(1,1200/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');
+      c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+      ctx.drawImage(img,0,0,c.width,c.height);
+      ok(c.toDataURL('image/jpeg',0.8));
+    };
+    img.onerror=ko;
+    img.src=src;
+  });
+}
+
+// Recompresse les photos déjà en base (admin, à lancer une fois depuis Config).
+async function optimizePhotos(){
+  if(!await confirmDialog('Recompresser les photos existantes des fiches recette ? Aucune donnée ne sera perdue.','Lancer'))return;
+  setSyncing(true);
+  let n=0,saved=0;
+  try{
+    const{data:rows}=await sb.from('fiches_recette').select('id');
+    for(const{id}of rows||[]){
+      const{data}=await sb.from('fiches_recette').select('photo').eq('id',id).single();
+      const p=data&&data.photo;
+      if(!p||p.length<150000)continue;
+      const small=await shrinkImage(p);
+      if(small.length>p.length*0.9)continue;
+      const r=await sb.from('fiches_recette').update({photo:small}).eq('id',id);
+      if(r.error)continue;
+      n++;saved+=p.length-small.length;
+      const f=fichesRecette.find(x=>x.id===id);if(f)f.photo=small;
+    }
+    toast(`${n} photo(s) allégée(s) (−${Math.round(saved/1024)} Ko)`,'ok');
+  }catch(e){toast('Erreur pendant l\'optimisation','err')}
+  setSyncing(false);
+}
+
+// Sauvegarde complète en JSON (fiches, fiches recette avec photos, config).
+async function backupJSON(){
+  setSyncing(true);
+  try{
+    const{data:fr,error}=await sb.from('fiches_recette').select('*');
+    if(error)throw error;
+    const blob=new Blob([JSON.stringify({date:new Date().toISOString(),fiches,fiches_recette:fr||[],config:cfg})],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`lava-sauvegarde-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+    toast('Sauvegarde téléchargée ✓','ok');
+  }catch(e){toast('Erreur de sauvegarde','err')}
+  setSyncing(false);
 }
 function clearFRPhoto(){
   frPhotoData='';
@@ -1152,9 +1225,9 @@ function renderFRSelected(){
     const key=e.id||e._key;
     if(e.id){
       const f=fiches.find(x=>x.id===e.id);
-      return `<div class="ir" style="grid-template-columns:14px 1fr 110px 28px" data-id="${key}"><div class="drag-handle" title="Déplacer">⠿</div><div style="font-size:0.8rem;font-weight:500;color:var(--noir)">${escHTML(f?f.nom:'(fiche supprimée)')}</div><input class="fi2 fr-sr-gram-in" type="text" placeholder="Grammage" value="${escHTML(e.grammage||'')}" style="padding:0.3rem 0.5rem;font-size:0.78rem" oninput="updateFRGrammage('${key}',this.value)"><button class="btn-rm" onclick="removeFRSr('${key}')">×</button></div>`;
+      return `<div class="ir" style="grid-template-columns:14px 1fr 110px 28px" data-id="${key}"><div class="drag-handle" title="Déplacer">⠿</div><div style="font-size:0.8rem;font-weight:500;color:var(--noir)">${escHTML(f?f.nom:'(fiche supprimée)')}</div><input class="fi2 fr-sr-gram-in" type="text" placeholder="Grammage" value="${escHTML(e.grammage||'')}" style="padding:0.3rem 0.5rem;font-size:0.78rem" oninput="updateFRGrammage('${key}',this.value)"><button class="btn-rm" aria-label="Retirer" onclick="removeFRSr('${key}')">×</button></div>`;
     }
-    return `<div class="ir" style="grid-template-columns:14px 1fr 110px 28px" data-free-key="${key}"><div class="drag-handle" title="Déplacer">⠿</div><input class="fi2 fr-sr-text-in" type="text" placeholder="Élément libre" value="${escHTML(e.text||'')}" style="padding:0.3rem 0.5rem;font-size:0.8rem;font-weight:500" oninput="updateFRFreeText('${key}',this.value)"><input class="fi2 fr-sr-gram-in" type="text" placeholder="Grammage" value="${escHTML(e.grammage||'')}" style="padding:0.3rem 0.5rem;font-size:0.78rem" oninput="updateFRGrammage('${key}',this.value)"><button class="btn-rm" onclick="removeFRSr('${key}')">×</button></div>`;
+    return `<div class="ir" style="grid-template-columns:14px 1fr 110px 28px" data-free-key="${key}"><div class="drag-handle" title="Déplacer">⠿</div><input class="fi2 fr-sr-text-in" type="text" placeholder="Élément libre" value="${escHTML(e.text||'')}" style="padding:0.3rem 0.5rem;font-size:0.8rem;font-weight:500" oninput="updateFRFreeText('${key}',this.value)"><input class="fi2 fr-sr-gram-in" type="text" placeholder="Grammage" value="${escHTML(e.grammage||'')}" style="padding:0.3rem 0.5rem;font-size:0.78rem" oninput="updateFRGrammage('${key}',this.value)"><button class="btn-rm" aria-label="Retirer" onclick="removeFRSr('${key}')">×</button></div>`;
   }).join('');
 }
 function updateFRGrammage(key,val){
@@ -1671,7 +1744,7 @@ function addCondRow(type='',qty=''){
   r.className='cond-row';
   r.style.cssText='display:grid;grid-template-columns:1fr 110px 28px;gap:0.35rem;align-items:center';
   const opts='<option value="">— Choisir —</option>'+COND_TYPES.map(t=>`<option ${t===type?'selected':''}>${escHTML(t)}</option>`).join('');
-  r.innerHTML=`<select class="fsel cond-type">${opts}</select><input class="fi2 cond-qty" type="text" placeholder="ex: 850 g" value="${escHTML(qty)}"><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  r.innerHTML=`<select class="fsel cond-type">${opts}</select><input class="fi2 cond-qty" type="text" placeholder="ex: 850 g" value="${escHTML(qty)}"><button class="btn-rm" aria-label="Retirer" onclick="this.parentElement.remove()">×</button>`;
   l.appendChild(r);
 }
 
@@ -1684,9 +1757,9 @@ function addIR(nom='',qty='',u='g',ficheId='',brut=false,netQty=''){
   const handle=`<div class="drag-handle" title="Déplacer">⠿</div>`;
   if(ficheId){
     const ficheOpts=fiches.map(f=>`<option value="${f.id}" ${f.id===ficheId?'selected':''}>${escHTML(f.nom)}</option>`).join('');
-    r.innerHTML=`${handle}<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`${handle}<select class="fsel ing-fiche-sel" style="color:var(--rouge);font-weight:600"><option value="">— Choisir une fiche —</option>${ficheOpts}</select><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFree(this)" title="Délier">🔗</button><button class="btn-rm" aria-label="Retirer" onclick="this.parentElement.remove()">×</button>`;
   }else{
-    r.innerHTML=`${handle}<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+    r.innerHTML=`${handle}<input class="fi2 ing-n" type="text" placeholder="Ingrédient" value="${escHTML(nom.toUpperCase())}" oninput="this.value=this.value.toUpperCase()"><input class="fi2 ing-q" type="number" step="any" placeholder="Qté" value="${escHTML(qty)}" min="0">${netInput}<select class="fsel ing-u">${opts}</select>${brutBtn}<button class="btn-lnk" onclick="switchToFiche(this)" title="Lier une recette"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></button><button class="btn-rm" aria-label="Retirer" onclick="this.parentElement.remove()">×</button>`;
   }
   l.appendChild(r);if(!nom&&!ficheId)r.querySelector('.ing-n')?.focus();
 }
@@ -1724,7 +1797,7 @@ function switchToFree(btn){
 
 function addSR(t=''){
   const l=document.getElementById('sl');const n=l.children.length+1;const r=document.createElement('div');r.className='sr';
-  r.innerHTML=`<div class="drag-handle" title="Déplacer">⠿</div><div class="sn">${n}</div><input class="fi2 s-txt" type="text" placeholder="Étape ${n}" value="${escHTML(t)}"><button class="btn-rm" onclick="this.parentElement.remove();renum()">×</button>`;
+  r.innerHTML=`<div class="drag-handle" title="Déplacer">⠿</div><div class="sn">${n}</div><input class="fi2 s-txt" type="text" placeholder="Étape ${n}" value="${escHTML(t)}"><button class="btn-rm" aria-label="Retirer" onclick="this.parentElement.remove();renum()">×</button>`;
   l.appendChild(r);if(!t)r.querySelector('.s-txt').focus();
 }
 
