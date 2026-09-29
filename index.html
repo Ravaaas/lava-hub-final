@@ -7,21 +7,21 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>LAVA — Hub Cuisine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@5.0.8/dist/jspdf.plugin.autotable.min.js"></script>
 <style>
 :root {
   --rouge:#B5433C; --rouge-dk:#8C302A; --rouge-lt:#C0504A;
-  --rose:#F9F0F0; --rose-mid:#EDD8D8; --rose-deep:#E2C5C5;
+  --rose:#F9F0F0; --rose-mid:#EDD8D8;
   --creme:#FDFAF8; --blanc:#FFFFFF;
   --gc:#F4EEEC; --gt:#7A6A6A; --noir:#1E1212;
   --border:#E8D8D8;
   --r:12px;
   --sh-sm:0 2px 8px rgba(34,24,24,.06);
   --sh-md:0 8px 32px rgba(34,24,24,.10);
-  --sh-lg:0 20px 60px rgba(34,24,24,.16);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 input[type="number"]{-moz-appearance:textfield}
@@ -120,10 +120,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .fc-top{padding:1.25rem 1.4rem 1rem}
 .fc-cat{font-size:0.55rem;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--rouge);margin-bottom:0.35rem;opacity:.8}
 .fc-name{font-size:1rem;font-weight:700;color:var(--noir);line-height:1.25;text-transform:uppercase}
-.fc-body{padding:0.9rem 1.4rem}
-.fc-meta{font-size:0.67rem;color:var(--gt);display:flex;justify-content:space-between;margin-bottom:0.55rem}
-.fc-prev{font-size:0.69rem;color:var(--gt);line-height:1.5}
-.fc-foot{padding:0.65rem 1.4rem;border-top:1px solid var(--gc);display:flex;gap:0.4rem;justify-content:flex-end;flex-wrap:wrap}
 
 /* CONFIG */
 .cs{margin-bottom:2rem}
@@ -231,8 +227,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .fdoc-nom{font-size:2rem;font-weight:700;color:#221818;line-height:1.1;margin-bottom:0.2rem;text-transform:uppercase}
 .fdoc-sub{font-size:0.7rem;color:#B5433C;font-weight:400}
 .fdoc-sep{height:2px;margin:1rem 0 1.5rem;background:var(--rouge);border:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.fdoc-meta{display:none}
-.fdoc-cols{display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start}
 .fdoc-ptitle{font-size:0.62rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#B5433C;margin-top:1.5rem;margin-bottom:0.5rem;padding-bottom:0.3rem;border-bottom:1px solid #EDD8D8}
 .fdoc-table{width:100%;border-collapse:collapse;border:1px solid #E0D0D0}
 .fdoc-table thead th{font-size:0.62rem;font-weight:600;color:#B5433C;padding:0.6rem 0.75rem;text-align:left;background:#fff;border-bottom:1px solid #E0D0D0}
@@ -276,9 +270,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 .toast.ok{background:#1e5c1e}
 .toast.err{background:var(--rouge-dk)}
 
-/* PRINT (généré en PDF via JS — voir buildFichePDF) */
-.no-print{display:none!important}
-
 /* ANIMATIONS */
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
@@ -314,7 +305,6 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   .fg{grid-template-columns:1fr;gap:0.85rem}
   .fc-top{padding:1.1rem 1.1rem 0.9rem}
   .fc-name{font-size:0.92rem}
-  .fc-foot{padding:0.65rem 1.1rem;gap:0.35rem}
   .btn-sm{padding:0.38rem 0.7rem;font-size:0.62rem}
 
   /* MODAL — plein écran */
@@ -662,6 +652,28 @@ let cfg={
 };
 
 // ── UTILS ──
+// jsPDF + AutoTable (~400 Ko) ne sont chargés qu'au premier export/impression.
+let _pdfLibs=null;
+function loadPDFLibs(){
+  if(_pdfLibs)return _pdfLibs;
+  const load=src=>new Promise((ok,ko)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>ko(new Error(src));document.head.appendChild(s)});
+  _pdfLibs=load('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js')
+    .then(()=>load('https://cdn.jsdelivr.net/npm/jspdf-autotable@5.0.8/dist/jspdf.plugin.autotable.min.js'))
+    .catch(e=>{_pdfLibs=null;throw e});
+  return _pdfLibs;
+}
+// Ouvre l'onglet tout de suite (sinon le bloqueur de popups refuse après le chargement async).
+async function openPDF(build){
+  const w=window.open('','_blank');
+  try{
+    await loadPDFLibs();
+    const url=build().output('bloburl');
+    if(w)w.location.href=url;else window.open(url,'_blank');
+  }catch(e){
+    if(w)w.close();
+    toast('Erreur à la génération du PDF','err');
+  }
+}
 function escHTML(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -736,7 +748,7 @@ function loginAs(p){
   document.getElementById('prof-badge').textContent=p==='admin'?'Admin':'Cuisine';
   if(p==='admin')document.querySelectorAll('.admin-only').forEach(el=>el.style.display='flex');
   else setFRStatusFilter('carte');
-  loadCfg().then(()=>loadAll());
+  loadCfg();loadAll();
 }
 
 async function logout(){
@@ -917,8 +929,8 @@ async function renderLog(){
   el.innerHTML='<div class="es-icon" style="font-size:1rem;padding:0.5rem 0">Chargement…</div>';
   let dataEntries=[];
   try{
-    const{data}=await sb.from('lava_config').select('*').eq('id','audit_log').single();
-    dataEntries=(data&&data.data&&Array.isArray(data.data.entries))?data.data.entries:[];
+    const{data}=await sb.from('audit_log').select('ts,action,fiche_nom,detail').order('ts',{ascending:false}).limit(500);
+    dataEntries=(data||[]).map(e=>({ts:e.ts,action:e.action,ficheNom:e.fiche_nom,detail:e.detail}));
   }catch(e){}
   logItems=[
     ...APP_CHANGELOG.map(c=>({ts:new Date(c.date).getTime(),type:'app',titre:c.titre,desc:c.desc})),
@@ -958,8 +970,9 @@ function setExportSelection(all){
   renderExportList();
 }
 
-function generateExportPDF(){
+async function generateExportPDF(){
   if(exportSelectedIds.size===0){toast('Sélectionne au moins une fiche','err');return}
+  try{await loadPDFLibs()}catch(e){toast('Erreur de chargement du PDF','err');return}
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const selected=fiches.filter(f=>exportSelectedIds.has(f.id)).sort((a,b)=>a.nom.localeCompare(b.nom));
@@ -972,16 +985,30 @@ function generateExportPDF(){
 }
 
 // ── LOAD ──
+// Liste sans la colonne photo (base64 lourd) ; la photo est chargée à la demande (ensurePhoto).
+async function fetchFR(){
+  let r=await sb.from('fiches_recette').select('id,nom,statut,allergenes,sous_recettes').order('nom',{ascending:true});
+  if(r.error&&!/does not exist/i.test(r.error.message||''))r=await sb.from('fiches_recette').select('*').order('nom',{ascending:true});
+  return r;
+}
+async function ensurePhoto(f){
+  if(!f||'photo' in f)return f;
+  const{data}=await sb.from('fiches_recette').select('photo').eq('id',f.id).single();
+  f.photo=(data&&data.photo)||null;
+  return f;
+}
+
 async function loadAll(){
   setSyncing(true);
+  const pF=Promise.resolve(sb.from('fiches').select('*').order('nom',{ascending:true})),pFR=fetchFR();
   try{
-    const{data:f}=await sb.from('fiches').select('*').order('nom',{ascending:true});
+    const{data:f}=await pF;
     fiches=f||[];
     renderFiches();
     document.getElementById('b-rec').textContent=fiches.length;
   }catch(e){toast('Erreur de connexion','err')}
   try{
-    const{data:fr,error:frErr}=await sb.from('fiches_recette').select('*').order('nom',{ascending:true});
+    const{data:fr,error:frErr}=await pFR;
     if(frErr){
       if(/relation .*fiches_recette.* does not exist/i.test(frErr.message||'')) showFRSetupSQL();
     }else{
@@ -1005,9 +1032,7 @@ function showFRSetupSQL(){
 );
 alter table fiches_recette enable row level security;
 create policy "public read fiches_recette" on fiches_recette for select using (true);
-create policy "public write fiches_recette" on fiches_recette for insert with check (true);
-create policy "public update fiches_recette" on fiches_recette for update using (true);
-create policy "public delete fiches_recette" on fiches_recette for delete using (true);`;
+-- Écriture réservée à l'admin : exécuter ensuite supabase-securite.sql`;
   const box=document.createElement('div');
   box.id='fr-setup-sql';
   box.style.cssText='position:fixed;bottom:16px;right:16px;max-width:480px;background:#1e1e1e;color:#eee;padding:16px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.4);z-index:9999;font-size:13px';
@@ -1035,7 +1060,6 @@ function renderFiches(){
   if(fil.length===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">🔍</div><h3>Aucun résultat</h3><p>Essaie un autre terme</p></div>';return}
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
-    const ingCount=(f.ingredients||[]).length;
     c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(f.categorie||'—')}</div><div class="fc-name">${escHTML(f.nom)}</div></div>`;
     c.onclick=()=>openFD(f.id);
     grid.appendChild(c);
@@ -1072,13 +1096,22 @@ function renderFichesRecette(){
 // ── FICHE RECETTE CRUD ──
 function handleFRPhoto(input){
   const file=input.files&&input.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    frPhotoData=reader.result;
+  // Redimensionne (max 1200 px) et recompresse en JPEG : ~100 Ko au lieu de plusieurs Mo.
+  const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{
+    const k=Math.min(1,1200/Math.max(img.width,img.height));
+    const c=document.createElement('canvas');
+    c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+    const ctx=c.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+    ctx.drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);
+    frPhotoData=c.toDataURL('image/jpeg',0.8);
     const prev=document.getElementById('fr-photo-preview');
     prev.src=frPhotoData;prev.style.display='block';
   };
-  reader.readAsDataURL(file);
+  img.onerror=()=>{URL.revokeObjectURL(url);toast('Image illisible','err')};
+  img.src=url;
 }
 function clearFRPhoto(){
   frPhotoData='';
@@ -1156,6 +1189,7 @@ function openNewFR(){
 
 async function editFR(id){
   const f=fichesRecette.find(f=>f.id===id);if(!f)return;
+  await ensurePhoto(f);
   editFRId=id;
   frSelectedIds=(f.sous_recettes||[]).map(x=>{
     if(typeof x==='string')return{id:x,grammage:''};
@@ -1245,7 +1279,7 @@ function buildFicheRecetteDoc(fr){
       <div class="fdoc-nom">${escHTML(fr.nom)}</div>
       <div class="fdoc-sub">Fiche Recette</div>
       ${allergList.length?`<div class="fr-allerg-sub"><span class="fr-allerg-sub-lbl">Allergènes</span>${allergList.map(a=>`<span class="fr-allerg-tag">${escHTML(a)}</span>`).join('')}</div>`:''}
-      ${fr.photo?`<img src="${fr.photo}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-top:1.25rem">`:''}
+      ${fr.photo?`<img src="${escHTML(fr.photo)}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-top:1.25rem">`:''}
     </div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
@@ -1255,8 +1289,9 @@ function buildFicheRecetteDoc(fr){
   </div>`;
 }
 
-function openFRD(id){
+async function openFRD(id){
   const f=fichesRecette.find(f=>f.id===id);if(!f)return;
+  await ensurePhoto(f);
   curFRId=id;
   document.getElementById('frd-crumb').textContent=f.nom;
   document.getElementById('frdoc-area').innerHTML=buildFicheRecetteDoc(f);
@@ -1590,15 +1625,11 @@ function buildFicheRecettePDF(fr){
   return doc;
 }
 
-function printFR(){
+async function printFR(){
   if(!curFRId)return;
   const f=fichesRecette.find(f=>f.id===curFRId);if(!f)return;
-  try{
-    const doc=buildFicheRecettePDF(f);
-    window.open(doc.output('bloburl'),'_blank');
-  }catch(e){
-    toast('Erreur à la génération du PDF','err');
-  }
+  await ensurePhoto(f);
+  openPDF(()=>buildFicheRecettePDF(f));
 }
 
 // ── MODALS ──
@@ -1701,13 +1732,8 @@ function renum(){document.querySelectorAll('#sl .sn').forEach((e,i)=>e.textConte
 
 
 async function logAudit(action,ficheNom,detail){
-  try{
-    const{data}=await sb.from('lava_config').select('*').eq('id','audit_log').single();
-    const log=(data&&data.data&&Array.isArray(data.data.entries))?data.data.entries:[];
-    log.push({ts:Date.now(),action,ficheNom,profil,detail:(detail&&detail.length)?detail:undefined});
-    while(log.length>500)log.shift();
-    await sb.from('lava_config').upsert({id:'audit_log',data:{entries:log}});
-  }catch(e){}
+  // Une ligne par événement (table audit_log) : plus de lecture/réécriture du journal entier.
+  try{await sb.from('audit_log').insert({ts:Date.now(),action,fiche_nom:ficheNom||null,profil,detail:(detail&&detail.length)?detail:null});}catch(e){}
 }
 
 // ── DIFF : compare l'ancienne et la nouvelle version d'une fiche pour un journal precis ──
@@ -1872,7 +1898,7 @@ async function deleteFiche(id){
 
 async function duplicateFiche(id){
   const f=fiches.find(f=>f.id===id);if(!f)return;
-  const copy={nom:'Copie de '+f.nom,categorie:f.categorie,quantite_nette:f.quantite_nette,conditionnement:f.conditionnement,ingredients:f.ingredients,process:f.process};
+  const copy={nom:'Copie de '+f.nom,categorie:f.categorie,quantite_nette:f.quantite_nette,allergenes:f.allergenes,conditionnement:f.conditionnement,ingredients:f.ingredients,process:f.process};
   setSyncing(true);await sb.from('fiches').insert(copy);setSyncing(false);
   toast('Recette dupliquée ✓','ok');await loadAll();
 }
@@ -2081,12 +2107,7 @@ function buildFichePDF(f,coef=1,mode='brut'){
 function printFiche(){
   if(!curFicheId)return;
   const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
-  try{
-    const doc=buildFichePDF(f,1,fdQtyMode);
-    window.open(doc.output('bloburl'),'_blank');
-  }catch(e){
-    toast('Erreur à la génération du PDF','err');
-  }
+  openPDF(()=>buildFichePDF(f,1,fdQtyMode));
 }
 
 // ── DRAG & DROP REORDER ──
