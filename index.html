@@ -7,11 +7,13 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>LAVA — Hub Cuisine</title>
+<meta name="theme-color" content="#B5433C">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23B5433C'/%3E%3Ctext x='32' y='45' font-family='Arial' font-size='38' font-weight='700' fill='white' text-anchor='middle'%3EL%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
 <style>
 :root {
   --rouge:#B5433C; --rouge-dk:#8C302A; --rouge-lt:#C0504A;
@@ -642,7 +644,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
 <script>
 const SB_URL='https://qmvxmxzsmpigvseuidcd.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtdnhteHpzbXBpZ3ZzZXVpZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTY1ODYsImV4cCI6MjA5NzI5MjU4Nn0._kDu_tyJbr9Hcckg_dC0OYsSqh23aPND96wMX_KLdAc';
-const sb=supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:false}});
+const sb=supabase.createClient(SB_URL,SB_KEY);
 
 let profil=null, editId=null, curFicheId=null;
 let fiches=[];
@@ -679,6 +681,9 @@ async function openPDF(build){
     toast('Erreur à la génération du PDF','err');
   }
 }
+// PostgREST ne renvoie pas d'erreur quand une règle RLS filtre tout : on vérifie qu'une ligne a bien été touchée.
+function denied(res){return !!res.error||(Array.isArray(res.data)&&!res.data.length)}
+function deniedMsg(res){return res.error?res.error.message:'droits insuffisants — reconnecte-toi en admin'}
 function escHTML(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -784,8 +789,10 @@ async function loadCfg(){
 
 async function saveCfg(){
   try{localStorage.setItem('lava_cfg',JSON.stringify(cfg));}catch(e){}
-  try{await sb.from('lava_config').upsert({id:'main',data:cfg});}catch(e){}
-  await logAudit('config','catégories/sections');
+  let saved=false;
+  try{saved=!denied(await sb.from('lava_config').upsert({id:'main',data:cfg}).select('id'));}catch(e){}
+  if(saved)await logAudit('config','catégories/sections');
+  else toast('Enregistrement impossible — reconnecte-toi en admin','err');
   populateSels();renderCfg();
 }
 
@@ -840,6 +847,10 @@ function switchTab(n,b){
 
 // ── JOURNAL : mises à jour de l'application (fixe, tenu à jour à chaque évolution) ──
 const APP_CHANGELOG=[
+  {date:'2026-09-29',titre:'Sauvegarde complète en JSON',desc:"Dans Config, un bouton télécharge toutes les fiches techniques, fiches recette (photos comprises) et la configuration. L'export PDF garde son propre bouton."},
+  {date:'2026-09-29',titre:'Sécurité renforcée',desc:"Seul l'admin connecté peut désormais créer, modifier ou supprimer des fiches. Le journal est stocké ligne par ligne. Les erreurs de suppression ou d'enregistrement sont maintenant affichées au lieu d'un faux succès."},
+  {date:'2026-09-29',titre:'Chargement plus rapide, photos allégées',desc:"Les photos sont réduites à l'ajout (et un bouton dans Config allège les anciennes). Les fiches se chargent plus vite et les PDF ne sont préparés qu'à la demande."},
+  {date:'2026-09-29',titre:'Confort d\'utilisation',desc:"Échap ferme les fenêtres, la navigation au clavier fonctionne sur les cartes et les allergènes, les données se rafraîchissent au retour sur l'onglet, la session admin est conservée, et supprimer une fiche prévient si elle est utilisée dans une fiche recette."},
   {date:'2026-07-28',titre:'Allergènes élargis à 13',desc:"La liste fixe d'allergènes passe de 7 à 13 pour couvrir tous ceux réellement utilisés dans les fiches (ajout de Poisson, Soja, Céleri, Moutarde, Sésame, Sulfites)."},
   {date:'2026-07-28',titre:'Fiche Technique : nom toujours en majuscules',desc:"Le nom d'une fiche technique est automatiquement mis en majuscules à la saisie et à l'enregistrement, pour une cohérence d'affichage partout dans l'app."},
   {date:'2026-07-28',titre:'Journal : précision des modifications',desc:"Chaque modification de fiche affiche désormais le détail des changements (diff), une couleur selon le type d'action (création, modification, suppression), et les modifications rapprochées sont regroupées."},
@@ -1160,8 +1171,8 @@ async function optimizePhotos(){
       if(!p||p.length<150000)continue;
       const small=await shrinkImage(p);
       if(small.length>p.length*0.9)continue;
-      const r=await sb.from('fiches_recette').update({photo:small}).eq('id',id);
-      if(r.error)continue;
+      const r=await sb.from('fiches_recette').update({photo:small}).eq('id',id).select('id');
+      if(denied(r))continue;
       n++;saved+=p.length-small.length;
       const f=fichesRecette.find(x=>x.id===id);if(f)f.photo=small;
     }
@@ -1295,8 +1306,8 @@ async function saveFR(){
     const statut=document.getElementById('fr-statut').value;
     const data={nom,statut,photo:frPhotoData||null,allergenes:renderFRAllergenes().join(', '),sous_recettes:order};
     const oldFR=editFRId?fichesRecette.find(f=>f.id===editFRId):null;
-    const res=editFRId?await sb.from('fiches_recette').update(data).eq('id',editFRId):await sb.from('fiches_recette').insert(data);
-    if(res.error){toast('Erreur : '+res.error.message,'err');return}
+    const res=editFRId?await sb.from('fiches_recette').update(data).eq('id',editFRId).select('id'):await sb.from('fiches_recette').insert(data);
+    if(denied(res)){toast('Erreur : '+deniedMsg(res),'err');return}
     await logAudit(editFRId?'modification fiche recette':'création fiche recette',nom,editFRId?diffFicheRecette(oldFR,data):[]);
     toast(editFRId?'Fiche recette modifiée ✓':'Fiche recette enregistrée ✓','ok');
     closeModal('modal-fr');await loadAll();
@@ -1314,8 +1325,9 @@ async function deleteFR(id){
   const target=fichesRecette.find(f=>f.id===id);
   if(!await confirmDialog('Supprimer cette fiche recette ?'))return;
   setSyncing(true);
-  await sb.from('fiches_recette').delete().eq('id',id);
+  const res=await sb.from('fiches_recette').delete().eq('id',id).select('id');
   setSyncing(false);
+  if(denied(res)){toast('Suppression impossible : '+deniedMsg(res),'err');return}
   await logAudit('suppression fiche recette',target?target.nom:'');
   toast('Fiche recette supprimée');await loadAll();
 }
@@ -1861,8 +1873,8 @@ async function saveRecord(table,id,data,{modalId,successMsg,updateMsg}){
   setSyncing(true);
   try{
     const oldF=(id&&table==='fiches')?fiches.find(f=>f.id===id):null;
-    const res=id?await sb.from(table).update(data).eq('id',id):await sb.from(table).insert(data);
-    if(res.error){toast('Erreur : '+res.error.message,'err');return false}
+    const res=id?await sb.from(table).update(data).eq('id',id).select('id'):await sb.from(table).insert(data);
+    if(denied(res)){toast('Erreur : '+deniedMsg(res),'err');return false}
     if(table==='fiches')await logAudit(id?'modification':'création',data.nom,id?diffFiche(oldF,data):[]);
     toast(id?updateMsg:successMsg,'ok');
     closeModal(modalId);await loadAll();
@@ -1950,12 +1962,16 @@ async function duplicateCurrentFiche(){if(curFicheId){const id=curFicheId;closeF
 async function deleteFiche(id){
   const target=fiches.find(f=>f.id===id);
   const dependants=fiches.filter(f=>f.id!==id&&(f.ingredients||[]).some(i=>i.ficheId===id));
-  const msg=dependants.length
-    ?`"${target?target.nom:''}" est utilisée comme recette dans : ${dependants.map(f=>f.nom).join(', ')}. La supprimer retirera le lien (l'ingrédient restera en texte simple). Continuer ?`
-    :'Supprimer cette fiche ?';
+  const frDeps=fichesRecette.filter(fr=>(fr.sous_recettes||[]).some(e=>(typeof e==='string'?e:e.id)===id));
+  const nom=target?target.nom:'';
+  const notes=[];
+  if(dependants.length)notes.push(`Elle est utilisée comme recette dans : ${dependants.map(f=>f.nom).join(', ')} (le lien sera retiré, l'ingrédient restera en texte simple).`);
+  if(frDeps.length)notes.push(`Elle apparaît dans les fiches recette : ${frDeps.map(f=>f.nom).join(', ')} (elle en disparaîtra).`);
+  const msg=notes.length?`"${nom}" — ${notes.join(' ')} Continuer ?`:'Supprimer cette fiche ?';
   if(!await confirmDialog(msg))return;
   setSyncing(true);
-  await sb.from('fiches').delete().eq('id',id);
+  const res=await sb.from('fiches').delete().eq('id',id).select('id');
+  if(denied(res)){setSyncing(false);toast('Suppression impossible : '+deniedMsg(res),'err');return}
   for(const dep of dependants){
     const ings=(dep.ingredients||[]).map(i=>{
       if(i.ficheId!==id)return i;
@@ -1965,14 +1981,17 @@ async function deleteFiche(id){
     await sb.from('fiches').update({ingredients:ings}).eq('id',dep.id);
   }
   setSyncing(false);
-  await logAudit('suppression',target?target.nom:'');
+  await logAudit('suppression',nom);
   toast('Fiche supprimée');await loadAll();
 }
 
 async function duplicateFiche(id){
   const f=fiches.find(f=>f.id===id);if(!f)return;
-  const copy={nom:'Copie de '+f.nom,categorie:f.categorie,quantite_nette:f.quantite_nette,allergenes:f.allergenes,conditionnement:f.conditionnement,ingredients:f.ingredients,process:f.process};
-  setSyncing(true);await sb.from('fiches').insert(copy);setSyncing(false);
+  const copy={nom:'COPIE DE '+f.nom,categorie:f.categorie,quantite_nette:f.quantite_nette,allergenes:f.allergenes,conditionnement:f.conditionnement,ingredients:f.ingredients,process:f.process};
+  setSyncing(true);
+  const res=await sb.from('fiches').insert(copy);
+  setSyncing(false);
+  if(res.error){toast('Duplication impossible : '+res.error.message,'err');return}
   toast('Recette dupliquée ✓','ok');await loadAll();
 }
 
