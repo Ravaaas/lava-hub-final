@@ -376,6 +376,9 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
         <button class="pb" id="btn-cuisine" onclick="loginAs('cuisine')">
           <span>Cuisine</span><span class="pb-arrow">→</span>
         </button>
+        <button class="pb" id="btn-salle" onclick="showPW('salle')">
+          <span>Salle</span><span class="pb-arrow">→</span>
+        </button>
       </div>
       <div class="pw-field" id="pw-field">
         <input type="password" id="pw-input" placeholder="Mot de passe admin" onkeydown="if(event.key==='Enter')checkPW()">
@@ -404,6 +407,8 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     <button class="tb admin-only" onclick="switchTab('log',this)" style="display:none">Journal <span class="tbadge" id="b-log">0</span></button>
     <button class="tb active" onclick="switchTab('recettes',this)">Fiche Technique <span class="tbadge" id="b-rec">0</span></button>
     <button class="tb" onclick="switchTab('fichesrecette',this)">Fiche Recette <span class="tbadge" id="b-fr">0</span></button>
+    <button class="tb" onclick="switchTab('menus',this)">Menus</button>
+    <button class="tb" onclick="switchTab('groupes',this)">Groupes <span class="tbadge" id="b-gr">0</span></button>
     <button class="tb admin-only" onclick="switchTab('config',this)" style="display:none">Config</button>
   </nav>
   <main>
@@ -463,6 +468,39 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
         </div>
       </div>
       <div class="fg" id="fr-grid"><div class="es" style="grid-column:1/-1"><div class="spinner"></div></div></div>
+    </div>
+
+    <!-- MENUS -->
+    <div class="tc" id="tab-menus">
+      <div class="ph">
+        <div><div class="ph-title">Menus</div><div class="ph-sub">Formules et contenu de chaque menu</div></div>
+        <div class="ph-actions">
+          <button class="btn btn-p admin-only" onclick="openMenu()" style="display:none">+ Nouveau menu</button>
+        </div>
+      </div>
+      <div id="menus-list"></div>
+
+    </div>
+
+    <!-- GROUPES -->
+    <div class="tc" id="tab-groupes">
+      <div class="ph">
+        <div><div class="ph-title">Groupes</div><div class="ph-sub" id="gr-sub">Chargement…</div></div>
+        <div class="ph-actions">
+          <button class="btn btn-p salle-can" onclick="openNewGroupe()" style="display:none">+ Nouveau groupe</button>
+        </div>
+      </div>
+      <div class="log-filters" id="gr-filters">
+        <button class="log-filter active" data-g="avenir" onclick="setGrFilter('avenir')">À venir</button>
+        <button class="log-filter" data-g="passes" onclick="setGrFilter('passes')">Passés</button>
+      </div>
+      <div class="sb">
+        <div class="si-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="si" id="s-gr" type="text" placeholder="Rechercher un groupe…" oninput="renderGroupes()">
+        </div>
+      </div>
+      <div class="fg" id="gr-grid"></div>
     </div>
 
     <!-- CONFIG -->
@@ -605,6 +643,69 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   </div>
 </div>
 
+<!-- GROUPE DETAIL -->
+<div class="fd" id="grd">
+  <div class="fd-nav">
+    <button class="btn-back" onclick="closeGRD()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>Retour
+    </button>
+    <div style="flex:1;font-size:0.72rem;font-weight:600;color:var(--rouge)" id="grd-crumb"></div>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+      <button class="btn btn-g btn-sm" onclick="printGroupe()">🖨 Imprimer</button>
+      <button class="btn btn-g btn-sm salle-can" style="display:none" onclick="editCurrentGroupe()">Modifier</button>
+      <button class="btn btn-d btn-sm salle-can" style="display:none" onclick="deleteCurrentGroupe()">Supprimer</button>
+    </div>
+  </div>
+  <div class="fd-content"><div id="grdoc-area"></div></div>
+</div>
+
+<!-- MODAL GROUPE -->
+<div class="mo" id="modal-groupe">
+  <div class="modal">
+    <div class="m-head"><div class="m-title" id="mg-title">Nouveau groupe</div><button class="m-close" aria-label="Fermer" onclick="closeModal('modal-groupe')">✕</button></div>
+    <div class="m-body">
+      <div class="fg2"><label class="fl">Nom du groupe *</label><input class="fi2" id="g-nom" type="text" placeholder="ex: Séminaire Dupont"></div>
+      <div class="fr">
+        <div class="fg2"><label class="fl">Date *</label><input class="fi2" id="g-date" type="date"></div>
+        <div class="fg2"><label class="fl">Heure</label><input class="fi2" id="g-heure" type="time"></div>
+      </div>
+      <div class="fr">
+        <div class="fg2"><label class="fl">Nombre de personnes *</label><input class="fi2" id="g-pax" type="number" min="1" step="1"></div>
+        <div class="fg2"><label class="fl">Salle</label><select class="fsel" id="g-salle"><option>Salle principale</option><option>Salon Basalte</option><option>Terrasse</option><option>Privatisation</option></select></div>
+      </div>
+      <div class="fr">
+        <div class="fg2"><label class="fl">Menu</label><select class="fsel" id="g-menu"></select></div>
+        <div class="fg2"><label class="fl">Reçu par</label><select class="fsel" id="g-source"><option>Email</option><option>Téléphone</option><option>Zenchef</option><option>Autre</option></select></div>
+      </div>
+      <div class="fsect">Allergies déclarées</div>
+      <div class="allerg-picker" id="g-allerg-picker"></div>
+      <div class="fsect" style="margin-top:1.25rem">Régimes</div>
+      <div class="allerg-picker" id="g-regimes-picker"></div>
+      <div class="fg2" style="margin-top:1.25rem"><label class="fl">Notes</label><textarea class="fta" id="g-notes" placeholder="Précisions : nombre d'enfants, contraintes, heure de service…"></textarea></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-groupe')">Annuler</button>
+      <button class="btn btn-p" id="btn-save-groupe" onclick="saveGroupe()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MENU -->
+<div class="mo" id="modal-menu">
+  <div class="modal">
+    <div class="m-head"><div class="m-title" id="mm-title">Nouveau menu</div><button class="m-close" aria-label="Fermer" onclick="closeModal('modal-menu')">✕</button></div>
+    <div class="m-body">
+      <div class="fg2"><label class="fl">Nom *</label><input class="fi2" id="mn-nom" type="text" placeholder="ex: 5 temps"></div>
+      <div id="mn-services"></div>
+      <button class="btn-ar" onclick="addService()">+ Ajouter un temps</button>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-menu')">Annuler</button>
+      <button class="btn btn-p" id="btn-save-menu" onclick="saveMenu()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CONFIRM -->
 <div class="mo" id="modal-confirm">
   <div class="modal" style="max-width:400px">
@@ -691,18 +792,25 @@ function allergArr(v){
   return Array.isArray(v)?v.map(s=>String(s).trim()).filter(Boolean):String(v||'').split(',').map(s=>s.trim()).filter(Boolean);
 }
 
-function renderFAllergPicker(){
-  const el=document.getElementById('f-allerg-picker');if(!el)return;
-  el.innerHTML=ALLERGENES_LIST.map(a=>{
-    const on=fAllergSelected.includes(a);
-    return `<div class="allerg-chip${on?' active':''}" tabindex="0" role="checkbox" aria-checked="${on}" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click()}" onclick="toggleFAllerg('${a.replace(/'/g,"\\'")}')"><span class="achk">${on?'✓':''}</span>${escHTML(a)}</div>`;
+// Puces cochables (allergènes, régimes) : `fn` reçoit l'index de la puce cliquée.
+function renderChips(elId,list,sel,fn){
+  const el=document.getElementById(elId);if(!el)return;
+  el.innerHTML=list.map((a,i)=>{
+    const on=sel.includes(a);
+    return `<div class="allerg-chip${on?' active':''}" tabindex="0" role="checkbox" aria-checked="${on}" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();this.click()}" onclick="${fn}(${i})"><span class="achk">${on?'✓':''}</span>${escHTML(a)}</div>`;
   }).join('');
 }
-function toggleFAllerg(a){
-  const i=fAllergSelected.indexOf(a);
-  if(i>-1)fAllergSelected.splice(i,1);else fAllergSelected.push(a);
-  renderFAllergPicker();
+function toggleIn(arr,v){const i=arr.indexOf(v);if(i>-1)arr.splice(i,1);else arr.push(v)}
+function renderFAllergPicker(){renderChips('f-allerg-picker',ALLERGENES_LIST,fAllergSelected,'toggleFAllerg')}
+function toggleFAllerg(i){toggleIn(fAllergSelected,ALLERGENES_LIST[i]);renderFAllergPicker()}
+const REGIMES_LIST=['Végétarien','Végétalien','Sans porc','Halal','Casher','Sans alcool'];
+let gAllergSelected=[],gRegimesSelected=[];
+function renderGPickers(){
+  renderChips('g-allerg-picker',ALLERGENES_LIST,gAllergSelected,'toggleGAllerg');
+  renderChips('g-regimes-picker',REGIMES_LIST,gRegimesSelected,'toggleGRegime');
 }
+function toggleGAllerg(i){toggleIn(gAllergSelected,ALLERGENES_LIST[i]);renderGPickers()}
+function toggleGRegime(i){toggleIn(gRegimesSelected,REGIMES_LIST[i]);renderGPickers()}
 
 function setBusy(btnId,v){
   const b=document.getElementById(btnId);
@@ -717,9 +825,15 @@ function setSyncing(v){
 }
 
 const ADMIN_EMAIL='alexandre.ravasio@outlook.com';
+// Compte du responsable de salle : à créer dans Supabase (Authentication > Users). Voir supabase-groupes.sql.
+const SALLE_EMAIL='salle@lava-hub.local';
+const PROFILS={admin:{email:ADMIN_EMAIL,label:'Admin'},salle:{email:SALLE_EMAIL,label:'Salle'}};
 
 // ── LOGIN ──
-function showPW(){
+let pwFor='admin';
+function showPW(who='admin'){
+  pwFor=who;
+  document.getElementById('pw-input').placeholder='Mot de passe '+PROFILS[who].label.toLowerCase();
   document.getElementById('pw-field').style.display='flex';
   setTimeout(()=>document.getElementById('pw-input').focus(),50);
 }
@@ -727,27 +841,26 @@ function showPW(){
 async function checkPW(){
   const pw=document.getElementById('pw-input').value;
   if(!pw)return;
-  setBusy('btn-confirm',true);
-  setBusy('btn-admin',true);
+  const btns=['btn-confirm','btn-admin','btn-salle'];
+  btns.forEach(b=>setBusy(b,true));
   document.getElementById('l-err').style.display='none';
-  const{error}=await sb.auth.signInWithPassword({email:ADMIN_EMAIL,password:pw});
+  const{error}=await sb.auth.signInWithPassword({email:PROFILS[pwFor].email,password:pw});
   if(!error){
-    loginAs('admin');
+    loginAs(pwFor);
   }else{
     document.getElementById('l-err').style.display='block';
     document.getElementById('pw-input').value='';
     document.getElementById('pw-input').focus();
   }
-  setBusy('btn-confirm',false);
-  setBusy('btn-admin',false);
+  btns.forEach(b=>setBusy(b,false));
 }
 
 async function tryRestoreSession(){
   try{
     const{data}=await sb.auth.getSession();
-    if(data&&data.session&&data.session.user&&data.session.user.email===ADMIN_EMAIL){
-      loginAs('admin');
-    }
+    const email=data&&data.session&&data.session.user&&data.session.user.email;
+    const p=Object.keys(PROFILS).find(k=>PROFILS[k].email===email);
+    if(p)loginAs(p);
   }catch(e){}
 }
 
@@ -755,17 +868,18 @@ function loginAs(p){
   profil=p;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('prof-badge').textContent=p==='admin'?'Admin':'Cuisine';
+  document.getElementById('prof-badge').textContent=p==='cuisine'?'Cuisine':PROFILS[p].label;
   if(p==='admin')document.querySelectorAll('.admin-only').forEach(el=>el.style.display='flex');
   else setFRStatusFilter('carte');
+  if(p==='admin'||p==='salle')document.querySelectorAll('.salle-can').forEach(el=>el.style.display='flex');
   loadCfg();loadAll();
 }
 
 async function logout(){
-  if(profil==='admin'){try{await sb.auth.signOut();}catch(e){}}
+  if(profil==='admin'||profil==='salle'){try{await sb.auth.signOut();}catch(e){}}
   profil=null;
   setFRStatusFilter('carte');
-  document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
+  document.querySelectorAll('.admin-only,.salle-can').forEach(el=>el.style.display='none');
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('pw-field').style.display='none';
@@ -779,12 +893,12 @@ async function loadCfg(){
     const{data}=await sb.from('lava_config').select('*').eq('id','main').single();
     if(data&&data.data){
       cfg={...cfg,...data.data};
-      populateSels();renderCfg();
+      populateSels();renderCfg();renderMenus();
       return;
     }
   }catch(e){}
   try{const s=localStorage.getItem('lava_cfg');if(s){const d=JSON.parse(s);cfg={...cfg,...d};}}catch(e){}
-  populateSels();renderCfg();
+  populateSels();renderCfg();renderMenus();
 }
 
 async function saveCfg(){
@@ -793,7 +907,7 @@ async function saveCfg(){
   try{saved=!denied(await sb.from('lava_config').upsert({id:'main',data:cfg}).select('id'));}catch(e){}
   if(saved)await logAudit('config','catégories/sections');
   else toast('Enregistrement impossible — reconnecte-toi en admin','err');
-  populateSels();renderCfg();
+  populateSels();renderCfg();renderMenus();
 }
 
 function populateSels(){
@@ -847,6 +961,7 @@ function switchTab(n,b){
 
 // ── JOURNAL : mises à jour de l'application (fixe, tenu à jour à chaque évolution) ──
 const APP_CHANGELOG=[
+  {date:'2026-09-30',titre:'Menus et Fiches Groupe',desc:"Nouvel onglet Menus (Lunch, Carte du soir, 3 temps, 5 temps) : chaque plat est décrit par ses éléments et ses allergènes,. Nouvel onglet Groupes : le responsable de salle saisit un groupe (date, personnes, menu, allergies, régimes) et la cuisine voit une fiche imprimable avec une alerte si un plat contient une allergie déclarée. Nouveau profil Salle."},
   {date:'2026-09-29',titre:'Sauvegarde complète en JSON',desc:"Dans Config, un bouton télécharge toutes les fiches techniques, fiches recette (photos comprises) et la configuration. L'export PDF garde son propre bouton."},
   {date:'2026-09-29',titre:'Sécurité renforcée',desc:"Seul l'admin connecté peut désormais créer, modifier ou supprimer des fiches. Le journal est stocké ligne par ligne. Les erreurs de suppression ou d'enregistrement sont maintenant affichées au lieu d'un faux succès."},
   {date:'2026-09-29',titre:'Chargement plus rapide, photos allégées',desc:"Les photos sont réduites à l'ajout (et un bouton dans Config allège les anciennes). Les fiches se chargent plus vite et les PDF ne sont préparés qu'à la demande."},
@@ -1026,7 +1141,8 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   const m=document.querySelector('.mo.open');
   if(m){m.id==='modal-confirm'?resolveConfirm(false):closeModal(m.id);return}
-  if(document.getElementById('frd').classList.contains('open'))closeFRD();
+  if(document.getElementById('grd').classList.contains('open'))closeGRD();
+  else if(document.getElementById('frd').classList.contains('open'))closeFRD();
   else if(document.getElementById('fd').classList.contains('open'))closeFD();
 });
 
@@ -1034,6 +1150,8 @@ async function loadAll(){
   lastLoad=Date.now();
   setSyncing(true);
   const pF=Promise.resolve(sb.from('fiches').select('*').order('nom',{ascending:true})),pFR=fetchFR();
+  const pG=Promise.resolve(sb.from('groupes').select('*').order('date',{ascending:true}));
+  const pM=Promise.resolve(sb.from('lava_config').select('data').eq('id','menus').maybeSingle());
   try{
     const{data:f}=await pF;
     fiches=f||[];
@@ -1050,6 +1168,18 @@ async function loadAll(){
       document.getElementById('b-fr').textContent=fichesRecette.length;
     }
   }catch(e){}
+  try{
+    const{data:m}=await pM;
+    menus=(m&&m.data&&Array.isArray(m.data.items))?m.data.items:[];
+  }catch(e){}
+  renderMenus();
+  let grErr='';
+  try{
+    const{data:g,error}=await pG;
+    if(error)grErr=error.message;else groupes=g||[];
+  }catch(e){}
+  renderGroupes();
+  if(grErr)document.getElementById('gr-sub').textContent='Table "groupes" absente — exécute supabase-groupes.sql dans Supabase';
   setSyncing(false);
 }
 
@@ -1876,6 +2006,7 @@ async function saveRecord(table,id,data,{modalId,successMsg,updateMsg}){
     const res=id?await sb.from(table).update(data).eq('id',id).select('id'):await sb.from(table).insert(data);
     if(denied(res)){toast('Erreur : '+deniedMsg(res),'err');return false}
     if(table==='fiches')await logAudit(id?'modification':'création',data.nom,id?diffFiche(oldF,data):[]);
+    if(table==='groupes')await logAudit(id?'modification groupe':'création groupe',data.nom);
     toast(id?updateMsg:successMsg,'ok');
     closeModal(modalId);await loadAll();
     return true;
@@ -2200,6 +2331,348 @@ function printFiche(){
   if(!curFicheId)return;
   const f=fiches.find(f=>f.id===curFicheId);if(!f)return;
   openPDF(()=>buildFichePDF(f,1,fdQtyMode));
+}
+
+// ── MENUS (stockés dans lava_config, ligne id 'menus' : {items}) ──
+// Un menu = des "temps" (entrée, plat…) contenant chacun un ou plusieurs plats.
+// La carte associe à chaque fiche recette « Carte actuelle » une section.
+let menus=[],editMenuId=null,menuDraft=null;
+
+// Anciens menus (liste plate de plats) → un seul temps sans nom.
+const normMenu=m=>m.services?m:{...m,services:[{nom:'',plats:m.plats||[]}]};
+const tags=list=>list.map(a=>`<span class="fr-allerg-tag">${escHTML(a)}</span>`).join(' ');
+
+// `els` = descriptif du plat : les éléments de sa fiche recette (recettes liées + éléments libres).
+function platInfo(p){
+  const fr=p.frId?fichesRecette.find(f=>f.id===p.frId):null;
+  return{nom:fr?fr.nom:(p.text||'(fiche supprimée)'),allerg:fr?allergArr(fr.allergenes):[],els:fr?normFRSousRecettes(fr).map(e=>e.ref?e.ref.nom:e.text):[]};
+}
+const platRow=i=>`<div class="ci"><span class="ci-label">${escHTML(i.nom)}${i.els.length?`<div class="ph-sub" style="font-weight:400;margin-top:0.15rem">${i.els.map(escHTML).join(' · ')}</div>`:''}</span><span>${tags(i.allerg)}</span></div>`;
+function menuPlats(m){return normMenu(m).services.flatMap(s=>s.plats).map(platInfo)}
+
+let menuTab='';   // id du menu affiché
+function setMenuTab(t){menuTab=t;renderMenus()}
+
+function renderMenus(){
+  const el=document.getElementById('menus-list');if(!el)return;
+  const admin=profil==='admin';
+  if(!menus.length){
+    el.innerHTML=`<div class="es"><div class="es-icon">🍽</div><h3>Aucun menu</h3><p>${admin?'Crée les menus LAVA en un clic, puis ajoute leurs plats.':'Les menus seront affichés ici.'}</p>${admin?'<button class="btn btn-p" style="margin-top:1rem" onclick="seedMenus()">Créer les 4 menus (Lunch, Carte du soir, 3 temps, 5 temps)</button>':''}</div>`;
+    return;
+  }
+  if(!menus.some(m=>m.id===menuTab))menuTab=menus[0].id;
+  const tab=(id,label)=>`<button class="log-filter${id===menuTab?' active':''}" onclick="setMenuTab('${escHTML(id)}')">${escHTML(label)}</button>`;
+  const bar=`<div class="log-filters" style="flex-wrap:wrap">${menus.map(m=>tab(m.id,m.nom)).join('')}</div>`;
+  const mi=menus.findIndex(m=>m.id===menuTab),m=menus[mi];
+  const rows=normMenu(m).services.map(s=>{
+    const plats=s.plats.map(p=>platRow(platInfo(p))).join('');
+    if(!plats&&!s.nom)return'';
+    return `${s.nom?`<div class="fsect" style="margin:0.6rem 0 0.4rem">${escHTML(s.nom)}</div>`:''}${plats||'<div class="ci-label" style="color:var(--gt)">Aucun plat</div>'}`;
+  }).join('')||'<div class="ci-label" style="color:var(--gt)">Aucun plat pour le moment.</div>';
+  const btns=`<span style="display:flex;gap:0.4rem;flex-wrap:wrap"><button class="btn btn-g btn-sm" onclick="printMenu('${escHTML(m.id)}')">🖨 Imprimer</button>${admin?`<button class="btn btn-g btn-sm" onclick="openMenu(${mi})">Modifier</button><button class="btn btn-d btn-sm" onclick="deleteMenu(${mi})">Supprimer</button>`:''}</span>`;
+  el.innerHTML=bar+`<div class="cs"><div class="cs-title" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap"><span>${escHTML(m.nom)}</span>${btns}</div><div class="cl">${rows}</div></div>`;
+}
+
+async function persistMenus(action,nom){
+  const res=await sb.from('lava_config').upsert({id:'menus',data:{items:menus}}).select('id');
+  if(denied(res)){toast('Enregistrement impossible : '+deniedMsg(res),'err');loadAll();return false}
+  await logAudit(action,nom||'menus');
+  renderMenus();
+  return true;
+}
+async function seedMenus(){
+  const svc=names=>names.map(n=>({nom:n,plats:[]}));
+  menus=[
+    {id:crypto.randomUUID(),nom:'Lunch',services:svc(['Entrée','Plat','Dessert'])},
+    {id:crypto.randomUUID(),nom:'Carte du soir',services:svc(['Plat','Dessert'])},
+    {id:crypto.randomUUID(),nom:'3 temps',services:svc(['Entrée','Plat','Dessert'])},
+    {id:crypto.randomUUID(),nom:'5 temps',services:svc(['Temps 1','Temps 2','Temps 3','Temps 4','Temps 5'])}
+  ];
+  await persistMenus('création menus');
+}
+
+// ── Édition d'un menu : on modifie une copie (menuDraft) puis on ré-affiche ──
+function openMenu(i){
+  editMenuId=i===undefined?null:i;
+  const m=editMenuId===null?{nom:'',services:[{nom:'Entrée',plats:[]},{nom:'Plat',plats:[]},{nom:'Dessert',plats:[]}]}:normMenu(menus[editMenuId]);
+  menuDraft=JSON.parse(JSON.stringify(m));
+  document.getElementById('mm-title').textContent=editMenuId===null?'Nouveau menu':'Modifier — '+m.nom;
+  document.getElementById('mn-nom').value=m.nom;
+  renderMenuDraft();
+  openModal('modal-menu');
+}
+function renderMenuDraft(){
+  const opts=fichesRecette.slice().sort((a,b)=>a.nom.localeCompare(b.nom)).map(f=>`<option value="${escHTML(f.id)}">${escHTML(f.nom)}</option>`).join('')||'<option value="">Aucune fiche recette</option>';
+  const n=menuDraft.services.length;
+  document.getElementById('mn-services').innerHTML=menuDraft.services.map((s,i)=>`
+    <div style="border:1px solid var(--border);border-radius:var(--r);padding:0.75rem;margin-bottom:0.75rem">
+      <div style="display:flex;gap:0.35rem;margin-bottom:0.5rem">
+        <input class="fi2" style="flex:1" placeholder="Nom du temps (ex: Entrée)" value="${escHTML(s.nom)}" oninput="menuDraft.services[${i}].nom=this.value">
+        <button class="btn-rm" aria-label="Monter" ${i?'':'disabled'} onclick="moveService(${i},-1)">↑</button>
+        <button class="btn-rm" aria-label="Descendre" ${i<n-1?'':'disabled'} onclick="moveService(${i},1)">↓</button>
+        <button class="btn-rm" aria-label="Retirer ce temps" onclick="rmService(${i})">×</button>
+      </div>
+      ${s.plats.map((p,j)=>`<div class="ci" style="margin-bottom:0.3rem"><span class="ci-label">${escHTML(platInfo(p).nom)}</span><button class="btn-rm" aria-label="Retirer" onclick="rmMenuPlat(${i},${j})">×</button></div>`).join('')}
+      <div style="display:flex;gap:0.4rem;margin-top:0.4rem"><select class="fsel" id="ms-sel-${i}" style="flex:1">${opts}</select><button class="btn btn-o btn-sm" type="button" onclick="addMenuPlat(${i})">+ Recette</button></div>
+      <div style="display:flex;gap:0.4rem;margin-top:0.4rem"><input class="fi2" id="ms-free-${i}" placeholder="Ou un plat libre" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();addMenuFree(${i})}"><button class="btn btn-o btn-sm" type="button" onclick="addMenuFree(${i})">+ Libre</button></div>
+    </div>`).join('');
+}
+function addService(){menuDraft.services.push({nom:'',plats:[]});renderMenuDraft()}
+function rmService(i){menuDraft.services.splice(i,1);renderMenuDraft()}
+function moveService(i,d){const s=menuDraft.services;[s[i],s[i+d]]=[s[i+d],s[i]];renderMenuDraft()}
+function rmMenuPlat(i,j){menuDraft.services[i].plats.splice(j,1);renderMenuDraft()}
+function addMenuPlat(i){
+  const id=document.getElementById('ms-sel-'+i).value;
+  if(id){menuDraft.services[i].plats.push({frId:id});renderMenuDraft()}
+}
+function addMenuFree(i){
+  const t=document.getElementById('ms-free-'+i).value.trim();
+  if(t){menuDraft.services[i].plats.push({text:t});renderMenuDraft()}
+}
+async function saveMenu(){
+  const nom=document.getElementById('mn-nom').value.trim();
+  if(!nom){toast('Le nom est obligatoire','err');return}
+  const services=menuDraft.services
+    .map(s=>({nom:s.nom.trim(),plats:s.plats.filter(p=>p.frId?fichesRecette.some(f=>f.id===p.frId):p.text)}))
+    .filter(s=>s.nom||s.plats.length);
+  const isNew=editMenuId===null;
+  const m={id:isNew?crypto.randomUUID():menus[editMenuId].id,nom,services};
+  if(isNew)menus.push(m);else menus[editMenuId]=m;
+  menuTab=m.id;
+  setBusy('btn-save-menu',true);
+  const ok=await persistMenus(isNew?'création menu':'modification menu',nom);
+  setBusy('btn-save-menu',false);
+  if(ok){closeModal('modal-menu');toast('Menu enregistré ✓','ok')}
+}
+async function deleteMenu(i){
+  const m=menus[i];if(!m)return;
+  if(!await confirmDialog(`Supprimer le menu "${m.nom}" ?`))return;
+  menus.splice(i,1);
+  if(await persistMenus('suppression menu',m.nom))toast('Menu supprimé');
+}
+
+// ── GROUPES (table groupes) ──
+let groupes=[],editGrId=null,curGrId=null,grFilter='avenir';
+const today=()=>new Date().toLocaleDateString('sv-SE');
+function fmtDate(d){
+  const x=new Date(d+'T00:00:00');
+  return isNaN(x)?String(d||''):x.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'long'});
+}
+function setGrFilter(f){
+  grFilter=f;
+  document.querySelectorAll('#gr-filters .log-filter').forEach(b=>b.classList.toggle('active',b.dataset.g===f));
+  renderGroupes();
+}
+// Plats du menu du groupe qui contiennent une allergie déclarée par le groupe.
+function groupeAlertes(g){
+  const a=new Set(allergArr(g.allergenes));
+  const m=menus.find(x=>x.id===g.menu_id);
+  if(!a.size||!m)return[];
+  return menuPlats(m).map(p=>({plat:p.nom,hit:p.allerg.filter(x=>a.has(x))})).filter(x=>x.hit.length);
+}
+function renderGroupes(){
+  const grid=document.getElementById('gr-grid');if(!grid)return;
+  const q=(document.getElementById('s-gr')?.value||'').toLowerCase();
+  const t=today();
+  const upcoming=groupes.filter(g=>g.date>=t);
+  const all=grFilter==='avenir'?upcoming:groupes.filter(g=>g.date<t).reverse();
+  const list=all.filter(g=>!q||g.nom.toLowerCase().includes(q));
+  document.getElementById('b-gr').textContent=upcoming.length;
+  document.getElementById('gr-sub').textContent=`${all.length} groupe${all.length!==1?'s':''} ${grFilter==='avenir'?'à venir':'passé'+(all.length!==1?'s':'')}`;
+  grid.innerHTML='';
+  if(!list.length){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">👥</div><h3>Aucun groupe</h3><p>Rien à afficher ici</p></div>';return}
+  list.forEach(g=>{
+    const c=document.createElement('div');c.className='fc';
+    const al=allergArr(g.allergenes);
+    c.innerHTML=`<div class="fc-top"><div class="fc-cat">${escHTML(fmtDate(g.date))}${g.heure?' · '+escHTML(g.heure):''}</div><div class="fc-name">${escHTML(g.nom)}</div><div class="ph-sub" style="margin-top:0.35rem">${escHTML(String(g.pax))} pers.${g.salle?' · '+escHTML(g.salle):''}${g.menu_nom?' · '+escHTML(g.menu_nom):''}</div>${al.length?`<div class="fr-allerg-sub">${tags(al)}</div>`:''}${groupeAlertes(g).length?'<div class="fr-allerg-tag" style="display:inline-block;margin-top:0.5rem">⚠ Conflit avec le menu</div>':''}</div>`;
+    c.onclick=()=>openGRD(g.id);
+    c.tabIndex=0;c.setAttribute('role','button');
+    c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openGRD(g.id)}};
+    grid.appendChild(c);
+  });
+}
+
+function fillGroupeMenus(sel){
+  const el=document.getElementById('g-menu');
+  el.innerHTML='<option value="">Sur mesure</option>'+menus.map(m=>`<option value="${escHTML(m.id)}">${escHTML(m.nom)}</option>`).join('');
+  el.value=sel||'';
+}
+function openNewGroupe(){
+  editGrId=null;
+  document.getElementById('mg-title').textContent='Nouveau groupe';
+  ['g-nom','g-heure','g-pax','g-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('g-date').value=today();
+  document.getElementById('g-salle').selectedIndex=0;
+  document.getElementById('g-source').selectedIndex=0;
+  gAllergSelected=[];gRegimesSelected=[];renderGPickers();fillGroupeMenus('');
+  openModal('modal-groupe');
+}
+function editGroupe(id){
+  const g=groupes.find(x=>x.id===id);if(!g)return;
+  editGrId=id;
+  document.getElementById('mg-title').textContent='Modifier — '+g.nom;
+  document.getElementById('g-nom').value=g.nom;
+  document.getElementById('g-date').value=g.date;
+  document.getElementById('g-heure').value=g.heure||'';
+  document.getElementById('g-pax').value=g.pax;
+  document.getElementById('g-notes').value=g.notes||'';
+  document.getElementById('g-salle').value=g.salle||'Salle principale';
+  document.getElementById('g-source').value=g.source||'Autre';
+  gAllergSelected=allergArr(g.allergenes).filter(a=>ALLERGENES_LIST.includes(a));
+  gRegimesSelected=allergArr(g.regimes).filter(a=>REGIMES_LIST.includes(a));
+  renderGPickers();fillGroupeMenus(g.menu_id);
+  openModal('modal-groupe');
+}
+async function saveGroupe(){
+  const nom=document.getElementById('g-nom').value.trim();
+  const date=document.getElementById('g-date').value;
+  const pax=parseInt(document.getElementById('g-pax').value,10);
+  if(!nom||!date||!(pax>0)){toast('Nom, date et nombre de personnes obligatoires','err');return}
+  const menuId=document.getElementById('g-menu').value,m=menus.find(x=>x.id===menuId);
+  const data={nom,date,heure:document.getElementById('g-heure').value,pax,salle:document.getElementById('g-salle').value,source:document.getElementById('g-source').value,menu_id:menuId||null,menu_nom:m?m.nom:null,allergenes:gAllergSelected.join(', '),regimes:gRegimesSelected.join(', '),notes:document.getElementById('g-notes').value.trim()};
+  setBusy('btn-save-groupe',true);
+  await saveRecord('groupes',editGrId,data,{modalId:'modal-groupe',successMsg:'Groupe enregistré ✓',updateMsg:'Groupe modifié ✓'});
+  setBusy('btn-save-groupe',false);
+}
+
+function buildGroupeDoc(g){
+  const m=menus.find(x=>x.id===g.menu_id);
+  const plats=m?menuPlats(m):[];
+  const al=allergArr(g.allergenes),rg=allergArr(g.regimes),warns=groupeAlertes(g);
+  const info=(l,v)=>v?`<div><div class="fdoc-fl">${l}</div><div class="fdoc-fv" style="font-size:0.95rem">${escHTML(v)}</div></div>`:'';
+  const platsHtml=plats.length
+    ?`<div class="fdoc-steps">${plats.map((p,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(p.nom)}${p.allerg.length?`<div class="fr-sr-allerg" style="margin:0.3rem 0 0">${tags(p.allerg)}</div>`:''}</div></div>`).join('')}</div>`
+    :`<div class="ci-label" style="color:var(--gt)">${m?"Ce menu n'a pas encore de plats.":'Menu sur mesure — voir les notes.'}</div>`;
+  return `<div class="fdoc">
+    <div class="fdoc-hdr"><div class="fdoc-nom">${escHTML(g.nom)}</div><div class="fdoc-sub">Fiche Groupe</div></div>
+    <div class="fdoc-body">
+      <hr class="fdoc-sep">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem">${info('Date',fmtDate(g.date))}${info('Heure',g.heure)}${info('Personnes',String(g.pax))}${info('Salle',g.salle)}${info('Reçu par',g.source)}</div>
+      <div class="fdoc-ptitle">Menu${m?' — '+escHTML(m.nom):''}</div>
+      ${platsHtml}
+      <div class="fdoc-ptitle">Restrictions</div>
+      ${warns.length?`<div style="background:#FBEDEC;border:1px solid #E2B5B1;border-radius:12px;padding:0.75rem 1rem;margin-bottom:0.75rem;color:#8C302A;font-size:0.8rem;font-weight:600">${warns.map(w=>'⚠ '+escHTML(w.plat)+' : '+w.hit.map(escHTML).join(', ')).join('<br>')}</div>`:''}
+      <div class="fr-allerg-sub" style="margin-top:0"><span class="fr-allerg-sub-lbl">Allergies</span>${al.length?tags(al):'<span style="font-size:0.75rem;color:var(--gt)">Aucune déclarée</span>'}</div>
+      ${rg.length?`<div class="fr-allerg-sub"><span class="fr-allerg-sub-lbl">Régimes</span>${tags(rg)}</div>`:''}
+      ${g.notes?`<div class="fdoc-ptitle">Notes</div><div style="font-size:0.85rem;line-height:1.6;white-space:pre-wrap">${escHTML(g.notes)}</div>`:''}
+    </div>
+  </div>`;
+}
+function openGRD(id){
+  const g=groupes.find(x=>x.id===id);if(!g)return;
+  curGrId=id;
+  document.getElementById('grd-crumb').textContent=g.nom;
+  document.getElementById('grdoc-area').innerHTML=buildGroupeDoc(g);
+  document.getElementById('grd').classList.add('open');
+}
+function closeGRD(){document.getElementById('grd').classList.remove('open');curGrId=null}
+function editCurrentGroupe(){if(curGrId){const id=curGrId;closeGRD();editGroupe(id)}}
+async function deleteCurrentGroupe(){if(curGrId){const id=curGrId;closeGRD();await deleteGroupe(id)}}
+async function deleteGroupe(id){
+  const g=groupes.find(x=>x.id===id);
+  if(!await confirmDialog('Supprimer ce groupe ?'))return;
+  setSyncing(true);
+  const res=await sb.from('groupes').delete().eq('id',id).select('id');
+  setSyncing(false);
+  if(denied(res)){toast('Suppression impossible : '+deniedMsg(res),'err');return}
+  await logAudit('suppression groupe',g?g.nom:'');
+  toast('Groupe supprimé');await loadAll();
+}
+
+// Écrivain PDF minimal : les lignes passent à la ligne et à la page suivante toutes seules.
+function pdfWriter(doc){
+  const mX=20,W=170;
+  let y=18;
+  return{
+    line(txt,size,bold,color,indent=0){
+      doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor(...color);
+      doc.splitTextToSize(String(txt),W-indent).forEach(l=>{
+        if(y>280){doc.addPage();y=18}
+        doc.text(l,mX+indent,y);y+=size*0.42+1.5;
+      });
+    },
+    skip(n){y+=n},
+    rule(){doc.setDrawColor(...PDF_ROUGE);doc.setLineWidth(0.6);doc.line(mX,y,mX+W,y);y+=6}
+  };
+}
+
+function buildGroupePDF(g){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const{line,skip,rule}=pdfWriter(doc);
+  const m=menus.find(x=>x.id===g.menu_id);
+  line(g.nom.toUpperCase(),20,true,PDF_NOIR);
+  line('Fiche Groupe',9,false,PDF_ROUGE);skip(2);rule();
+  line(`${fmtDate(g.date)}${g.heure?' à '+g.heure:''}  ·  ${g.pax} personnes  ·  ${g.salle||''}`,11,true,PDF_NOIR);
+  if(g.source)line('Reçu par : '+g.source,9,false,PDF_GRIS_FONCE);
+  skip(3);
+  line('MENU'+(m?' — '+m.nom:' sur mesure'),10,true,PDF_ROUGE);
+  menuPlats(m||{plats:[]}).forEach((p,i)=>line(`${i+1}. ${p.nom}${p.allerg.length?'   ['+p.allerg.join(', ')+']':''}`,10,false,PDF_NOIR));
+  skip(3);
+  line('RESTRICTIONS',10,true,PDF_ROUGE);
+  groupeAlertes(g).forEach(w=>line('! '+w.plat+' contient : '+w.hit.join(', '),10,true,[140,48,42]));
+  line('Allergies : '+(allergArr(g.allergenes).join(', ')||'aucune déclarée'),10,false,PDF_NOIR);
+  if(g.regimes)line('Régimes : '+g.regimes,10,false,PDF_NOIR);
+  if(g.notes){skip(3);line('NOTES',10,true,PDF_ROUGE);line(g.notes,10,false,PDF_NOIR)}
+  return doc;
+}
+
+// PDF d'un menu, même charte que les fiches : en-tête, filet rouge, tableaux à lignes alternées, pastilles d'allergènes.
+function buildMenuPDF(m){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const pageW=210,pageH=297,mX=20,mTop=15,mBottom=16;
+  let y=mTop;
+
+  doc.setFont('helvetica','bold');doc.setFontSize(20);doc.setTextColor(...PDF_NOIR);
+  doc.text(m.nom.toUpperCase(),mX,y+7);
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...PDF_ROUGE);
+  doc.text('Menu',mX,y+13);
+  y+=17;
+  doc.setDrawColor(...PDF_ROUGE);doc.setLineWidth(0.6);doc.line(mX,y,pageW-mX,y);
+  y+=6;
+
+  const services=normMenu(m).services.filter(s=>s.plats.length);
+  const all=[...new Set(menuPlats(m).flatMap(p=>p.allerg))].sort((a,b)=>a.localeCompare(b,'fr'));
+  if(all.length){
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...PDF_ROUGE);
+    doc.text('ALLERGÈNES DU MENU',mX,y+2.2);
+    y=drawAllergChips(doc,all,mX,y+5,pageW-2*mX,7,[251,237,236],[237,216,216],PDF_ROUGE)+6;
+  }
+  if(!services.length){
+    doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(...PDF_GRIS_FONCE);
+    doc.text("Ce menu n'a pas encore de plats.",mX,y+4);
+  }
+  services.forEach(s=>{
+    if(y>pageH-mBottom-35){doc.addPage();y=mTop}
+    if(s.nom){
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...PDF_ROUGE);
+      doc.text(s.nom.toUpperCase(),mX,y);
+      y+=1.5;
+      doc.setDrawColor(237,216,216);doc.setLineWidth(0.2);doc.line(mX,y,pageW-mX,y);
+      y+=3;
+    }
+    doc.autoTable({
+      startY:y,
+      body:s.plats.map((p,i)=>{const d=platInfo(p);return[String(i+1),d.nom.toUpperCase(),d.els.join(' · '),d.allerg.join(', ')]}),
+      theme:'plain',
+      margin:{left:mX,right:mX,bottom:mBottom},
+      styles:{font:'helvetica',fontSize:9,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:2.2,bottom:2.2,left:2.8,right:2.8},valign:'middle'},
+      columnStyles:{0:{cellWidth:9,halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{fontStyle:'bold',cellWidth:55},2:{textColor:PDF_GRIS_FONCE,fontSize:8},3:{cellWidth:32,halign:'right',textColor:PDF_ROUGE,fontSize:7.5}},
+      alternateRowStyles:{fillColor:PDF_ROSE_ALT},
+      didParseCell:d=>{if(d.column.index===0)d.cell.styles.fillColor=PDF_ROUGE}
+    });
+    y=doc.lastAutoTable.finalY+7;
+  });
+  return doc;
+}
+function printMenu(id){
+  const m=menus.find(x=>x.id===id);
+  if(m)openPDF(()=>buildMenuPDF(m));
+}
+function printGroupe(){
+  const g=groupes.find(x=>x.id===curGrId);
+  if(g)openPDF(()=>buildGroupePDF(g));
 }
 
 // ── DRAG & DROP REORDER ──
