@@ -2067,7 +2067,7 @@ function buildFicheRecetteDoc(fr){
   return `<div class="fdoc">
     <div class="fdoc-hdr">
       <div class="fdoc-nom">${escHTML(fr.nom)}</div>
-      <div class="fdoc-sub">Fiche Recette${modLine(fr)}</div>
+      <div class="fdoc-sub">Fiche Recette</div>
       ${allergList.length?`<div class="fr-allerg-sub"><span class="fr-allerg-sub-lbl">Allergènes</span>${allergList.map(a=>`<span class="fr-allerg-tag">${escHTML(a)}</span>`).join('')}</div>`:''}
       ${fr.photo?`<div style="position:relative;overflow:hidden;aspect-ratio:16/10;max-height:340px;width:100%;border-radius:12px;margin-top:1.25rem;background:url('${escHTML(fr.photo)}') center/cover"><div style="position:absolute;inset:0;backdrop-filter:blur(24px);background:rgba(0,0,0,.15)"></div><img src="${escHTML(fr.photo)}" alt="" style="position:relative;width:100%;height:100%;object-fit:contain"></div>`:''}
     </div>

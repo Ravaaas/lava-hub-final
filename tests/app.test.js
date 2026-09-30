@@ -112,7 +112,7 @@ const check = (nom, ok, detail = '') => { results.push([ok, nom, detail]); conso
   check('2 fiches recette listées', await page.evaluate(() => document.querySelectorAll('#fr-grid .fc').length) === 2);
   await page.evaluate(() => openFRD('r1')); await sleep(300);
   const frTxt = await page.evaluate(() => document.getElementById('frdoc-area').innerText);
-  check('fiche recette : « modifié par » affiché', /modifié par Alexandre/i.test(frTxt));
+  check('fiche recette : « modifié par » masqué', !/modifié par/i.test(frTxt));
   await page.evaluate(() => closeFRD());
   // cadrage photo : portrait 600x900 → enregistré en 16/10, le zoom resserre, la fenêtre suit la position
   const ph = await page.evaluate(async () => {
