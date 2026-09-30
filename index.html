@@ -3229,13 +3229,12 @@ function buildMenuPDF(m){
     }
     doc.autoTable({
       startY:y,
-      body:s.plats.map((p,i)=>{const d=platInfo(p);return[String(i+1),d.nom.toUpperCase(),d.els.join(' · '),d.allerg.join(', ')]}),
+      body:s.plats.map(p=>{const d=platInfo(p);return[d.nom.toUpperCase(),d.els.join(' · '),d.allerg.join(', ')]}),
       theme:'plain',
       margin:{left:mX,right:mX,bottom:mBottom},
       styles:{font:'helvetica',fontSize:9,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:2.2,bottom:2.2,left:2.8,right:2.8},valign:'middle'},
-      columnStyles:{0:{cellWidth:9,halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{fontStyle:'bold',cellWidth:55},2:{textColor:PDF_GRIS_FONCE,fontSize:8},3:{cellWidth:32,halign:'right',textColor:PDF_ROUGE,fontSize:7.5}},
-      alternateRowStyles:{fillColor:PDF_ROSE_ALT},
-      didParseCell:d=>{if(d.column.index===0)d.cell.styles.fillColor=PDF_ROUGE}
+      columnStyles:{0:{fontStyle:'bold',cellWidth:55},1:{textColor:PDF_GRIS_FONCE,fontSize:8},2:{cellWidth:32,halign:'right',textColor:PDF_ROUGE,fontSize:7.5}},
+      alternateRowStyles:{fillColor:PDF_ROSE_ALT}
     });
     y=doc.lastAutoTable.finalY+7;
   });
