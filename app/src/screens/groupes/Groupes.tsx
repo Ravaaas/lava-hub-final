@@ -105,9 +105,9 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '1rem' }}>
-            {info('Date', dateCourte(g.date))}{info('Heure', heureFr(g.heure))}{info('Personnes', String(g.pax))}{info('Salle', g.salle)}{info('Reçu par', g.source)}
+            {info('Date', dateCourte(g.date))}{info('Arrivée des clients', heureFr(g.heure))}{info('Personnes', String(g.pax))}{info('Salle', g.salle)}{info('Reçu par', g.source)}
           </div>
-          <div className="fdoc-ptitle">Menu{m ? ` — ${m.nom}` : ''}</div>
+          <div className="fdoc-ptitle">Menu choisi{m ? ` — ${m.nom}` : ''}</div>
           {plats.length
             ? <div className="fdoc-steps">{plats.map((p, i) => (
                 <div key={i} className="fdoc-step"><div className="fdoc-snum">{i + 1}</div>

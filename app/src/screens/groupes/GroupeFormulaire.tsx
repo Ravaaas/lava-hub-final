@@ -64,7 +64,7 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
         <input className="fi2" id={id.nom} type="text" placeholder="ex: Séminaire Dupont" value={nom} onChange={e => { setNom(e.target.value); }} /></div>
       <div className="fr">
         <div className="fg2"><label className="fl" htmlFor={id.date}>Date *</label><input className="fi2" id={id.date} type="date" value={date} onChange={e => { setDate(e.target.value); }} /></div>
-        <div className="fg2"><label className="fl" htmlFor={id.heure}>Heure</label><input className="fi2" id={id.heure} type="time" value={heure} onChange={e => { setHeure(e.target.value); }} /></div>
+        <div className="fg2"><label className="fl" htmlFor={id.heure}>Heure d'arrivée des clients</label><input className="fi2" id={id.heure} type="time" value={heure} onChange={e => { setHeure(e.target.value); }} /></div>
       </div>
       <div className="fr">
         <div className="fg2"><label className="fl" htmlFor={id.pax}>Nombre de personnes *</label><input className="fi2" id={id.pax} type="number" min="1" step="1" value={pax} onChange={e => { setPax(e.target.value); }} /></div>
@@ -72,7 +72,7 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
           <select className="fsel" id={id.salle} value={salle} onChange={e => { setSalle(e.target.value); }}>{liste(SALLES, salle).map(s => <option key={s}>{s}</option>)}</select></div>
       </div>
       <div className="fr">
-        <div className="fg2"><label className="fl" htmlFor={id.menu}>Menu</label>
+        <div className="fg2"><label className="fl" htmlFor={id.menu}>Menu choisi</label>
           <select className="fsel" id={id.menu} value={menuId} onChange={e => { setMenuId(e.target.value); }}>
             <option value="">Sur mesure</option>
             {menus.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}

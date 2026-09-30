@@ -18,6 +18,12 @@ export function dateCourte(d: string): string {
   return Number.isNaN(x.getTime()) ? d : x.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', ...(x.getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }) });
 }
 
+/** « mercredi 30 septembre 2026 » */
+export function dateLongue(d: string): string {
+  const x = new Date(d + 'T00:00:00');
+  return Number.isNaN(x.getTime()) ? d : x.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export const PAX_MAX = 500;
 
 /** Contrôle de la saisie ; null si tout est bon. */
