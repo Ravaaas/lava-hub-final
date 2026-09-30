@@ -103,7 +103,7 @@ export function FicheFormulaire({ fiche, onFermer }: { fiche: Fiche | null; onFe
         <div className="fg2"><span className="fl">Conditionnement</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {conds.map(c => (
-              <div key={c.cle} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 120px 36px', gap: 8, alignItems: 'center' }}>
+              <div key={c.cle} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,120px) 44px', gap: 8, alignItems: 'center' }}>
                 <select className="fsel" aria-label="Type de conditionnement" value={c.type} onChange={e => { setConds(l => l.map(x => (x.cle === c.cle ? { ...x, type: e.target.value } : x))); }}>
                   <option value="">— Choisir —</option>
                   {!(TYPES_CONDITIONNEMENT as readonly string[]).includes(c.type) && c.type && <option value={c.type}>{c.type}</option>}
@@ -126,14 +126,14 @@ export function FicheFormulaire({ fiche, onFermer }: { fiche: Fiche | null; onFe
           <div key={l.cle} {...ordreIng.ligne(i)} className={`ir${l.brut ? ' has-net' : ''}${ordreIng.glisse === i ? ' dragging' : ''}`}>
             <div {...ordreIng.poignee(i)}><Icone nom="grip" /></div>
             {l.lie
-              ? <select className="fsel" aria-label="Fiche liée" style={{ color: 'var(--rouge)', fontWeight: 600 }} value={l.ficheId} onChange={e => { changerIng(l.cle, { ficheId: e.target.value }); }}>
+              ? <select className="fsel ing-fiche-sel" aria-label="Fiche liée" style={{ color: 'var(--rouge)', fontWeight: 600 }} value={l.ficheId} onChange={e => { changerIng(l.cle, { ficheId: e.target.value }); }}>
                   <option value="">— Choisir une fiche —</option>
                   {optionsFiches.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                 </select>
-              : <input ref={focusSiNouveau(l.cle)} className="fi2" type="text" placeholder="Ingrédient" value={l.nom} onChange={e => { changerIng(l.cle, { nom: e.target.value.toUpperCase() }); }} />}
-            <input className="fi2" type="number" step="any" min="0" placeholder="Qté" value={l.quantite} onChange={e => { changerIng(l.cle, { quantite: e.target.value }); }} />
+              : <input ref={focusSiNouveau(l.cle)} className="fi2 ing-n" type="text" placeholder="Ingrédient" value={l.nom} onChange={e => { changerIng(l.cle, { nom: e.target.value.toUpperCase() }); }} />}
+            <input className="fi2 ing-q" type="number" step="any" min="0" placeholder="Qté" value={l.quantite} onChange={e => { changerIng(l.cle, { quantite: e.target.value }); }} />
             <input className="fi2 ing-net" type="number" step="any" min="0" placeholder="Net" title="Poids net" value={l.net} onChange={e => { changerIng(l.cle, { net: e.target.value }); }} />
-            <select className="fsel" aria-label="Unité" value={l.unite} onChange={e => { changerIng(l.cle, { unite: e.target.value }); }}>
+            <select className="fsel ing-u" aria-label="Unité" value={l.unite} onChange={e => { changerIng(l.cle, { unite: e.target.value }); }}>
               {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
             </select>
             <button type="button" className={`btn-brut${l.brut ? ' active' : ''}`} title="Poids brut" aria-pressed={l.brut} onClick={() => { changerIng(l.cle, { brut: !l.brut, net: l.brut ? '' : l.net }); }}>B</button>
