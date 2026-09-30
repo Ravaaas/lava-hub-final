@@ -1,0 +1,15 @@
+{
+  // Ctrl+Maj+P → « Tâches : Exécuter la tâche » → « Aperçu de l'app »
+  // Lance l'app en local et ouvre le navigateur. Attention : elle utilise la vraie base Supabase.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Aperçu de l'app",
+      "type": "npm",
+      "script": "apercu",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    }
+  ]
+}
