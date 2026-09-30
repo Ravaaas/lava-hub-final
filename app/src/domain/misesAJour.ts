@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-09-30",
+    titre: "Design inspiré d'iOS",
+    desc: "Onglets et en-têtes en verre discret, boutons en capsules, listes groupées façon iPhone et fenêtres plus douces. Sur téléphone, la barre d'onglets flotte en bas de l'écran et les lignes d'ingrédients du formulaire sont mieux disposées. Mêmes couleurs, même organisation."
+  },
+  {
+    date: "2026-09-30",
     titre: "Nouvelle version de l'application",
     desc: "L'application a été entièrement reconstruite sur des bases modernes et plus solides, avec le même fonctionnement et la même apparence. Chaque parcours de l'équipe est vérifié automatiquement avant toute mise en ligne."
   },
