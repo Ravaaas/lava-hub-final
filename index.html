@@ -545,6 +545,11 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
             <button class="btn btn-g btn-sm" onclick="optimizePhotos()">Alléger les photos existantes</button>
           </div>
         </div>
+        <div class="cs">
+          <div class="cs-title" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap"><span>Sauvegardes automatiques (chaque nuit)</span><button class="btn btn-o btn-sm" onclick="sauvegarderMaintenant()">Sauvegarder maintenant</button></div>
+          <p class="ph-sub" style="margin-bottom:0.75rem">Les 14 dernières, sans les photos. Pour restaurer une fiche supprimée par erreur, télécharge la sauvegarde et demande-moi de la remettre.</p>
+          <div class="cl" id="cfg-snaps"></div>
+        </div>
       </div>
     </div>
 
@@ -846,6 +851,8 @@ async function openPDF(build){
 // PostgREST ne renvoie pas d'erreur quand une règle RLS filtre tout : on vérifie qu'une ligne a bien été touchée.
 function denied(res){return !!res.error||(Array.isArray(res.data)&&!res.data.length)}
 function deniedMsg(res){return res.error?res.error.message:'droits insuffisants — reconnecte-toi en admin'}
+// « · modifiée par Julien le 12/10/2026 » (rempli par la base ; vide tant que le SQL d'automatisation n'est pas appliqué)
+const modLine=x=>x&&x.modifie_par&&x.modifie_le?` · modifié par ${escHTML(x.modifie_par)} le ${new Date(x.modifie_le).toLocaleDateString('fr-FR')}`:'';
 function escHTML(s){
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -1012,11 +1019,30 @@ function loginAs(p){
   if(p==='admin')document.querySelectorAll('.admin-only').forEach(el=>el.style.display='flex');
   else setFRStatusFilter('carte');
   if(p==='admin'||p==='salle')document.querySelectorAll('.salle-can').forEach(el=>el.style.display='flex');
-  loadCfg();loadAll();loadMembres();
+  loadCfg();loadAll();loadMembres();watchChanges();
+}
+
+// Mise à jour en direct : quand quelqu'un modifie fiches, groupes ou menus, l'écran se recharge tout seul
+// (sans écraser un formulaire ouvert). Sans effet tant que le SQL d'automatisation n'est pas appliqué.
+let rtChannel=null,rtTimer=null;
+function watchChanges(){
+  if(rtChannel)return;
+  const reload=()=>{
+    clearTimeout(rtTimer);
+    rtTimer=setTimeout(function again(){
+      if(document.querySelector('.mo.open,.fd.open')){rtTimer=setTimeout(again,5000);return}
+      loadAll();
+    },1500);
+  };
+  rtChannel=['fiches','fiches_recette','groupes','lava_config']
+    .reduce((ch,table)=>ch.on('postgres_changes',{event:'*',schema:'public',table},reload),sb.channel('lava'))
+    .subscribe();
 }
 
 async function logout(){
   try{await sb.auth.signOut()}catch(e){}
+  if(rtChannel){sb.removeChannel(rtChannel);rtChannel=null}
+  clearTimeout(rtTimer);
   profil=null;moi=null;membres=[];
   setFRStatusFilter('carte');
   document.querySelectorAll('.admin-only,.salle-can').forEach(el=>el.style.display='none');
@@ -1168,6 +1194,30 @@ async function deleteMembre(email){
 function setCfgTab(t){
   document.querySelectorAll('#cfg-tabs .log-filter').forEach(b=>b.classList.toggle('active',b.dataset.c===t));
   document.querySelectorAll('#tab-config [data-cfg]').forEach(p=>p.style.display=p.dataset.cfg===t?'':'none');
+  if(t==='backup')loadSauvegardes();
+}
+
+// ── Sauvegardes automatiques (table sauvegardes, alimentée chaque nuit par la base) ──
+async function loadSauvegardes(){
+  const el=document.getElementById('cfg-snaps');if(!el)return;
+  const{data,error}=await sb.from('sauvegardes').select('id,cree_le').order('cree_le',{ascending:false});
+  if(error){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Pas encore activées — exécute supabase-automatisation.sql dans Supabase.</div>';return}
+  el.innerHTML=(data||[]).map(s=>`<div class="ci"><span class="ci-label">${escHTML(new Date(s.cree_le).toLocaleString('fr-FR',{weekday:'short',day:'numeric',month:'long',hour:'2-digit',minute:'2-digit'}))}</span><button class="btn btn-g btn-sm" onclick="downloadSauvegarde(${s.id})">⬇ Télécharger</button></div>`).join('')
+    ||'<div class="ci-label" style="color:var(--gt)">Aucune sauvegarde pour le moment.</div>';
+}
+async function sauvegarderMaintenant(){
+  const{error}=await sb.rpc('sauvegarder_maintenant');
+  if(error){toast('Sauvegarde impossible : '+error.message,'err');return}
+  toast('Sauvegarde faite ✓','ok');loadSauvegardes();
+}
+async function downloadSauvegarde(id){
+  const{data,error}=await sb.from('sauvegardes').select('cree_le,contenu').eq('id',id).single();
+  if(error||!data){toast('Téléchargement impossible','err');return}
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(data.contenu)],{type:'application/json'}));
+  a.download=`lava-sauvegarde-auto-${data.cree_le.slice(0,10)}.json`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
 // ── CONFIG (Supabase direct + localStorage fallback) ──
@@ -1390,8 +1440,8 @@ async function generateExportPDF(){
 // ── LOAD ──
 // Liste sans la colonne photo (base64 lourd) ; la photo est chargée à la demande (ensurePhoto).
 async function fetchFR(){
-  let r=await sb.from('fiches_recette').select('id,nom,statut,allergenes,sous_recettes').order('nom',{ascending:true});
-  if(r.error&&!/does not exist/i.test(r.error.message||''))r=await sb.from('fiches_recette').select('*').order('nom',{ascending:true});
+  let r=await sb.from('fiches_recette').select('id,nom,statut,allergenes,sous_recettes,modifie_par,modifie_le').order('nom',{ascending:true});
+  if(r.error)r=await sb.from('fiches_recette').select('*').order('nom',{ascending:true});   // colonnes « modifié par » pas encore créées
   return r;
 }
 async function ensurePhoto(f){
@@ -1764,7 +1814,7 @@ function buildFicheRecetteDoc(fr){
   return `<div class="fdoc">
     <div class="fdoc-hdr">
       <div class="fdoc-nom">${escHTML(fr.nom)}</div>
-      <div class="fdoc-sub">Fiche Recette</div>
+      <div class="fdoc-sub">Fiche Recette${modLine(fr)}</div>
       ${allergList.length?`<div class="fr-allerg-sub"><span class="fr-allerg-sub-lbl">Allergènes</span>${allergList.map(a=>`<span class="fr-allerg-tag">${escHTML(a)}</span>`).join('')}</div>`:''}
       ${fr.photo?`<img src="${escHTML(fr.photo)}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-top:1.25rem">`:''}
     </div>
@@ -2424,7 +2474,7 @@ function buildFicheDoc(f,coef=1,mode='brut'){
   return `<div class="fdoc">
     <div class="fdoc-hdr">
       <div class="fdoc-nom">${escHTML(f.nom)}</div>
-      <div class="fdoc-sub">Fiche Technique</div>
+      <div class="fdoc-sub">Fiche Technique${modLine(f)}</div>
     </div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
@@ -2816,7 +2866,7 @@ function buildGroupeDoc(g){
     ?`<div class="fdoc-steps">${plats.map((p,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(p.nom)}${p.allerg.length?`<div class="fr-sr-allerg" style="margin:0.3rem 0 0">${tags(p.allerg)}</div>`:''}</div></div>`).join('')}</div>`
     :`<div class="ci-label" style="color:var(--gt)">${m?"Ce menu n'a pas encore de plats.":'Menu sur mesure — voir les notes.'}</div>`;
   return `<div class="fdoc">
-    <div class="fdoc-hdr"><div class="fdoc-nom">${escHTML(g.nom)}</div><div class="fdoc-sub">Fiche Groupe</div></div>
+    <div class="fdoc-hdr"><div class="fdoc-nom">${escHTML(g.nom)}</div><div class="fdoc-sub">Fiche Groupe${modLine(g)}</div></div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem">${info('Date',fmtDate(g.date))}${info('Heure',g.heure)}${info('Personnes',String(g.pax))}${info('Salle',g.salle)}${info('Reçu par',g.source)}</div>
