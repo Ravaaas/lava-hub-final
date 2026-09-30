@@ -96,7 +96,7 @@ const check = (nom, ok, detail = '') => { results.push([ok, nom, detail]); conso
   check('écran de connexion affiché', await page.evaluate(() => getComputedStyle(document.getElementById('lg-teams')).display !== 'none'));
   await page.evaluate(() => pickTeam('cuisine'));
   const profs = await page.evaluate(() => [...document.querySelectorAll('#lg-profile-list .pb')].map(b => b.innerText.replace(/\s+/g, ' ').trim()));
-  check('profils Cuisine triés par nom', profs.length === 2 && profs[0].startsWith('MARTIN') && profs[1].startsWith('RAVASIO'), JSON.stringify(profs));
+  check('profils Cuisine : « Prénom NOM », classés par hiérarchie (Admin en premier)', profs.length === 2 && profs[0].startsWith('Alexandre RAVASIO') && profs[1].startsWith('Julie MARTIN'), JSON.stringify(profs));
   await page.evaluate(() => pickTeam('salle'));
   check('profils Salle', await page.evaluate(() => document.querySelectorAll('#lg-profile-list .pb').length) === 1);
   await page.evaluate(() => pickTeam('cuisine'));

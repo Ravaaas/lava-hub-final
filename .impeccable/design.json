@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-30T12:00:00.000Z",
+  "title": "Design System: LAVA Hub Cuisine",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Rouge LAVA", "canonical": "#B5433C", "tonalRamp": ["#3a1512", "#5c211d", "#7d2c27", "#9a342e", "#B5433C", "#cf6d66", "#e39c97", "#f4d3d0"] },
+      "accent-text": { "role": "primary", "displayName": "Rouge LAVA texte", "canonical": "#A23A34", "tonalRamp": ["#3a1512", "#5c211d", "#7d2c27", "#A23A34", "#B5433C", "#cf6d66", "#F2A29C", "#f4d3d0"] },
+      "page": { "role": "neutral", "displayName": "Gris de page", "canonical": "#f5f5f7", "tonalRamp": ["#000000", "#1c1c1e", "#2a2a2d", "#3a3a3d", "#b0b0b6", "#ececef", "#f5f5f7", "#ffffff"] },
+      "ink": { "role": "neutral", "displayName": "Encre", "canonical": "#1d1d1f", "tonalRamp": ["#1d1d1f", "#38383b", "#55555a", "#5f5f64", "#8a8a8f", "#b0b0b6", "#d8d8dc", "#f5f5f7"] },
+      "allergen-bg": { "role": "secondary", "displayName": "Ambre allergène", "canonical": "#fff0e0", "tonalRamp": ["#3d1a00", "#5c2700", "#8a3800", "#b5560a", "#e9a566", "#f3c491", "#fbdcb8", "#fff0e0"] },
+      "danger": { "role": "secondary", "displayName": "Rouge danger", "canonical": "#d92d20", "tonalRamp": ["#4a0f0a", "#7a1810", "#b42318", "#d92d20", "#e8645a", "#f2958e", "#f8c4c0", "#fde8e6"] },
+      "ok": { "role": "secondary", "displayName": "Vert succès", "canonical": "#1a7f37", "tonalRamp": ["#0a3a1a", "#115a28", "#1a7f37", "#2fa04f", "#4cc36f", "#8adba3", "#c0ecd0", "#e6f6ea"] },
+      "dark-card": { "role": "neutral", "displayName": "Graphite (thème sombre)", "canonical": "#1c1c1e", "tonalRamp": ["#000000", "#111112", "#1c1c1e", "#2a2a2d", "#3a3a3d", "#636366", "#98989f", "#b0b0b6"] }
+    },
+    "typographyMeta": {
+      "page-title": { "displayName": "Titre de page", "purpose": "Un par onglet, 26 px / 600." },
+      "modal-title": { "displayName": "Titre de fenêtre", "purpose": "18 px / 600." },
+      "section-title": { "displayName": "Titre de section", "purpose": "Sections de réglages, 17 px / 600." },
+      "row-title": { "displayName": "Titre de ligne", "purpose": "Nom dans une liste, 15 px / 600." },
+      "body": { "displayName": "Corps", "purpose": "Texte courant et champs, 15 px." },
+      "control": { "displayName": "Contrôle", "purpose": "Boutons, onglets, segments, 14 px / 500." },
+      "label": { "displayName": "Libellé", "purpose": "Libellés de formulaire et jours du journal, 13 px / 500." }
+    },
+    "shadows": [
+      { "name": "hairline", "value": "0 0 0 1px rgba(60,60,67,.14)", "purpose": "Filet des listes groupées ; sombre rgba(255,255,255,.12)." },
+      { "name": "rest", "value": "0 1px 2px rgba(0,0,0,.04), 0 0 0 .5px rgba(0,0,0,.04)", "purpose": "Pastille d'onglet, feuilles document, cartes du journal ; aucune en sombre." },
+      { "name": "panel", "value": "0 6px 24px rgba(0,0,0,.08)", "purpose": "Carte de connexion ; sombre .5." },
+      { "name": "float", "value": "0 12px 36px rgba(0,0,0,.18)", "purpose": "Fenêtres, menu du profil, toast ; sombre .7." }
+    ],
+    "motion": [
+      { "name": "spring", "value": "cubic-bezier(.32,.72,0,1)", "purpose": "Ouverture des fenêtres, onglets, enfoncement des boutons (scale .97)." },
+      { "name": "ease-out", "value": "cubic-bezier(.16,1,.3,1)", "purpose": "Sortie douce." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce", "purpose": "Animations et transitions ramenées à 0,01 ms." }
+    ],
+    "breakpoints": [
+      { "name": "tablet-bar", "value": "900px" },
+      { "name": "phone", "value": "640px" },
+      { "name": "fine-pointer", "value": "pointer:fine" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Bouton principal",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Action principale : pilule rouge LAVA.",
+      "html": "<button class=\"ds-btn-primary\">Enregistrer</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;background:#B5433C;color:#fff;border:0;border-radius:999px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:background-color .2s,transform .2s} .ds-btn-primary:hover{background:#9a342e} .ds-btn-primary:active{transform:scale(.97)} .ds-btn-primary:focus-visible{outline:2px solid #B5433C;outline-offset:2px}"
+    },
+    {
+      "name": "Bouton tonal",
+      "kind": "button",
+      "refersTo": "button-tonal",
+      "description": "Action secondaire : lavis rouge LAVA.",
+      "html": "<button class=\"ds-btn-tonal\">Modifier</button>",
+      "css": ".ds-btn-tonal{display:inline-flex;align-items:center;justify-content:center;height:44px;padding:0 20px;background:rgba(181,67,60,.10);color:#A23A34;border:0;border-radius:999px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:background-color .2s,transform .2s} .ds-btn-tonal:hover{background:rgba(118,118,128,.20)} .ds-btn-tonal:active{transform:scale(.97)} .ds-btn-tonal:focus-visible{outline:2px solid #B5433C;outline-offset:2px}"
+    },
+    {
+      "name": "Champ rempli",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Champ sans contour ; au focus, fond de carte et anneau rouge LAVA.",
+      "html": "<input class=\"ds-input\" placeholder=\"Rechercher\">",
+      "css": ".ds-input{width:220px;height:48px;padding:0 16px;background:rgba(118,118,128,.12);color:#1d1d1f;border:0;border-radius:10px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:15px;outline:none;transition:box-shadow .2s,background-color .2s} .ds-input::placeholder{color:#5f5f64} .ds-input:focus{background:#fff;box-shadow:0 0 0 2px #B5433C}"
+    },
+    {
+      "name": "Ligne de liste",
+      "kind": "card",
+      "refersTo": "list-card",
+      "description": "Liste groupée blanche à filet, ligne de 68 px avec chevron et tag d'allergène.",
+      "html": "<div class=\"ds-list\"><div class=\"ds-row\"><div class=\"ds-row-top\"><span class=\"ds-row-name\">VELOUTÉ DE POTIRON</span><span class=\"ds-row-cat\">Entrée</span></div><span class=\"ds-tag-allerg\">Lactose</span></div></div>",
+      "css": ".ds-list{width:320px;background:#fff;border-radius:16px;box-shadow:0 0 0 1px rgba(60,60,67,.14);overflow:hidden;font-family:'Plus Jakarta Sans',system-ui,sans-serif} .ds-row{display:flex;align-items:center;gap:12px;min-height:68px;padding:12px 18px;cursor:pointer;transition:background-color .2s} .ds-row:hover{background:#f5f5f7} .ds-row-top{flex:1;display:flex;flex-direction:column;gap:2px} .ds-row-name{font-size:15px;font-weight:600;line-height:1.3;color:#1d1d1f} .ds-row-cat{font-size:13px;color:#55555a} .ds-tag-allerg{display:inline-flex;align-items:center;height:24px;padding:0 10px;background:#fff0e0;color:#8a3800;border-radius:999px;font-size:12px;font-weight:500}"
+    },
+    {
+      "name": "Tag d'allergène",
+      "kind": "chip",
+      "refersTo": "allergen-tag",
+      "description": "Pastille ambre, seul usage de l'ambre.",
+      "html": "<span class=\"ds-allerg\">Gluten</span>",
+      "css": ".ds-allerg{display:inline-flex;align-items:center;height:24px;padding:0 10px;background:#fff0e0;color:#8a3800;border-radius:999px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:12px;font-weight:500;white-space:nowrap}"
+    },
+    {
+      "name": "Sélecteur d'allergène actif",
+      "kind": "chip",
+      "refersTo": "allergen-tag",
+      "description": "Pilule de 44 px avec case ; actif = ambre et filet intérieur.",
+      "html": "<button class=\"ds-achip\"><span class=\"ds-achk\"></span>Gluten</button>",
+      "css": ".ds-achip{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 16px 0 12px;background:#fff0e0;color:#8a3800;border:0;border-radius:999px;font-family:'Plus Jakarta Sans',system-ui,sans-serif;font-size:14px;font-weight:600;box-shadow:inset 0 0 0 1.5px #e9a566;cursor:pointer} .ds-achk{width:20px;height:20px;border:1.75px solid currentColor;border-radius:6px;background:currentColor} .ds-achip:focus-visible{outline:2px solid #B5433C;outline-offset:2px}"
+    },
+    {
+      "name": "Onglets de bureau",
+      "kind": "nav",
+      "refersTo": "tab-pill",
+      "description": "Texte simple, actif = remplissage clair (au-dessus de 900 px).",
+      "html": "<nav class=\"ds-tabs\"><button class=\"ds-tab ds-on\">Fiches</button><button class=\"ds-tab\">Menus</button><button class=\"ds-tab\">Groupes</button></nav>",
+      "css": ".ds-tabs{display:flex;gap:4px;font-family:'Plus Jakarta Sans',system-ui,sans-serif} .ds-tab{height:36px;padding:0 14px;background:transparent;color:#55555a;border:0;border-radius:999px;font-size:14px;font-weight:500;cursor:pointer;transition:background-color .25s,color .2s} .ds-tab:hover{color:#1d1d1f} .ds-tab.ds-on{background:rgba(118,118,128,.12);color:#1d1d1f;font-weight:600} .ds-tab:focus-visible{outline:2px solid #B5433C;outline-offset:2px}"
+    },
+    {
+      "name": "Filtre segmenté",
+      "kind": "nav",
+      "refersTo": "tab-pill",
+      "description": "Piste de remplissage, segment actif blanc en relief léger.",
+      "html": "<div class=\"ds-seg\"><button class=\"ds-seg-b ds-on\">Tout</button><button class=\"ds-seg-b\">Fiches</button><button class=\"ds-seg-b\">Menus</button></div>",
+      "css": ".ds-seg{display:inline-flex;gap:2px;padding:2px;background:rgba(118,118,128,.12);border-radius:10px;font-family:'Plus Jakarta Sans',system-ui,sans-serif} .ds-seg-b{height:32px;padding:0 14px;background:transparent;color:#55555a;border:0;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer} .ds-seg-b.ds-on{background:#fff;color:#1d1d1f;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.04),0 1px 3px rgba(0,0,0,.08)} .ds-seg-b:focus-visible{outline:2px solid #B5433C;outline-offset:2px}"
+    },
+    {
+      "name": "Fenêtre",
+      "kind": "custom",
+      "refersTo": "sheet",
+      "description": "Carte flottante de 22 px, titre 18 px, fermeture ronde, actions en pilule.",
+      "html": "<div class=\"ds-modal\"><div class=\"ds-mhead\"><span class=\"ds-mtitle\">Nouvelle fiche</span></div><div class=\"ds-mbody\">Contenu</div><div class=\"ds-mfoot\"><button class=\"ds-mg\">Annuler</button><button class=\"ds-mp\">Enregistrer</button></div></div>",
+      "css": ".ds-modal{width:320px;background:#fff;border-radius:22px;box-shadow:0 12px 36px rgba(0,0,0,.18);font-family:'Plus Jakarta Sans',system-ui,sans-serif;color:#1d1d1f} .ds-mhead{padding:20px 24px 4px} .ds-mtitle{font-size:18px;font-weight:600;letter-spacing:-.02em} .ds-mbody{padding:12px 24px 18px;font-size:15px} .ds-mfoot{display:flex;justify-content:flex-end;gap:10px;padding:8px 24px 22px} .ds-mg,.ds-mp{height:44px;padding:0 20px;border:0;border-radius:999px;font-family:inherit;font-size:14px;font-weight:500;cursor:pointer} .ds-mg{background:rgba(118,118,128,.12);color:#1d1d1f} .ds-mp{background:#B5433C;color:#fff}"
+    }
+  ],
+  "narrative": {
+    "northStar": "L'application, pas le tableau de bord",
+    "overview": "Une application claire de type iPhone, fine et aérée : un fond de page gris doux, des listes blanches groupées aux coins arrondis cernées d'un filet à peine visible, des séparateurs en retrait, des boutons en pilule. Le rouge LAVA est l'unique accent d'interface ; l'ambre est réservé aux allergènes, le rouge vif au danger. Clair par défaut, thème sombre au choix depuis le menu de l'avatar (page noire, cartes graphite), mémorisé dans localStorage (lava_theme).\n\nL'en-tête est presque vide : logotype LAVA (image d'origine utilisée comme masque, teinte = encre), pastille de synchronisation et avatar. L'écran de connexion est le logo et deux lignes Cuisine / Salle, sans titre ni sous-titre. Le mouvement est court et à ressort, coupé sous prefers-reduced-motion.\n\nException assumée : les feuilles document (.fdoc*, .fr-sr-card) reflètent les PDF exportés, qui ne changent pas ; elles restent du papier blanc à filets et titres rouge LAVA, quel que soit le thème.",
+    "keyCharacteristics": [
+      "Page grise (#f5f5f7), listes blanches de 16 px cernées d'un filet, sans ombre.",
+      "Un accent rouge LAVA ; ambre = allergènes ; rouge vif = danger seulement.",
+      "Boutons en pilule, champs remplis sans contour, filtres segmentés.",
+      "Onglets : pilule centrée au-dessus de 900 px, barre du bas en dessous.",
+      "Plus Jakarta Sans seule, hiérarchie par le poids (400 à 600) et la taille."
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Le rouge LAVA (#B5433C) est le seul accent d'interface : action, sélection, focus.", "section": "colors" },
+      { "name": "The Allergen Amber Rule", "body": "L'ambre appartient aux allergènes ; le rouge vif appartient au danger. Aucun des deux ne décore.", "section": "colors" },
+      { "name": "The Paper Mirror Rule", "body": "Les feuilles document copient le PDF, pas le thème : elles ne suivent ni le mode sombre ni les rayons de l'interface.", "section": "colors" },
+      { "name": "The Weight-Not-Case Rule", "body": "Casse normale partout dans l'interface ; la hiérarchie passe par le poids et la taille. Les noms de fiches techniques restent en majuscules parce que la donnée l'est.", "section": "typography" },
+      { "name": "The Flat-Until-Floating Rule", "body": "Aucune ombre au repos sur les listes ; seule la couche flottante (fenêtre, menu, toast) porte une ombre marquée.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do utiliser le rouge LAVA (#B5433C) pour l'action, la sélection et le focus, et rien d'autre.",
+      "Do garder l'ambre pour les allergènes, le rouge vif pour le danger.",
+      "Do définir chaque couleur en clair et en sombre (:root[data-theme=\"dark\"]).",
+      "Do grouper les lignes dans une liste blanche à filet fin, séparées par un trait en retrait.",
+      "Do tenir 44 px pour les cibles tactiles (32 à 36 px admis seulement sous pointer:fine).",
+      "Do laisser les feuilles .fdoc* et .fr-sr-card en papier rouge LAVA pour rester fidèles au PDF."
+    ],
+    "donts": [
+      "Don't ajouter une bordure pleine ou une ombre de repos autour d'une carte ou d'un champ de l'interface.",
+      "Don't utiliser l'ambre ou le rouge LAVA comme décor en dehors de leur rôle.",
+      "Don't empiler des boutons dans l'en-tête : logo, point de synchro et avatar seulement.",
+      "Don't afficher un titre ou un sous-titre à l'écran de connexion : le logo suffit."
+    ]
+  }
+}

@@ -27,7 +27,7 @@ Tout texte venant de la base passe par `escHTML`. Les ajouts visibles par l'équ
 La base est la source de vérité. Les fichiers `supabase-*.sql` sont **déjà appliqués** et rejouables ; ils documentent les migrations (`supabase-equipe`, `-premiere-connexion`, `-automatisation`, `-verrou`).
 
 ## Comptes et sécurité
-- Un compte Supabase Auth par personne, email `prenom.nom@lava-hub.local` **fabriqué par l'app (jamais saisi ni affiché)**. Écran de connexion : Cuisine/Salle → profil « NOM Prénom » → mot de passe. Classement alphabétique par nom de famille.
+- Un compte Supabase Auth par personne, email `prenom.nom@lava-hub.local` **fabriqué par l'app (jamais saisi ni affiché)**. Écran de connexion : Cuisine/Salle → profil « Prénom NOM » → mot de passe. Classement par hiérarchie des postes (Admin, puis Chef → Apprenti en cuisine, Directeur → Apprenti en salle), puis par nom.
 - Première connexion : profil sans compte (`compte_cree=false`) → la personne crée son mot de passe via l'**Edge Function `equipe`** (`supabase/functions/equipe/index.ts`, actions `activer`/`reinitialiser`/`supprimer`, clé `service_role` côté serveur uniquement). **Elle se déploie à la main** dans Supabase > Edge Functions ; après modification du fichier, la recoller.
 - RLS : lecture = `mon_role() is not null` (membre actif connecté) ; écriture = `is_admin()` (groupes : admin ou salle). L'email du propriétaire est codé en dur comme admin de secours dans `mon_role()` et l'app. Inscriptions publiques désactivées. `profils_connexion()` est la seule fonction publique (liste des profils).
 - La clé `anon` dans `index.html` est publique par conception ; ne jamais y mettre `service_role`.
