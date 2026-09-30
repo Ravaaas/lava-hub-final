@@ -1,17 +1,14 @@
 # LAVA Hub Cuisine
 
 Application interne du restaurant LAVA (Paris 5e) : fiches techniques, fiches recette, menus, groupes, journal, équipe.
-**Version en ligne : un seul fichier `index.html`** (HTML + CSS + JS inline, ~3 300 lignes), sans étape de build.
-Publiée sur GitHub Pages depuis `main` (https://ravaaas.github.io/lava-hub-final/). Interface **en français**.
+**Version en ligne : `app/`** (React 19 + TypeScript strict + Vite, Supabase inchangé), compilée dans `dist/` et publiée sur GitHub Pages
+par `.github/workflows/deploiement.yml` à chaque push sur `main`, seulement si tout est vert (https://ravaaas.github.io/lava-hub-final/). Interface **en français**.
+**Toute modification se fait dans `app/`.** L'ancien `index.html` racine ne sert plus qu'au retour arrière.
 
-**Refonte terminée (branche `refonte`), en attente de bascule** : nouvelle version dans `app/` (React 19 + TypeScript strict + Vite, Supabase inchangé),
-même apparence et même fonctionnement, réussit `tests/parcours.test.js` tel quel. Tant que la bascule n'est pas faite, **les corrections urgentes
-vont dans `index.html` (en ligne) ET dans `app/`**.
-
-**Bascule** (demande l'accord du propriétaire) : fusionner `refonte` dans `main` (le site sert toujours `index.html`), puis
-Settings > Pages > Source = « GitHub Actions » et variable de dépôt `DEPLOIEMENT_NOUVELLE_VERSION=oui` : `.github/workflows/deploiement.yml`
-vérifie tout puis publie `dist/`. Retour arrière : Pages > « Deploy from a branch » (main, racine) → l'ancien `index.html` revient.
-Après quelques semaines sans souci : supprimer `index.html` racine, `Logo.avif` et les parties « version en ligne » de ce fichier.
+**Bascule faite le 2026-09-30** (Pages = « GitHub Actions », variable de dépôt `DEPLOIEMENT_NOUVELLE_VERSION=oui`).
+Retour arrière d'urgence : Settings > Pages > Source = « Deploy from a branch » (main, racine) → l'ancien `index.html` revient aussitôt
+(il n'a pas les évolutions faites depuis). Après quelques semaines sans souci : supprimer `index.html` racine, `Logo.avif`,
+la section « Architecture de index.html », le job `version-en-ligne` de verification.yml et les vérifications d'index.html dans tests/static.js.
 
 ## Commandes
 - `npm ci` une fois (installe aussi puppeteer-core pour les tests navigateur).
@@ -35,7 +32,7 @@ Après quelques semaines sans souci : supprimer `index.html` racine, `Logo.avif`
 - React échappe le texte : jamais de `dangerouslySetInnerHTML`. CSP stricte dans `app/index.html` (aucun script en ligne ; connexions vers Supabase seulement).
 - Libellés reliés aux champs (`<label htmlFor>`) : le contrat trouve les champs par leur libellé.
 
-## Architecture de `index.html`
+## Architecture de l'ancien `index.html` (retour arrière seulement)
 Ordre du script : utilitaires (`escHTML`, `denied`, chargement PDF à la demande) → login (`pickTeam`, `pickProfile`, `checkPW`, `enterApp`, `loginAs`) → équipe (`loadMembres`, `openMembre`, `saveMembre`) → config → journal → chargement (`loadAll`) → fiches techniques → fiches recette → PDF (`buildFicheRecettePDF`, `addFicheToPDF`, `buildMenuPDF`, `buildGroupePDF`) → menus → groupes → glisser-déposer.
 État global : `profil` (rôle), `moi` (ligne `membres`), `fiches`, `fichesRecette`, `menus`, `groupes`, `membres`, `cfg`.
 Tout texte venant de la base passe par `escHTML`. Les ajouts visibles par l'équipe reçoivent une entrée dans `APP_CHANGELOG`.
