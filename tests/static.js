@@ -5,7 +5,8 @@ const path = require('path');
 const vm = require('vm');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-const m = html.match(/<script>([\s\S]*?)<\/script>\s*<\/body>/);
+// Le script principal est le dernier <script> avant </body> (un petit script de thème précède, dans l'en-tête)
+const m = html.match(/<script>((?:(?!<script>)[\s\S])*?)<\/script>\s*<\/body>/);
 const problemes = [];
 
 if (!m) {

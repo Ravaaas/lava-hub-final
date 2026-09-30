@@ -141,7 +141,7 @@ const check = (nom, ok, detail = '') => { results.push([ok, nom, detail]); conso
   check('groupe créé', await page.evaluate(() => /Anniversaire Leroy/i.test(document.getElementById('gr-grid').innerText)));
   await page.evaluate(() => { const g = groupes.find(x => x.nom === 'Anniversaire Leroy'); openGRD(g.id); }); await sleep(300);
   const gdoc = await page.evaluate(() => document.getElementById('grdoc-area').innerText);
-  check('alerte allergène groupe / menu (gluten dans la cassolette)', /⚠/.test(gdoc) && /CASSOLETTE/i.test(gdoc), gdoc.replace(/\s+/g, ' ').slice(0, 200));
+  check('alerte allergène groupe / menu (gluten dans la cassolette)', /CASSOLETTE DE SAINT-JACQUES\s*:\s*Gluten/i.test(gdoc), gdoc.replace(/\s+/g, ' ').slice(-260));
   if (SHOTS) await page.screenshot({ path: SHOTS + 'groupe.png' });
   await page.evaluate(() => closeGRD());
 
