@@ -16,7 +16,7 @@ jobs:
           node-version: 20
       - name: Vérification statique (script, ids, HTML, secrets)
         run: node tests/static.js
-      - name: Test de l'app dans un navigateur
+      - name: Parcours de l'équipe dans un navigateur
         run: |
           npm install --no-save puppeteer-core
-          CHROME_PATH=$(which google-chrome || which chromium-browser || which chromium) node tests/app.test.js
+          CHROME_PATH=$(which google-chrome || which chromium-browser || which chromium) node tests/parcours.test.js

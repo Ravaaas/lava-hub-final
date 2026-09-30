@@ -6,7 +6,7 @@ Publiée sur GitHub Pages depuis `main` (https://ravaaas.github.io/lava-hub-fina
 
 ## Commandes
 - `node tests/static.js` : script valide, ids uniques, `<div>` équilibrés, aucun secret. À lancer avant chaque commit.
-- `npm i --no-save puppeteer-core && node tests/app.test.js` : app complète dans un vrai navigateur, **base Supabase simulée** (rien n'est écrit dans la vraie base). `CHROME_PATH` choisit le navigateur, `SCREENSHOTS=dossier` sauve des captures.
+- `npm i --no-save puppeteer-core && node tests/parcours.test.js` : **contrat de l'app**, les parcours de l'équipe joués comme un utilisateur (textes visibles, libellés des champs), base Supabase simulée (`tests/mock-supabase.js`, mêmes droits que la RLS ; rien n'est écrit dans la vraie base). `CHROME_PATH` choisit le navigateur, `APP_URL` l'adresse de l'app, `SCREENSHOTS=dossier` sauve des captures, `SEUL=mot` ne joue que certains scénarios. Ne pas s'appuyer sur les fonctions internes : la refonte (branche `refonte`) doit réussir ce test tel quel.
 - GitHub Actions (`.github/workflows/verification.yml`) lance les deux à chaque push.
 - Pas de serveur local : ouvrir `index.html` suffit (les données viennent de Supabase).
 

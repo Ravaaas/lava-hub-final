@@ -519,8 +519,8 @@ main{max-width:880px}
       <div id="lg-pw" style="display:none">
         <div class="lbox-title" id="lg-who">Connexion</div>
         <div class="pw-field" style="display:flex;margin-top:0">
-          <input type="password" id="pw-input" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkPW()">
-          <input type="password" id="pw2-input" placeholder="Répète le mot de passe" autocomplete="new-password" style="display:none" onkeydown="if(event.key==='Enter')checkPW()">
+          <input type="password" id="pw-input" aria-label="Mot de passe" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkPW()">
+          <input type="password" id="pw2-input" aria-label="Répète le mot de passe" placeholder="Répète le mot de passe" autocomplete="new-password" style="display:none" onkeydown="if(event.key==='Enter')checkPW()">
           <button class="btn-confirm" id="btn-confirm" onclick="checkPW()">Se connecter</button>
           <div class="l-err" id="l-err">Identifiant ou mot de passe incorrect</div>
         </div>
@@ -2017,6 +2017,7 @@ async function saveFR(){
     await logAudit(editFRId?'modification fiche recette':'création fiche recette',nom,editFRId?diffFicheRecette(oldFR,data):[]);
     toast(editFRId?'Fiche recette modifiée ✓':'Fiche recette enregistrée ✓','ok');
     closeModal('modal-fr');await loadAll();
+    if(curFRId)openFRD(curFRId);   // fiche ouverte : afficher la version enregistrée
   }catch(e){
     toast('Erreur réseau — réessaie','err');
   }finally{
@@ -2585,6 +2586,7 @@ async function saveRecord(table,id,data,{modalId,successMsg,updateMsg}){
     if(table==='groupes')await logAudit(id?'modification groupe':'création groupe',data.nom);
     toast(id?updateMsg:successMsg,'ok');
     closeModal(modalId);await loadAll();
+    if(table==='fiches'&&curFicheId)openFD(curFicheId);   // fiche ouverte : afficher la version enregistrée
     return true;
   }catch(e){
     toast('Erreur réseau — réessaie','err');
@@ -2921,9 +2923,12 @@ const tempsFixes=m=>MENUS_FIXES[String(m.nom||'').trim().toLowerCase()];
 function normMenu(m){
   const b=m.services?m:{...m,services:[{nom:'',plats:m.plats||[]}]},noms=tempsFixes(b);
   if(!noms)return b;
-  const sv=b.services.slice();
-  while(sv.length<noms.length)sv.push({nom:'',plats:[]});
-  return{...b,services:sv.map((x,i)=>i<noms.length?{...x,nom:noms[i]}:x)};
+  // un ancien temps qui porte déjà le bon nom garde sa place (ex. « Plat » reste « Plat ») ;
+  // les temps imposés sans correspondance reprennent les anciens temps restants, dans l'ordre (« Entrée » → « Temps 1 »)
+  const reste=b.services.slice(),cle=s=>String(s.nom||'').trim().toLowerCase();
+  const trouves=noms.map(n=>{const i=reste.findIndex(s=>cle(s)===n.toLowerCase());return i<0?null:reste.splice(i,1)[0]});
+  const sv=trouves.map((s,i)=>({...(s||reste.shift()||{plats:[]}),nom:noms[i]}));
+  return{...b,services:[...sv,...reste]};
 }
 const tags=list=>list.map(a=>`<span class="fr-allerg-tag">${escHTML(a)}</span>`).join(' ');
 
