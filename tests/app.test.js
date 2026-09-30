@@ -114,6 +114,17 @@ const check = (nom, ok, detail = '') => { results.push([ok, nom, detail]); conso
   const frTxt = await page.evaluate(() => document.getElementById('frdoc-area').innerText);
   check('fiche recette : « modifié par » affiché', /modifié par Alexandre/i.test(frTxt));
   await page.evaluate(() => closeFRD());
+  // cadrage photo : portrait 600x900 → enregistré en 16/10, le zoom resserre, la fenêtre suit la position
+  const ph = await page.evaluate(async () => {
+    const c = document.createElement('canvas'); c.width = 600; c.height = 900; c.getContext('2d').fillRect(0, 0, 600, 900);
+    await showFRPhoto(c.toDataURL('image/png'));
+    const ratio = async () => { const i = new Image(); await new Promise(o => { i.onload = o; i.src = frPhotoData; }); return i.width / i.height; };
+    const r1 = await ratio(), w1 = frWindow()[3];
+    frPos.z = 2; frPos.y = 0; const w2 = frWindow();
+    return { r1, h1: w1, h2: w2[3], y2: w2[1] };
+  });
+  check('photo portrait recadrée en 16/10, zoom x2 resserre le cadrage', Math.abs(ph.r1 - 1.6) < 0.02 && Math.abs(ph.h2 - ph.h1 / 2) < 1 && ph.y2 === 0, JSON.stringify(ph));
+
 
   // 3. Menus
   await page.evaluate(() => document.querySelectorAll('.tb').forEach(b => /Menus/.test(b.textContent) && b.click()));

@@ -772,8 +772,10 @@ main{max-width:880px}
       <div class="fg2"><label class="fl">Statut</label><select class="fsel" id="fr-statut"><option value="carte">Carte actuelle</option><option value="lunch">Lunch</option><option value="bestof">Best of</option><option value="archive">Archive</option></select></div>
       <div class="fg2">
         <label class="fl">Photo</label>
-        <div style="display:flex;align-items:center;gap:0.75rem">
-          <img id="fr-photo-preview" alt="Aperçu de la photo" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" style="display:none;width:64px;height:64px;object-fit:cover;border-radius:var(--r);border:1.5px solid var(--border)">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.75rem">
+          <canvas id="fr-photo-preview" aria-label="Aperçu de la photo" style="display:none;flex-basis:100%;width:100%;max-width:320px;aspect-ratio:16/10;border-radius:var(--r);cursor:grab;touch-action:none;user-select:none"></canvas>
+          <input type="range" id="fr-photo-zoom" min="100" max="300" value="100" aria-label="Zoom" style="display:none;flex-basis:100%;width:100%;max-width:320px">
+          <span id="fr-photo-hint" style="display:none;flex-basis:100%;font-size:0.875rem;color:var(--gt)">Glisse la photo et règle le zoom pour choisir le cadrage. Le plus propre : photo en paysage, plat au centre.</span>
           <input type="file" accept="image/*" id="fr-photo-input" onchange="handleFRPhoto(this)">
           <button class="btn btn-g btn-sm" type="button" onclick="clearFRPhoto()">Retirer</button>
         </div>
@@ -1485,6 +1487,7 @@ function switchTab(n,b){
 
 // ── JOURNAL : mises à jour de l'application (fixe, tenu à jour à chaque évolution) ──
 const APP_CHANGELOG=[
+  {date:'2026-09-30',titre:'Photos des fiches recette mieux cadrées',desc:"Toutes les photos sont enregistrées au même format (16/10). À l'ajout, on glisse la photo pour choisir le cadrage. Les anciennes photos s'affichent en entier, sans être coupées."},
   {date:'2026-09-30',titre:'Nouveau design',desc:"Interface entièrement refaite façon application : grands titres, cartes arrondies sans traits, en-tête réduit à une pastille de profil (mot de passe, thème et déconnexion s'y trouvent), navigation en barre du bas sur tablette et téléphone, et mode sombre (menu du profil, ou selon le réglage de l'appareil). Les allergènes ressortent sur chaque ligne, les textes sont plus grands et les boutons plus faciles à toucher."},
   {date:'2026-09-30',titre:'Un compte par personne',desc:"On choisit Cuisine ou Salle, puis son profil (nom, poste), puis on entre son mot de passe. À sa première connexion, la personne crée elle-même son mot de passe. L'admin gère l'équipe dans Config (rôle, accès actif ou coupé). Le bouton « Mot de passe » permet de le changer, la session se ferme après 30 minutes d'inactivité, et le journal indique qui a fait chaque modification."},
   {date:'2026-09-30',titre:'Menus et Fiches Groupe',desc:"Nouvel onglet Menus (Lunch, Carte du soir, 3 temps, 5 temps) : chaque plat est décrit par ses éléments et ses allergènes. Nouvel onglet Groupes : le responsable de salle saisit un groupe (date, personnes, menu, allergies, régimes) et la cuisine voit une fiche imprimable avec une alerte si un plat contient une allergie déclarée. Nouveau profil Salle."},
@@ -1792,12 +1795,57 @@ function renderFichesRecette(){
 function handleFRPhoto(input){
   const file=input.files&&input.files[0];if(!file)return;
   const url=URL.createObjectURL(file);
-  shrinkImage(url).then(d=>{
-    frPhotoData=d;
-    const prev=document.getElementById('fr-photo-preview');
-    prev.src=d;prev.style.display='block';
-  }).catch(()=>toast('Image illisible','err')).finally(()=>URL.revokeObjectURL(url));
+  shrinkImage(url).then(d=>showFRPhoto(d)).catch(()=>toast('Image illisible','err')).finally(()=>URL.revokeObjectURL(url));
 }
+// Cadrage : la photo enregistrée est toujours en 16/10 (comme l'affichage). `frImg` = photo entière,
+// `frPos` = centre du cadrage en % (x, y) et zoom (z), réglés en faisant glisser l'aperçu et avec le curseur.
+const FR_RATIO=1.6;
+let frImg=null,frPos={x:50,y:50,z:1};
+function frWindow(){
+  const W=frImg.width,H=frImg.height;
+  let cw=W,ch=H;
+  if(W/H>FR_RATIO)cw=H*FR_RATIO;else ch=W/FR_RATIO;
+  cw/=frPos.z;ch/=frPos.z;
+  return[(W-cw)*frPos.x/100,(H-ch)*frPos.y/100,cw,ch];
+}
+function drawFR(c,maxW){
+  const[sx,sy,cw,ch]=frWindow();
+  c.width=Math.round(Math.min(maxW,cw));c.height=Math.round(c.width/FR_RATIO);
+  const ctx=c.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+  ctx.drawImage(frImg,sx,sy,cw,ch,0,0,c.width,c.height);
+}
+function finishFR(){
+  if(Math.abs(frImg.width/frImg.height-FR_RATIO)<0.01&&frPos.z===1){frPhotoData=frImg.src;return}   // déjà au bon format : pas de recompression
+  const c=document.createElement('canvas');drawFR(c,1200);frPhotoData=c.toDataURL('image/jpeg',0.8);
+}
+async function showFRPhoto(src){
+  const img=new Image();
+  await new Promise((ok,ko)=>{img.onload=ok;img.onerror=ko;img.src=src});
+  frImg=img;frPos={x:50,y:50,z:1};
+  const prev=document.getElementById('fr-photo-preview');
+  prev.style.display='block';drawFR(prev,640);
+  const zm=document.getElementById('fr-photo-zoom');zm.value=100;zm.style.display='block';
+  document.getElementById('fr-photo-hint').style.display='block';
+  finishFR();
+}
+(()=>{
+  const prev=document.getElementById('fr-photo-preview'),zm=document.getElementById('fr-photo-zoom');
+  let d=null;
+  prev.addEventListener('pointerdown',e=>{if(!frImg)return;d={x:e.clientX,y:e.clientY,p:{...frPos}};prev.setPointerCapture(e.pointerId);prev.style.cursor='grabbing'});
+  prev.addEventListener('pointermove',e=>{
+    if(!d)return;
+    const[,,cw,ch]=frWindow(),k=cw/prev.getBoundingClientRect().width;   // px source par px écran
+    const sx=frImg.width-cw,sy=frImg.height-ch;
+    if(sx>1)frPos.x=Math.min(100,Math.max(0,d.p.x-(e.clientX-d.x)*k/sx*100));
+    if(sy>1)frPos.y=Math.min(100,Math.max(0,d.p.y-(e.clientY-d.y)*k/sy*100));
+    drawFR(prev,640);
+  });
+  const end=()=>{if(!d)return;d=null;prev.style.cursor='grab';finishFR()};
+  prev.addEventListener('pointerup',end);prev.addEventListener('pointercancel',end);
+  zm.addEventListener('input',()=>{if(!frImg)return;frPos.z=zm.value/100;drawFR(prev,640)});
+  zm.addEventListener('change',()=>{if(frImg)finishFR()});
+})();
 // Redimensionne (max 1200 px) et recompresse en JPEG : ~100 Ko au lieu de plusieurs Mo.
 function shrinkImage(src){
   return new Promise((ok,ko)=>{
@@ -1856,10 +1904,10 @@ async function backupJSON(){
   setSyncing(false);
 }
 function clearFRPhoto(){
-  frPhotoData='';
+  frPhotoData='';frImg=null;
   document.getElementById('fr-photo-input').value='';
-  const prev=document.getElementById('fr-photo-preview');
-  prev.src='';prev.style.display='none';
+  document.getElementById('fr-photo-preview').style.display='none';document.getElementById('fr-photo-zoom').style.display='none';
+  document.getElementById('fr-photo-hint').style.display='none';
 }
 
 function renderFRSrPicker(){
@@ -1944,9 +1992,8 @@ async function editFR(id){
   document.getElementById('fr-statut').value=f.statut||'carte';
   document.getElementById('fr-sr-search').value='';
   document.getElementById('fr-sr-freetext').value='';
-  const prev=document.getElementById('fr-photo-preview');
   document.getElementById('fr-photo-input').value='';
-  if(frPhotoData){prev.src=frPhotoData;prev.style.display='block'}else{prev.src='';prev.style.display='none'}
+  if(frPhotoData)await showFRPhoto(frPhotoData);else clearFRPhoto();
   renderFRSrPicker();renderFRSelected();renderFRAllergenes();
   openModal('modal-fr');
 }
@@ -2022,7 +2069,7 @@ function buildFicheRecetteDoc(fr){
       <div class="fdoc-nom">${escHTML(fr.nom)}</div>
       <div class="fdoc-sub">Fiche Recette${modLine(fr)}</div>
       ${allergList.length?`<div class="fr-allerg-sub"><span class="fr-allerg-sub-lbl">Allergènes</span>${allergList.map(a=>`<span class="fr-allerg-tag">${escHTML(a)}</span>`).join('')}</div>`:''}
-      ${fr.photo?`<img src="${escHTML(fr.photo)}" style="width:100%;max-height:280px;object-fit:cover;border-radius:12px;margin-top:1.25rem">`:''}
+      ${fr.photo?`<div style="position:relative;overflow:hidden;aspect-ratio:16/10;max-height:340px;width:100%;border-radius:12px;margin-top:1.25rem;background:url('${escHTML(fr.photo)}') center/cover"><div style="position:absolute;inset:0;backdrop-filter:blur(24px);background:rgba(0,0,0,.15)"></div><img src="${escHTML(fr.photo)}" alt="" style="position:relative;width:100%;height:100%;object-fit:contain"></div>`:''}
     </div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
