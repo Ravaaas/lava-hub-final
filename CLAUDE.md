@@ -4,9 +4,14 @@ Application interne du restaurant LAVA (Paris 5e) : fiches techniques, fiches re
 **Version en ligne : un seul fichier `index.html`** (HTML + CSS + JS inline, ~3 300 lignes), sans étape de build.
 Publiée sur GitHub Pages depuis `main` (https://ravaaas.github.io/lava-hub-final/). Interface **en français**.
 
-**Refonte en cours (branche `refonte`)** : nouvelle version dans `app/` (React 19 + TypeScript strict + Vite, Supabase inchangé).
-Elle remplacera `index.html` à la bascule, quand elle réussira `tests/parcours.test.js` tel quel. Étapes : 1 contrat ✓, 2 squelette ✓,
-3 couche données (`app/src/db/`), 4 règles métier testées, 5 écrans un par un, 6 sécurité (CSP), 7 bascule (Pages via Actions depuis `dist/`).
+**Refonte terminée (branche `refonte`), en attente de bascule** : nouvelle version dans `app/` (React 19 + TypeScript strict + Vite, Supabase inchangé),
+même apparence et même fonctionnement, réussit `tests/parcours.test.js` tel quel. Tant que la bascule n'est pas faite, **les corrections urgentes
+vont dans `index.html` (en ligne) ET dans `app/`**.
+
+**Bascule** (demande l'accord du propriétaire) : fusionner `refonte` dans `main` (le site sert toujours `index.html`), puis
+Settings > Pages > Source = « GitHub Actions » et variable de dépôt `DEPLOIEMENT_NOUVELLE_VERSION=oui` : `.github/workflows/deploiement.yml`
+vérifie tout puis publie `dist/`. Retour arrière : Pages > « Deploy from a branch » (main, racine) → l'ancien `index.html` revient.
+Après quelques semaines sans souci : supprimer `index.html` racine, `Logo.avif` et les parties « version en ligne » de ce fichier.
 
 ## Commandes
 - `npm ci` une fois (installe aussi puppeteer-core pour les tests navigateur).
@@ -17,11 +22,18 @@ Elle remplacera `index.html` à la bascule, quand elle réussira `tests/parcours
 - GitHub Actions (`.github/workflows/verification.yml`) vérifie les deux versions à chaque push.
 - TypeScript reste en 6.x : typescript-eslint ne prend pas encore en charge TypeScript 7.
 
-## Nouvelle version (`app/`)
-- `src/lib/supabase.ts` : client typé (`src/db/database.types.ts`, écrit à la main d'après la base ; jsonb en `Json`, normalisé par `src/db/`).
-- `src/lib/denied.ts` : toute écriture fait `.select()` et passe par `denied` (RLS silencieuse = 0 ligne).
-- `src/styles.css` : la feuille de style de index.html, reprise telle quelle (même apparence) ; logo en fichier (`src/assets/logo.avif`).
-- React échappe le texte : pas de `escHTML`, jamais de `dangerouslySetInnerHTML` avec des données de la base.
+## Nouvelle version (`app/src/`)
+- `domain/` : **règles métier pures, testées** (`domain.test.ts`) : allergènes (2 formats), équipe (identifiant, classement, postes), fiches (quantités, diff du journal),
+  fiches recette (statuts, éléments, allergènes), menus (temps fixes, anciens menus rangés par nom, alertes groupe), journal, photo (cadrage 16/10), groupes.
+  `misesAJour.ts` = entrées « Mises à jour » du Journal : **chaque ajout visible par l'équipe y reçoit une entrée**.
+- `db/` : un module par table. Toute lecture passe par `lecture.ts` (valeur inattendue → valeur vide, jamais d'erreur), toute écriture
+  fait `.select()` et renvoie un `Resultat` vérifié par `denied` (RLS silencieuse = 0 ligne). `database.types.ts` écrit à la main d'après la base.
+- `etat/` : `Session` (connexion, rôle, déconnexion après 30 min) et `Donnees` (listes, rechargement en direct, photos à la demande, `journal()`).
+- `ui/` : `Fenetre` (modale role=dialog ; Échap ferme le calque du dessus), `PleinEcran`, `Notifications` (role=status), `Confirmation`, `Puces`, `Icone`, `useReordonner`.
+- `screens/` : un dossier par onglet ; `pdf/` : les 4 PDF (jsPDF chargé à la première impression, mises en page reprises à l'identique).
+- `styles.css` : feuille de style d'index.html reprise telle quelle ; les écrans réutilisent ses classes (même apparence, vérifiée par captures).
+- React échappe le texte : jamais de `dangerouslySetInnerHTML`. CSP stricte dans `app/index.html` (aucun script en ligne ; connexions vers Supabase seulement).
+- Libellés reliés aux champs (`<label htmlFor>`) : le contrat trouve les champs par leur libellé.
 
 ## Architecture de `index.html`
 Ordre du script : utilitaires (`escHTML`, `denied`, chargement PDF à la demande) → login (`pickTeam`, `pickProfile`, `checkPW`, `enterApp`, `loginAs`) → équipe (`loadMembres`, `openMembre`, `saveMembre`) → config → journal → chargement (`loadAll`) → fiches techniques → fiches recette → PDF (`buildFicheRecettePDF`, `addFicheToPDF`, `buildMenuPDF`, `buildGroupePDF`) → menus → groupes → glisser-déposer.

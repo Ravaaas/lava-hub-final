@@ -37,3 +37,5 @@ jobs:
         run: npm test
       - name: Compilation (TypeScript + Vite)
         run: npm run build
+      - name: Parcours de l'équipe sur la nouvelle version
+        run: CHROME_PATH=$(which google-chrome || which chromium-browser || which chromium) node tests/nouvelle-version.js
