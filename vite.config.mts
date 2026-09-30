@@ -24,10 +24,18 @@ const securite = (): Plugin => ({
 
 // Le code de l'app est dans app/ ; la version compilée va dans dist/, publiée sur GitHub Pages.
 // base './' : le site fonctionne aussi bien sur GitHub Pages (/lava-hub-final/) qu'en local.
-export default defineConfig({
+// Mode démo (npm run dev) : aperçu déjà connecté, sur la base simulée. Jamais dans la version compilée.
+const demo = (): Plugin => ({
+  name: 'lava-demo',
+  apply: 'serve',
+  transformIndexHtml: () => [{ tag: 'script', attrs: { type: 'module', src: `/@fs${new URL('./tests/apercu-demo.mjs', import.meta.url).pathname}` }, injectTo: 'head-prepend' }],
+});
+
+export default defineConfig(({ mode }) => ({
   root: 'app',
   base: './',
-  plugins: [react(), securite()],
+  plugins: [react(), securite(), ...(mode === 'demo' ? [demo()] : [])],
+  server: { fs: { allow: ['..'] } },   // le script de démo est hors de app/
   build: {
     outDir: '../dist',
     emptyOutDir: true,
@@ -46,4 +54,4 @@ export default defineConfig({
     },
   },
   test: { include: ['src/**/*.test.ts', 'src/**/*.test.tsx'] },
-});
+}));

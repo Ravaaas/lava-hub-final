@@ -5,10 +5,10 @@ React 19 + TypeScript strict + Vite dans `app/`, données dans Supabase. Chaque 
 publié sur GitHub Pages (https://ravaaas.github.io/lava-hub-final/) par `.github/workflows/ci.yml`.
 
 ## Commandes
-- `npm ci` une fois, puis `npm run dev` pour développer.
+- `npm ci` une fois, puis `npm run dev` pour développer : aperçu **déjà connecté en admin, sur la base simulée** (`tests/apercu-demo.mjs`, données fictives remises à zéro à chaque rechargement, rien d'écrit en vrai). `npm run apercu` : même aperçu mais sur la **vraie base** (connexion normale).
 - `npm run check` : **tout vérifier avant de committer** (ESLint strict, Vitest, secrets, parcours). `CHROME_PATH` choisit le navigateur.
 - `npm run parcours` : **contrat de l'app** (`tests/parcours.test.js`) — les parcours de l'équipe joués comme un utilisateur (textes visibles,
-  libellés des champs) sur la version compilée, avec une base Supabase simulée (`tests/mock-supabase.js`, mêmes droits que la RLS ; rien n'est
+  libellés des champs) sur la version compilée, avec une base Supabase simulée (`tests/mock-supabase.mjs`, mêmes droits que la RLS ; rien n'est
   écrit dans la vraie base). `SEUL=mot` ne joue que certains scénarios, `SCREENSHOTS=dossier` sauve des captures. Ne jamais s'appuyer sur les
   fonctions internes ; toute évolution visible ajoute ou adapte un scénario.
 - `npm run secrets` : chaque clé Supabase trouvée dans `app/` et `supabase/` est décodée ; seule la clé publique `anon` est admise.

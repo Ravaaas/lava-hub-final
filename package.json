@@ -3,8 +3,7 @@
   "private": true,
   "scripts": {
     "apercu": "vite --open",
-    "test-local": "node tests/test-local.js",
-    "dev": "vite",
+    "dev": "vite --mode demo",
     "build": "tsc && vite build",
     "test": "vitest run",
     "lint": "eslint app",

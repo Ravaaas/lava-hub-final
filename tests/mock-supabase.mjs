@@ -2,8 +2,8 @@
 // Reproduit ce dont l'app dépend : connexion par compte, profils de connexion, fonction « equipe »,
 // lecture/écriture des tables avec les mêmes droits que la RLS de la vraie base
 // (écriture = admin ; groupes = admin ou salle ; journal = tout membre connecté).
-const HOST = 'qmvxmxzsmpigvseuidcd.supabase.co';
-const MOT_DE_PASSE = 'bon-mot-de-passe';
+export const HOST = 'qmvxmxzsmpigvseuidcd.supabase.co';
+export const MOT_DE_PASSE = 'bon-mot-de-passe';
 
 const jour = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
 
@@ -44,9 +44,9 @@ const ANCIENS_MENUS = { id: 'menus', data: { items: [
   { id: 'm2', nom: '3 temps', services: [{ nom: 'Entrée', plats: [] }, { nom: 'Plat', plats: [{ frId: 'r1' }] }, { nom: 'Dessert', plats: [] }] },
 ] } };
 
-const b64 = o => Buffer.from(JSON.stringify(o)).toString('base64url');
+const b64 = o => btoa(JSON.stringify(o)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 
-function creerBase(options = {}) {
+export function creerBase(options = {}) {
   const db = donneesDeDepart();
   if (options.anciensMenus) db.lava_config.push(JSON.parse(JSON.stringify(ANCIENS_MENUS)));
   const mdp = {};   // mots de passe créés à la première connexion
@@ -144,7 +144,7 @@ function creerBase(options = {}) {
     return req.continue();
   }
 
-  return { db, etat, gerer, HOST };
+  return { db, etat, gerer, jeton, HOST };
 }
 
-module.exports = { creerBase, MOT_DE_PASSE, HOST };
+

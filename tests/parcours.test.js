@@ -9,7 +9,7 @@ const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { creerBase, MOT_DE_PASSE, HOST } = require('./mock-supabase');
+let creerBase, MOT_DE_PASSE, HOST;   // chargés au début du déroulé (module ES)
 
 const CHEMINS = [process.env.CHROME_PATH, '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium',
   'C:/Program Files/Google/Chrome/Application/chrome.exe', 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
@@ -499,6 +499,7 @@ scenario('Téléphone', { mobile: true }, async (a, page) => {
 
 // ── Déroulé ──
 (async () => {
+  ({ creerBase, MOT_DE_PASSE, HOST } = await import('./mock-supabase.mjs'));
   // Sans APP_URL : sert la version compilée (dist/) le temps du test.
   let serveur = null;
   if (!APP_URL) {
