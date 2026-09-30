@@ -368,27 +368,31 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   </div>
   <div class="l-right">
     <div class="lbox">
-      <div class="lbox-title">Choisir un profil</div>
-      <div class="pb-wrap">
-        <button class="pb admin" id="btn-admin" onclick="showPW()">
-          <span>Admin</span><span class="pb-arrow">→</span>
-        </button>
-        <button class="pb" id="btn-cuisine" onclick="loginAs('cuisine')">
-          <span>Cuisine</span><span class="pb-arrow">→</span>
-        </button>
-        <button class="pb" id="btn-salle" onclick="showPW('salle')">
-          <span>Salle</span><span class="pb-arrow">→</span>
-        </button>
+      <div id="lg-teams">
+        <div class="lbox-title">Qui es-tu ?</div>
+        <div class="pb-wrap">
+          <button class="pb admin" onclick="pickTeam('cuisine')"><span>Cuisine</span><span class="pb-arrow">→</span></button>
+          <button class="pb" onclick="pickTeam('salle')"><span>Salle</span><span class="pb-arrow">→</span></button>
+        </div>
       </div>
-      <div class="pw-field" id="pw-field">
-        <input type="password" id="pw-input" placeholder="Mot de passe admin" onkeydown="if(event.key==='Enter')checkPW()">
-        <button class="btn-confirm" id="btn-confirm" onclick="checkPW()">Accéder</button>
-        <div class="l-err" id="l-err">Mot de passe incorrect</div>
+      <div id="lg-profiles" style="display:none">
+        <div class="lbox-title" id="lg-team-title"></div>
+        <div class="pb-wrap" id="lg-profile-list"></div>
+        <button class="btn-out" style="margin-top:1.25rem" onclick="showTeams()">← Retour</button>
+      </div>
+      <div id="lg-pw" style="display:none">
+        <div class="lbox-title" id="lg-who">Connexion</div>
+        <div class="pw-field" style="display:flex;margin-top:0">
+          <input type="password" id="pw-input" placeholder="Mot de passe" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkPW()">
+          <input type="password" id="pw2-input" placeholder="Répète le mot de passe" autocomplete="new-password" style="display:none" onkeydown="if(event.key==='Enter')checkPW()">
+          <button class="btn-confirm" id="btn-confirm" onclick="checkPW()">Se connecter</button>
+          <div class="l-err" id="l-err">Identifiant ou mot de passe incorrect</div>
+        </div>
+        <button class="btn-out" style="margin-top:1.25rem" onclick="backFromPw()">← Retour</button>
       </div>
     </div>
   </div>
 </div>
-
 <!-- APP -->
 <div id="app">
   <header>
@@ -400,6 +404,7 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     <div class="h-right">
       <div class="sync-pill"><div class="sync-dot" id="sync-dot"></div><span id="sync-lbl">Sync</span></div>
       <div class="prof-badge" id="prof-badge">—</div>
+      <button class="btn-out" onclick="openMdp(false)">Mot de passe</button>
       <button class="btn-out" onclick="logout()">Quitter</button>
     </div>
   </header>
@@ -506,28 +511,39 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
     <!-- CONFIG -->
     <div class="tc" id="tab-config">
       <div class="ph"><div><div class="ph-title">Configuration</div><div class="ph-sub">Admin uniquement</div></div></div>
-      <div class="cs">
-        <div class="cs-title">Catégories de fiches recettes</div>
-        <div class="cl" id="cfg-cats"></div>
-        <div class="ca-row">
-          <input type="text" id="new-cat" placeholder="Nouvelle catégorie…" onkeydown="if(event.key==='Enter')addCat()">
-          <button class="btn btn-p btn-sm" onclick="addCat()">Ajouter</button>
+      <div class="log-filters" id="cfg-tabs">
+        <button class="log-filter active" data-c="team" onclick="setCfgTab('team')">Équipe</button>
+        <button class="log-filter" data-c="cats" onclick="setCfgTab('cats')">Catégories</button>
+        <button class="log-filter" data-c="backup" onclick="setCfgTab('backup')">Sauvegarde</button>
+      </div>
+
+      <div data-cfg="team">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem">
+          <p class="ph-sub" style="max-width:520px;line-height:1.6">Classés par nom. La personne crée elle-même son mot de passe à sa première connexion. Clique sur une ligne pour modifier, couper l'accès ou réinitialiser.</p>
+          <button class="btn btn-p btn-sm" onclick="openMembre()">+ Ajouter un membre</button>
+        </div>
+        <div id="cfg-team"></div>
+      </div>
+
+      <div data-cfg="cats" style="display:none">
+        <div class="cs">
+          <div class="cs-title">Catégories des fiches techniques</div>
+          <div class="cl" id="cfg-cats"></div>
+          <div class="ca-row">
+            <input type="text" id="new-cat" placeholder="Nouvelle catégorie…" onkeydown="if(event.key==='Enter')addCat()">
+            <button class="btn btn-p btn-sm" onclick="addCat()">Ajouter</button>
+          </div>
         </div>
       </div>
-      <div class="cs">
-        <div class="cs-title">Sections du menu</div>
-        <div class="cl" id="cfg-secs"></div>
-        <div class="ca-row">
-          <input type="text" id="new-sec" placeholder="Nouvelle section…" onkeydown="if(event.key==='Enter')addSec()">
-          <button class="btn btn-p btn-sm" onclick="addSec()">Ajouter</button>
-        </div>
-      </div>
-      <div class="cs">
-        <div class="cs-title">Sauvegarde</div>
-        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-          <button class="btn btn-o btn-sm" onclick="backupJSON()">⬇ Sauvegarde complète (JSON)</button>
-          <button class="btn btn-o btn-sm" onclick="exportFiches()">⬇ Exporter des fiches (PDF)</button>
-          <button class="btn btn-g btn-sm" onclick="optimizePhotos()">Alléger les photos existantes</button>
+
+      <div data-cfg="backup" style="display:none">
+        <div class="cs">
+          <div class="cs-title">Sauvegarde et export</div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button class="btn btn-o btn-sm" onclick="backupJSON()">⬇ Sauvegarde complète (JSON)</button>
+            <button class="btn btn-o btn-sm" onclick="exportFiches()">⬇ Exporter des fiches (PDF)</button>
+            <button class="btn btn-g btn-sm" onclick="optimizePhotos()">Alléger les photos existantes</button>
+          </div>
         </div>
       </div>
     </div>
@@ -706,6 +722,54 @@ main{flex:1;padding:2rem;max-width:1200px;width:100%;margin:0 auto}
   </div>
 </div>
 
+<!-- MODAL MOT DE PASSE -->
+<div class="mo" id="modal-mdp">
+  <div class="modal" style="max-width:420px">
+    <div class="m-head"><div class="m-title" id="mdp-title">Changer mon mot de passe</div><button class="m-close" id="mdp-x" aria-label="Fermer" onclick="closeModal('modal-mdp')">✕</button></div>
+    <div class="m-body">
+      <p id="mdp-info" style="display:none;font-size:0.78rem;color:var(--gt);line-height:1.6;margin-bottom:1rem">C'est ta première connexion : choisis un mot de passe que toi seul connais. Tu pourras le changer plus tard depuis « Mot de passe ».</p>
+      <div class="fg2"><label class="fl">Nouveau mot de passe (8 caractères minimum)</label><input class="fi2" id="mdp-1" type="password" autocomplete="new-password"></div>
+      <div class="fg2"><label class="fl">Répète-le</label><input class="fi2" id="mdp-2" type="password" autocomplete="new-password" onkeydown="if(event.key==='Enter')saveMdp()"></div>
+      <div class="l-err" id="mdp-err"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-g" id="mdp-cancel" onclick="closeModal('modal-mdp')">Annuler</button>
+      <button class="btn btn-p" id="btn-save-mdp" onclick="saveMdp()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MEMBRE -->
+<div class="mo" id="modal-membre">
+  <div class="modal" style="max-width:520px">
+    <div class="m-head"><div class="m-title" id="mb-title">Nouveau membre</div><button class="m-close" aria-label="Fermer" onclick="closeModal('modal-membre')">✕</button></div>
+    <div class="m-body">
+      <div class="fr">
+        <div class="fg2"><label class="fl">Prénom *</label><input class="fi2" id="mb-prenom" type="text"></div>
+        <div class="fg2"><label class="fl">Nom</label><input class="fi2" id="mb-nom" type="text"></div>
+      </div>
+      <div class="fg2"><label class="fl">Poste</label><input class="fi2" id="mb-poste" type="text" placeholder="ex: Chef de partie"></div>
+      <div class="fr">
+        <div class="fg2"><label class="fl">Équipe</label><select class="fsel" id="mb-equipe"><option value="cuisine">Cuisine</option><option value="salle">Salle</option></select></div>
+        <div class="fg2"><label class="fl">Droits</label><select class="fsel" id="mb-role"><option value="cuisine">Cuisine (lecture)</option><option value="salle">Salle (groupes)</option><option value="admin">Admin (tout)</option></select></div>
+      </div>
+      <p id="mb-hint" style="font-size:0.7rem;color:var(--gt);line-height:1.6">Après l'ajout, la personne retrouve son profil sur l'écran de connexion et crée son mot de passe.</p>
+      <div class="fg2" id="mb-actif-row" style="display:none;align-items:center;gap:0.5rem"><input type="checkbox" id="mb-actif" style="width:auto"><label for="mb-actif" style="font-size:0.8rem">Accès actif <span style="color:var(--gt)">(décocher coupe l'accès tout de suite)</span></label></div>
+      <div id="mb-acces-wrap" style="display:none;border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem">
+        <div class="fl" style="margin-bottom:0.5rem">Accès</div>
+        <div id="mb-acces"></div>
+      </div>
+    </div>
+    <div class="m-foot" style="justify-content:space-between">
+      <button class="btn btn-d" id="mb-del" style="display:none" onclick="deleteMembre(editMbEmail)">Supprimer</button>
+      <span style="display:flex;gap:0.6rem;margin-left:auto">
+        <button class="btn btn-g" onclick="closeModal('modal-membre')">Annuler</button>
+        <button class="btn btn-p" id="btn-save-membre" onclick="saveMembre()">Enregistrer</button>
+      </span>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL CONFIRM -->
 <div class="mo" id="modal-confirm">
   <div class="modal" style="max-width:400px">
@@ -754,10 +818,7 @@ let fichesRecette=[], editFRId=null, curFRId=null, frSelectedIds=[], frPhotoData
 const ALLERGENES_LIST=['Gluten','Crustacé','Œuf','Poisson','Arachide','Soja','Lactose','Fruit à coque','Céleri','Moutarde','Sésame','Sulfites','Mollusque'];
 let fAllergSelected=[];
 
-let cfg={
-  cats:['Base','Sauce','Garniture','Dessert','Autre'],
-  secs:['Entrées','Plats','Desserts']
-};
+let cfg={cats:['Base','Sauce','Garniture','Dessert','Autre']};
 
 // ── UTILS ──
 // jsPDF + AutoTable (~400 Ko) ne sont chargés qu'au premier export/impression.
@@ -825,42 +886,121 @@ function setSyncing(v){
 }
 
 const ADMIN_EMAIL='alexandre.ravasio@outlook.com';
-// Compte du responsable de salle : à créer dans Supabase (Authentication > Users). Voir supabase-groupes.sql.
-const SALLE_EMAIL='salle@lava-hub.local';
-const PROFILS={admin:{email:ADMIN_EMAIL,label:'Admin'},salle:{email:SALLE_EMAIL,label:'Salle'}};
+// Chaque personne a son compte Supabase. On tape juste "julien" : l'app complète en julien@lava-hub.local.
+const LOGIN_DOMAIN='@lava-hub.local';
+const slug=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'.').replace(/^\.+|\.+$/g,'');
+// L'identifiant de connexion est fabriqué à partir du prénom et du nom (jamais saisi ni affiché) ; suffixe numérique si déjà pris.
+function emailFor(prenom,nom){
+  const base=[slug(prenom),slug(nom)].filter(Boolean).join('.');
+  if(!base)return'';
+  let e=base+LOGIN_DOMAIN,i=2;
+  while(membres.some(m=>m.email===e))e=base+(i++)+LOGIN_DOMAIN;
+  return e;
+}
+let moi=null,membres=[],mdpForced=false;   // moi = {email,prenom,role,...} (ligne de la table membres)
 
-// ── LOGIN ──
-let pwFor='admin';
-function showPW(who='admin'){
-  pwFor=who;
-  document.getElementById('pw-input').placeholder='Mot de passe '+PROFILS[who].label.toLowerCase();
-  document.getElementById('pw-field').style.display='flex';
+// ── LOGIN : équipe -> profil -> mot de passe (ou création du mot de passe à la première connexion) ──
+let profilesList=null,loginEmail='',loginTeam='cuisine',loginFirst=false;
+async function loadProfils(){
+  try{const{data,error}=await sb.rpc('profils_connexion');profilesList=error?null:(data||[])}
+  catch(e){profilesList=null}
+}
+function showPanel(id){
+  ['lg-teams','lg-profiles','lg-pw'].forEach(p=>document.getElementById(p).style.display=p===id?'block':'none');
+  document.getElementById('l-err').style.display='none';
+}
+function showTeams(){loginEmail='';loginFirst=false;showPanel('lg-teams')}
+function pickTeam(t){
+  if(!profilesList){loadProfils();showLoginErr('Liste des profils indisponible — réessaie dans un instant');return}
+  loginTeam=t;
+  document.getElementById('lg-team-title').textContent=t==='cuisine'?'Cuisine':'Salle';
+  const small=txt=>`<div style="font-size:0.66rem;font-weight:400;letter-spacing:0.04em;text-transform:none;color:var(--gt);margin-top:0.2rem">${txt}</div>`;
+  const byName=(a,b)=>((a.nom||'')+' '+a.prenom).localeCompare((b.nom||'')+' '+b.prenom,'fr',{sensitivity:'base'});
+  const list=profilesList.filter(p=>p.equipe===t).sort(byName);   // ordre alphabétique par nom de famille
+  document.getElementById('lg-profile-list').innerHTML=list.map(p=>{
+    const st=p.statut||'actif';
+    const sub=[p.poste?escHTML(p.poste):'',st==='ouvert'?'Première connexion : crée ton mot de passe':''].filter(Boolean).map(small).join('');
+    return `<button class="pb" onclick="pickProfile('${escHTML(p.email)}')"><span>${escHTML(((p.nom||'').toUpperCase()+' '+p.prenom).trim())}${sub}</span><span class="pb-arrow">→</span></button>`;
+  }).join('')||'<div class="ph-sub">Aucun profil dans cette équipe.</div>';
+  showPanel('lg-profiles');
+}
+function openPw(){
+  document.getElementById('pw-input').value='';
+  document.getElementById('pw2-input').value='';
+  document.getElementById('pw2-input').style.display=loginFirst?'block':'none';
+  document.getElementById('pw-input').placeholder=loginFirst?'Choisis ton mot de passe (8 caractères min.)':'Mot de passe';
+  document.getElementById('btn-confirm').textContent=loginFirst?'Créer mon mot de passe':'Se connecter';
+  showPanel('lg-pw');
   setTimeout(()=>document.getElementById('pw-input').focus(),50);
+}
+function pickProfile(email){
+  const p=profilesList.find(x=>x.email===email);
+  const st=p?(p.statut||'actif'):'actif';
+  loginEmail=email;loginFirst=st==='ouvert';
+  document.getElementById('lg-who').textContent=p?(p.prenom+' '+p.nom).trim():'Connexion';
+  openPw();
+}
+function backFromPw(){pickTeam(loginTeam)}
+
+function showLoginErr(t){
+  const e=document.getElementById('l-err');
+  e.textContent=t;e.style.display='block';
+}
+
+// Appelle la fonction "equipe" (Edge Function) : renvoie toujours {ok,message}.
+async function equipeFn(body){
+  try{
+    const{data,error}=await sb.functions.invoke('equipe',{body});
+    return(error||!data)?{ok:false,message:'La fonction "equipe" est absente ou en erreur — vois avec l\'administrateur'}:data;
+  }catch(e){return{ok:false,message:'La fonction "equipe" est indisponible'}}
 }
 
 async function checkPW(){
-  const pw=document.getElementById('pw-input').value;
-  if(!pw)return;
-  const btns=['btn-confirm','btn-admin','btn-salle'];
-  btns.forEach(b=>setBusy(b,true));
+  const pw=document.getElementById('pw-input').value,email=loginEmail;
+  if(!email||!pw)return;
+  if(loginFirst){
+    if(pw.length<8)return showLoginErr('8 caractères minimum');
+    if(pw!==document.getElementById('pw2-input').value)return showLoginErr('Les deux mots de passe sont différents');
+  }
+  setBusy('btn-confirm',true);
   document.getElementById('l-err').style.display='none';
-  const{error}=await sb.auth.signInWithPassword({email:PROFILS[pwFor].email,password:pw});
-  if(!error){
-    loginAs(pwFor);
-  }else{
-    document.getElementById('l-err').style.display='block';
+  if(loginFirst){
+    const r=await equipeFn({action:'activer',email,password:pw});
+    if(!r.ok){showLoginErr(r.message);setBusy('btn-confirm',false);return}
+  }
+  const{error}=await sb.auth.signInWithPassword({email,password:pw});
+  if(error){
+    showLoginErr('Mot de passe incorrect');
     document.getElementById('pw-input').value='';
     document.getElementById('pw-input').focus();
+  }else{
+    await enterApp();
   }
-  btns.forEach(b=>setBusy(b,false));
+  setBusy('btn-confirm',false);
+}
+
+// Après connexion : vérifie que la personne est un membre actif, impose le changement de mot de passe temporaire.
+async function enterApp(){
+  const{data}=await sb.auth.getSession();
+  const email=((data&&data.session&&data.session.user&&data.session.user.email)||'').toLowerCase();
+  if(!email)return;
+  let m=null;
+  try{m=(await sb.from('membres').select('*').eq('email',email).maybeSingle()).data}catch(e){}
+  if(!m&&email===ADMIN_EMAIL)m={email,prenom:'Admin',role:'admin',actif:true,doit_changer_mdp:false};
+  if(!m||!m.actif){
+    try{await sb.auth.signOut()}catch(e){}
+    showLoginErr("Accès désactivé ou inconnu. Contacte l'administrateur.");
+    return;
+  }
+  moi=m;
+  if(m.doit_changer_mdp){openMdp(true);return}
+  loginAs(m.role);
 }
 
 async function tryRestoreSession(){
   try{
     const{data}=await sb.auth.getSession();
-    const email=data&&data.session&&data.session.user&&data.session.user.email;
-    const p=Object.keys(PROFILS).find(k=>PROFILS[k].email===email);
-    if(p)loginAs(p);
+    if(data&&data.session)await enterApp();
   }catch(e){}
 }
 
@@ -868,23 +1008,166 @@ function loginAs(p){
   profil=p;
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
-  document.getElementById('prof-badge').textContent=p==='cuisine'?'Cuisine':PROFILS[p].label;
+  document.getElementById('prof-badge').textContent=moi?moi.prenom:p;
   if(p==='admin')document.querySelectorAll('.admin-only').forEach(el=>el.style.display='flex');
   else setFRStatusFilter('carte');
   if(p==='admin'||p==='salle')document.querySelectorAll('.salle-can').forEach(el=>el.style.display='flex');
-  loadCfg();loadAll();
+  loadCfg();loadAll();loadMembres();
 }
 
 async function logout(){
-  if(profil==='admin'||profil==='salle'){try{await sb.auth.signOut();}catch(e){}}
-  profil=null;
+  try{await sb.auth.signOut()}catch(e){}
+  profil=null;moi=null;membres=[];
   setFRStatusFilter('carte');
   document.querySelectorAll('.admin-only,.salle-can').forEach(el=>el.style.display='none');
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
-  document.getElementById('pw-field').style.display='none';
-  document.getElementById('pw-input').value='';
-  document.getElementById('l-err').style.display='none';
+  showTeams();loadProfils();
+}
+
+// Déconnexion automatique après 30 minutes sans activité (tablette partagée).
+let lastActive=Date.now();
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{lastActive=Date.now()},{passive:true}));
+setInterval(()=>{
+  if(profil&&Date.now()-lastActive>30*60*1000){logout();toast("Déconnecté après 30 minutes d'inactivité")}
+},60000);
+
+// ── MOT DE PASSE (temporaire à la 1re connexion, ou changement volontaire) ──
+function openMdp(forced){
+  mdpForced=forced;
+  ['mdp-1','mdp-2'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mdp-err').style.display='none';
+  ['mdp-cancel','mdp-x'].forEach(id=>document.getElementById(id).style.display=forced?'none':'');
+  document.getElementById('mdp-title').textContent=forced?'Choisis ton mot de passe':'Changer mon mot de passe';
+  document.getElementById('mdp-info').style.display=forced?'block':'none';
+  openModal('modal-mdp');
+}
+async function saveMdp(){
+  const a=document.getElementById('mdp-1').value,b=document.getElementById('mdp-2').value;
+  const err=t=>{const e=document.getElementById('mdp-err');e.textContent=t;e.style.display='block'};
+  if(a.length<8)return err('8 caractères minimum');
+  if(a!==b)return err('Les deux mots de passe sont différents');
+  setBusy('btn-save-mdp',true);
+  const{error}=await sb.auth.updateUser({password:a});
+  if(error){setBusy('btn-save-mdp',false);return err(error.message)}
+  await sb.rpc('mdp_change');
+  setBusy('btn-save-mdp',false);
+  closeModal('modal-mdp');
+  if(mdpForced){mdpForced=false;await enterApp()}
+  else toast('Mot de passe modifié ✓','ok');
+}
+
+// ── ÉQUIPE (admin) : table membres ──
+async function loadMembres(){
+  if(profil!=='admin')return;
+  const{data,error}=await sb.from('membres').select('*');
+  const byName=(a,b)=>((a.nom||'')+' '+a.prenom).localeCompare((b.nom||'')+' '+b.prenom,'fr',{sensitivity:'base'});
+  membres=error?[]:(data||[]).sort(byName);   // classement alphabétique par nom de famille
+  renderTeam();
+}
+
+// Liste sobre : une ligne par personne, un clic ouvre la fiche du membre.
+function renderTeam(){
+  const el=document.getElementById('cfg-team');if(!el)return;
+  if(!membres.length){el.innerHTML='<div class="ci-label" style="color:var(--gt)">Aucun membre — exécute supabase-equipe.sql dans Supabase.</div>';return}
+  const tag=t=>`<span class="fr-allerg-tag">${t}</span>`;
+  const state=m=>!m.actif?'Désactivé'
+    :m.doit_changer_mdp?'Mot de passe temporaire'
+    :m.compte_cree===false?'Pas encore connecté':'';
+  const row=m=>{
+    const st=state(m);
+    return `<div class="ci" style="cursor:pointer" tabindex="0" role="button" onclick="openMembre('${escHTML(m.email)}')" onkeydown="if(event.key==='Enter')openMembre('${escHTML(m.email)}')">
+      <span class="ci-label">${escHTML(((m.nom||'').toUpperCase()+' '+m.prenom).trim())}${m.poste?` <span style="color:var(--gt);font-weight:400">· ${escHTML(m.poste)}</span>`:''}</span>
+      <span style="display:flex;align-items:center;gap:0.4rem">${st?tag(st):''}${m.role==='admin'?tag('Admin'):''}<span style="color:var(--gt)">›</span></span>
+    </div>`;
+  };
+  el.innerHTML=[['cuisine','Cuisine'],['salle','Salle']].map(([eq,label])=>{
+    const l=membres.filter(m=>(m.equipe||'cuisine')===eq);
+    return l.length?`<div class="cs"><div class="cs-title">${label} (${l.length})</div><div class="cl">${l.map(row).join('')}</div></div>`:'';
+  }).join('');
+}
+
+// ── Fiche d'un membre (ajout ou modification) ──
+let editMbEmail=null;
+function accesHTML(m){
+  const e=escHTML(m.email);
+  if(m.compte_cree===false)return '<div class="ph-sub">Pas encore connecté : la personne crée son mot de passe à sa première connexion.</div>';
+  return `<div class="ph-sub" style="margin-bottom:0.5rem">Compte actif${m.doit_changer_mdp?' (mot de passe temporaire)':''}</div><button class="btn btn-g btn-sm" onclick="resetMembre('${e}')">Réinitialiser le mot de passe</button>`;
+}
+function openMembre(email){
+  editMbEmail=email||null;
+  const m=email?membres.find(x=>x.email===email):null;
+  const me=!!(m&&moi&&m.email===moi.email);
+  const set=(id,v)=>document.getElementById(id).value=v;
+  document.getElementById('mb-title').textContent=m?'Modifier — '+m.prenom:'Nouveau membre';
+  set('mb-prenom',m?m.prenom:'');set('mb-nom',m?m.nom||'':'');set('mb-poste',m?m.poste||'':'');
+  set('mb-equipe',m?m.equipe||'cuisine':'cuisine');
+  set('mb-role',m?m.role:'cuisine');
+  document.getElementById('mb-role').disabled=me;
+  document.getElementById('mb-actif').checked=m?m.actif:true;
+  document.getElementById('mb-actif').disabled=me;
+  document.getElementById('mb-actif-row').style.display=m?'flex':'none';
+  document.getElementById('mb-acces').innerHTML=m&&!me?accesHTML(m):'';
+  document.getElementById('mb-acces-wrap').style.display=m&&!me?'block':'none';
+  document.getElementById('mb-del').style.display=m&&!me?'inline-flex':'none';
+  document.getElementById('mb-hint').style.display=m?'none':'block';
+  openModal('modal-membre');
+}
+async function saveMembre(){
+  const v=id=>document.getElementById(id).value.trim();
+  const prenom=v('mb-prenom');
+  if(!prenom){toast('Le prénom est obligatoire','err');return}
+  const fields={prenom,nom:v('mb-nom'),poste:v('mb-poste'),equipe:v('mb-equipe'),role:v('mb-role')};
+  setBusy('btn-save-membre',true);
+  try{
+    if(editMbEmail){
+      const me=moi&&editMbEmail===moi.email;
+      const patch=me?{prenom:fields.prenom,nom:fields.nom,poste:fields.poste,equipe:fields.equipe}:{...fields,actif:document.getElementById('mb-actif').checked};
+      const res=await sb.from('membres').update(patch).eq('email',editMbEmail).select('email');
+      if(denied(res)){toast('Modification impossible : '+deniedMsg(res),'err');return}
+      await logAudit('modification équipe',prenom);
+      toast('Membre modifié ✓','ok');
+    }else{
+      const email=emailFor(prenom,fields.nom);
+      if(!email){toast('Le prénom doit contenir des lettres ou des chiffres','err');return}
+      const res=await sb.from('membres').insert({email,...fields,actif:true,compte_cree:false});
+      if(res.error){toast(res.error.code==='23505'?'Ce membre existe déjà':'Erreur : '+res.error.message,'err');return}
+      await logAudit('ajout équipe',prenom);
+      toast('Profil ajouté — la personne crée son mot de passe à sa première connexion','ok');
+    }
+    closeModal('modal-membre');
+    loadMembres();
+  }finally{setBusy('btn-save-membre',false)}
+}
+
+// Appelle la fonction "equipe" pour réinitialiser ou supprimer un compte de connexion.
+async function resetMembre(email){
+  const m=membres.find(x=>x.email===email);
+  if(!await confirmDialog(`Réinitialiser le compte de ${m?m.prenom:email} ? Son mot de passe sera supprimé et elle devra en créer un nouveau à sa prochaine connexion.`,'Réinitialiser'))return;
+  const r=await equipeFn({action:'reinitialiser',email});
+  if(!r.ok){toast(r.message,'err');return}
+  await logAudit('réinitialisation compte',m?m.prenom:email);
+  toast('Compte réinitialisé — un nouveau mot de passe sera créé à la prochaine connexion','ok');
+  closeModal('modal-membre');loadMembres();
+}
+async function deleteMembre(email){
+  const m=membres.find(x=>x.email===email);
+  if(!await confirmDialog(`Retirer ${m?m.prenom:email} de l'équipe ? Son accès sera coupé.`,'Retirer'))return;
+  if(m&&m.compte_cree===false){   // pas de compte de connexion : simple ligne à retirer
+    const res=await sb.from('membres').delete().eq('email',email).select('email');
+    if(denied(res)){toast('Suppression impossible : '+deniedMsg(res),'err');return}
+  }else{
+    const r=await equipeFn({action:'supprimer',email});
+    if(!r.ok){toast(r.message,'err');return}
+  }
+  await logAudit('suppression équipe',m?m.prenom:email);
+  toast('Membre retiré');
+  closeModal('modal-membre');loadMembres();
+}
+
+function setCfgTab(t){
+  document.querySelectorAll('#cfg-tabs .log-filter').forEach(b=>b.classList.toggle('active',b.dataset.c===t));
+  document.querySelectorAll('#tab-config [data-cfg]').forEach(p=>p.style.display=p.dataset.cfg===t?'':'none');
 }
 
 // ── CONFIG (Supabase direct + localStorage fallback) ──
@@ -905,7 +1188,7 @@ async function saveCfg(){
   try{localStorage.setItem('lava_cfg',JSON.stringify(cfg));}catch(e){}
   let saved=false;
   try{saved=!denied(await sb.from('lava_config').upsert({id:'main',data:cfg}).select('id'));}catch(e){}
-  if(saved)await logAudit('config','catégories/sections');
+  if(saved)await logAudit('config','catégories');
   else toast('Enregistrement impossible — reconnecte-toi en admin','err');
   populateSels();renderCfg();renderMenus();
 }
@@ -928,13 +1211,6 @@ function renderCfg(){
     d.innerHTML=`<span class="ci-label">${escHTML(c)}</span><button class="btn btn-d btn-sm" onclick="rmCat(${i})">Supprimer</button>`;
     cl.appendChild(d);
   });
-  const sl=document.getElementById('cfg-secs');if(!sl)return;
-  sl.innerHTML='';
-  cfg.secs.forEach((s,i)=>{
-    const d=document.createElement('div');d.className='ci';
-    d.innerHTML=`<span class="ci-label">${escHTML(s)}</span><button class="btn btn-d btn-sm" onclick="rmSec(${i})">Supprimer</button>`;
-    sl.appendChild(d);
-  });
 }
 
 function addCat(){const v=document.getElementById('new-cat').value.trim();if(!v||cfg.cats.includes(v))return;cfg.cats.push(v);document.getElementById('new-cat').value='';saveCfg();toast('Catégorie ajoutée ✓','ok')}
@@ -943,11 +1219,6 @@ function rmCat(i){
   const cat=cfg.cats[i];
   if(fiches.some(f=>f.categorie===cat)){toast('Catégorie utilisée par des fiches — impossible de la supprimer','err');return}
   cfg.cats.splice(i,1);saveCfg()
-}
-function addSec(){const v=document.getElementById('new-sec').value.trim();if(!v||cfg.secs.includes(v))return;cfg.secs.push(v);document.getElementById('new-sec').value='';saveCfg();toast('Section ajoutée ✓','ok')}
-function rmSec(i){
-  if(cfg.secs.length<=1){toast('Au moins une section requise','err');return}
-  cfg.secs.splice(i,1);saveCfg()
 }
 
 // ── TABS ──
@@ -961,6 +1232,7 @@ function switchTab(n,b){
 
 // ── JOURNAL : mises à jour de l'application (fixe, tenu à jour à chaque évolution) ──
 const APP_CHANGELOG=[
+  {date:'2026-09-30',titre:'Un compte par personne',desc:"On choisit Cuisine ou Salle, puis son profil (prénom, nom, poste), puis on entre son mot de passe. L'admin gère l'équipe dans Config (rôle, accès actif ou coupé). Mot de passe temporaire à changer à la première connexion, bouton « Mot de passe » pour le modifier, déconnexion après 30 minutes d'inactivité, et le journal indique qui a fait chaque modification."},
   {date:'2026-09-30',titre:'Menus et Fiches Groupe',desc:"Nouvel onglet Menus (Lunch, Carte du soir, 3 temps, 5 temps) : chaque plat est décrit par ses éléments et ses allergènes,. Nouvel onglet Groupes : le responsable de salle saisit un groupe (date, personnes, menu, allergies, régimes) et la cuisine voit une fiche imprimable avec une alerte si un plat contient une allergie déclarée. Nouveau profil Salle."},
   {date:'2026-09-29',titre:'Sauvegarde complète en JSON',desc:"Dans Config, un bouton télécharge toutes les fiches techniques, fiches recette (photos comprises) et la configuration. L'export PDF garde son propre bouton."},
   {date:'2026-09-29',titre:'Sécurité renforcée',desc:"Seul l'admin connecté peut désormais créer, modifier ou supprimer des fiches. Le journal est stocké ligne par ligne. Les erreurs de suppression ou d'enregistrement sont maintenant affichées au lieu d'un faux succès."},
@@ -991,7 +1263,7 @@ function dayLabel(d){
 
 function setLogFilter(f){
   logFilter=f;
-  document.querySelectorAll('.log-filter').forEach(b=>b.classList.toggle('active',b.dataset.f===f));
+  document.querySelectorAll('#log-filters .log-filter').forEach(b=>b.classList.toggle('active',b.dataset.f===f));
   paintLog();
 }
 
@@ -1009,7 +1281,7 @@ function groupBursts(items){
   const out=[];
   items.forEach(it=>{
     const last=out[out.length-1];
-    if(it.type==='data'&&last&&last.type==='data'&&last.action===it.action&&last.ficheNom===it.ficheNom&&(last.tsStart-it.ts)<=GAP_MS){
+    if(it.type==='data'&&last&&last.type==='data'&&last.action===it.action&&last.ficheNom===it.ficheNom&&last.by===it.by&&(last.tsStart-it.ts)<=GAP_MS){
       last.count++;
       last.tsStart=it.ts;
       if(it.detail&&it.detail.length)last.detail=Array.from(new Set([...(last.detail||[]),...it.detail]));
@@ -1047,7 +1319,7 @@ function paintLog(){
       const countTxt=it.count>1?` ×${it.count}`:'';
       const detailLine=it.detail&&it.detail.length?`<div class="log-detail">${escHTML(it.detail.join(' · '))}</div>`:'';
       html+=`<div class="log-row-wrap">
-        <div class="log-row"><span class="log-time">${escHTML(time)}</span><span class="log-action" style="color:${meta.color}"><span class="log-dot" style="background:${meta.color}"></span>${escHTML(meta.label)}${countTxt}</span><span class="log-name">${escHTML(it.ficheNom||'')}</span></div>
+        <div class="log-row"><span class="log-time">${escHTML(time)}</span><span class="log-action" style="color:${meta.color}"><span class="log-dot" style="background:${meta.color}"></span>${escHTML(meta.label)}${countTxt}</span><span class="log-name">${escHTML(it.ficheNom||'')}</span>${it.by?`<span class="log-time" style="margin-left:auto">${escHTML(it.by)}</span>`:''}</div>
         ${detailLine}
       </div>`;
     }
@@ -1060,12 +1332,12 @@ async function renderLog(){
   el.innerHTML='<div class="es-icon" style="font-size:1rem;padding:0.5rem 0">Chargement…</div>';
   let dataEntries=[];
   try{
-    const{data}=await sb.from('audit_log').select('ts,action,fiche_nom,detail').order('ts',{ascending:false}).limit(500);
-    dataEntries=(data||[]).map(e=>({ts:e.ts,action:e.action,ficheNom:e.fiche_nom,detail:e.detail}));
+    const{data}=await sb.from('audit_log').select('ts,action,fiche_nom,detail,profil').order('ts',{ascending:false}).limit(500);
+    dataEntries=(data||[]).map(e=>({ts:e.ts,action:e.action,ficheNom:e.fiche_nom,detail:e.detail,by:e.profil||''}));
   }catch(e){}
   logItems=[
     ...APP_CHANGELOG.map(c=>({ts:new Date(c.date).getTime(),type:'app',titre:c.titre,desc:c.desc})),
-    ...dataEntries.map(e=>({ts:new Date(e.ts).getTime(),type:'data',action:e.action,ficheNom:e.ficheNom||'',detail:e.detail}))
+    ...dataEntries.map(e=>({ts:new Date(e.ts).getTime(),type:'data',action:e.action,ficheNom:e.ficheNom||'',detail:e.detail,by:e.by}))
   ].sort((a,b)=>b.ts-a.ts);
   document.getElementById('b-log').textContent=logItems.length;
   paintLog();
@@ -1140,7 +1412,7 @@ document.addEventListener('visibilitychange',()=>{
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   const m=document.querySelector('.mo.open');
-  if(m){m.id==='modal-confirm'?resolveConfirm(false):closeModal(m.id);return}
+  if(m){if(m.id==='modal-mdp'&&mdpForced)return;m.id==='modal-confirm'?resolveConfirm(false):closeModal(m.id);return}
   if(document.getElementById('grd').classList.contains('open'))closeGRD();
   else if(document.getElementById('frd').classList.contains('open'))closeFRD();
   else if(document.getElementById('fd').classList.contains('open'))closeFD();
@@ -1948,7 +2220,7 @@ function renum(){document.querySelectorAll('#sl .sn').forEach((e,i)=>e.textConte
 
 async function logAudit(action,ficheNom,detail){
   // Une ligne par événement (table audit_log) : plus de lecture/réécriture du journal entier.
-  try{await sb.from('audit_log').insert({ts:Date.now(),action,fiche_nom:ficheNom||null,profil,detail:(detail&&detail.length)?detail:null});}catch(e){}
+  try{await sb.from('audit_log').insert({ts:Date.now(),action,fiche_nom:ficheNom||null,profil:moi?moi.prenom:profil,detail:(detail&&detail.length)?detail:null});}catch(e){}
 }
 
 // ── DIFF : compare l'ancienne et la nouvelle version d'une fiche pour un journal precis ──
@@ -2707,7 +2979,7 @@ function setupDrag(containerId){
   c.addEventListener('pointerup',end);
   c.addEventListener('pointercancel',end);
 }
-document.addEventListener('DOMContentLoaded',()=>{setupDrag('il');setupDrag('sl');setupDrag('fr-sr-selected');tryRestoreSession()});
+document.addEventListener('DOMContentLoaded',()=>{setupDrag('il');setupDrag('sl');setupDrag('fr-sr-selected');loadProfils();tryRestoreSession()});
 
 // ── TOAST ──
 function toast(msg,type=''){
