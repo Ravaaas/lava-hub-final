@@ -599,7 +599,7 @@ main{max-width:880px}
         </div>
       </div>
       <div class="log-filters" id="fr-status-filters">
-        <button class="log-filter active" data-fs="carte" onclick="setFRStatusFilter('carte')">Carte actuelle</button>
+        <button class="log-filter active" data-fs="carte" onclick="setFRStatusFilter('carte')">Carte du soir</button>
         <button class="log-filter" data-fs="lunch" onclick="setFRStatusFilter('lunch')">Lunch</button>
         <button class="log-filter admin-only" style="display:none" data-fs="bestof" onclick="setFRStatusFilter('bestof')">Best of</button>
         <button class="log-filter admin-only" style="display:none" data-fs="archive" onclick="setFRStatusFilter('archive')">Archive</button>
@@ -769,7 +769,7 @@ main{max-width:880px}
     <div class="m-head"><div class="m-title" id="mfr-title">Nouvelle fiche recette</div><button class="m-close" aria-label="Fermer" onclick="closeModal('modal-fr')"><i data-ic="x" data-s="18"></i></button></div>
     <div class="m-body">
       <div class="fg2"><label class="fl">Nom du plat *</label><input class="fi2" id="fr-nom" type="text" placeholder="ex: Cassolette de Saint-Jacques"></div>
-      <div class="fg2"><label class="fl">Statut</label><select class="fsel" id="fr-statut"><option value="carte">Carte actuelle</option><option value="lunch">Lunch</option><option value="bestof">Best of</option><option value="archive">Archive</option></select></div>
+      <div class="fg2"><label class="fl">Statut</label><select class="fsel" id="fr-statut"><option value="carte">Carte du soir</option><option value="lunch">Lunch</option><option value="bestof">Best of</option><option value="archive">Archive</option></select></div>
       <div class="fg2">
         <label class="fl">Photo</label>
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.75rem">
@@ -2554,7 +2554,7 @@ function diffFiche(oldF,newData){
   }
   return changes;
 }
-const FR_STATUT_LABELS={carte:'Carte actuelle',lunch:'Lunch',bestof:'Best of',archive:'Archive'};
+const FR_STATUT_LABELS={carte:'Carte du soir',lunch:'Lunch',bestof:'Best of',archive:'Archive'};
 function diffFicheRecette(oldFR,newData){
   if(!oldFR)return[];
   const changes=[];
@@ -2909,7 +2909,7 @@ function printFiche(){
 
 // ── MENUS (stockés dans lava_config, ligne id 'menus' : {items}) ──
 // Un menu = des "temps" (entrée, plat…) contenant chacun un ou plusieurs plats.
-// La carte associe à chaque fiche recette « Carte actuelle » une section.
+// La carte associe à chaque fiche recette « Carte du soir » une section.
 let menus=[],editMenuId=null,menuDraft=null;
 
 // Anciens menus (liste plate de plats) → un seul temps sans nom.
