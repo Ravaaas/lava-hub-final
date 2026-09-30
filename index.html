@@ -2866,7 +2866,7 @@ function addFicheToPDF(doc,f,coef=1,mode='brut'){
       body:stepRows,
       theme:'plain',
       margin:{left:mX,right:mX,bottom:mBottom+footerH},
-      styles:{font:'helvetica',fontSize:9,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:2.2,bottom:2.2,left:2.8,right:2.8},valign:'middle'},
+      styles:{font:'helvetica',fontSize:9,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:3,bottom:3,left:2.8,right:2.8},valign:'top'},
       columnStyles:{0:{cellWidth:9,halign:'center',fontStyle:'bold',textColor:[255,255,255]},1:{cellWidth:'auto'}},
       alternateRowStyles:{fillColor:PDF_ROSE_ALT},
       didParseCell:(data)=>{ if(data.column.index===0) data.cell.styles.fillColor=PDF_ROUGE; }
@@ -2959,7 +2959,7 @@ async function seedMenus(){
   menus=[
     {id:crypto.randomUUID(),nom:'Lunch',services:svc(['Entrée','Plat','Dessert'])},
     {id:crypto.randomUUID(),nom:'Carte du soir',services:svc(['Plat','Dessert'])},
-    {id:crypto.randomUUID(),nom:'3 temps',services:svc(['Entrée','Plat','Dessert'])},
+    {id:crypto.randomUUID(),nom:'3 temps',services:svc(['Temps 1','Temps 2','Temps 3'])},
     {id:crypto.randomUUID(),nom:'5 temps',services:svc(['Temps 1','Temps 2','Temps 3','Temps 4','Temps 5'])}
   ];
   await persistMenus('création menus');
@@ -3205,19 +3205,15 @@ function buildMenuPDF(m){
   doc.text('Menu',mX,y+13);
   y+=17;
   doc.setDrawColor(...PDF_ROUGE);doc.setLineWidth(0.6);doc.line(mX,y,pageW-mX,y);
-  y+=6;
+  y+=11;
 
   const services=normMenu(m).services.filter(s=>s.plats.length);
-  const all=[...new Set(menuPlats(m).flatMap(p=>p.allerg))].sort((a,b)=>a.localeCompare(b,'fr'));
-  if(all.length){
-    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...PDF_ROUGE);
-    doc.text('ALLERGÈNES DU MENU',mX,y+2.2);
-    y=drawAllergChips(doc,all,mX,y+5,pageW-2*mX,7,[251,237,236],[237,216,216],PDF_ROUGE)+6;
-  }
   if(!services.length){
     doc.setFont('helvetica','italic');doc.setFontSize(9);doc.setTextColor(...PDF_GRIS_FONCE);
     doc.text("Ce menu n'a pas encore de plats.",mX,y+4);
   }
+  // Chaque plat : titre, puis ses éléments, puis ses allergènes en pastilles (lignes roses alternées).
+  const w=pageW-2*mX,padY=3.6;
   services.forEach(s=>{
     if(y>pageH-mBottom-35){doc.addPage();y=mTop}
     if(s.nom){
@@ -3227,16 +3223,27 @@ function buildMenuPDF(m){
       doc.setDrawColor(237,216,216);doc.setLineWidth(0.2);doc.line(mX,y,pageW-mX,y);
       y+=3;
     }
-    doc.autoTable({
-      startY:y,
-      body:s.plats.map(p=>{const d=platInfo(p);return[d.nom.toUpperCase(),d.els.join(' · '),d.allerg.join(', ')]}),
-      theme:'plain',
-      margin:{left:mX,right:mX,bottom:mBottom},
-      styles:{font:'helvetica',fontSize:9,textColor:PDF_NOIR,lineColor:PDF_BORDER,lineWidth:{bottom:0.1},cellPadding:{top:2.2,bottom:2.2,left:2.8,right:2.8},valign:'middle'},
-      columnStyles:{0:{fontStyle:'bold',cellWidth:55},1:{textColor:PDF_GRIS_FONCE,fontSize:8},2:{cellWidth:32,halign:'right',textColor:PDF_ROUGE,fontSize:7.5}},
-      alternateRowStyles:{fillColor:PDF_ROSE_ALT}
+    s.plats.forEach((p,i)=>{
+      const d=platInfo(p);
+      doc.setFont('helvetica','bold');doc.setFontSize(10.5);
+      const nom=doc.splitTextToSize(d.nom.toUpperCase(),w);
+      doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+      const els=d.els.length?doc.splitTextToSize(d.els.join(' · '),w):[];
+      const h=padY*2+nom.length*4.6+(els.length?1+els.length*3.9:0)+(d.allerg.length?(els.length?1.6:2.6)+measureAllergChipsHeight(doc,d.allerg,w,6.5):0);
+      if(y+h>pageH-mBottom){doc.addPage();y=mTop}
+      if(i%2===0){doc.setFillColor(...PDF_ROSE_ALT);doc.rect(mX-2.8,y,w+5.6,h,'F')}
+      doc.setDrawColor(...PDF_BORDER);doc.setLineWidth(0.1);doc.line(mX-2.8,y+h,pageW-mX+2.8,y+h);
+      let yy=y+padY+3.4;
+      doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...PDF_NOIR);
+      doc.text(nom,mX,yy);yy+=(nom.length-1)*4.6;
+      if(els.length){
+        doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...PDF_GRIS_FONCE);
+        doc.text(els,mX,yy+4.6);yy+=1+els.length*3.9;
+      }
+      if(d.allerg.length)drawAllergChips(doc,d.allerg,mX,yy+(els.length?1.6:2.6),w,6.5,[255,255,255],[237,216,216],PDF_ROUGE);
+      y+=h;
     });
-    y=doc.lastAutoTable.finalY+7;
+    y+=8;
   });
   return doc;
 }

@@ -178,6 +178,7 @@ const check = (nom, ok, detail = '') => { results.push([ok, nom, detail]); conso
     return out;
   });
   check('4 PDF générés (menu, groupe, fiche recette, fiche technique)', Object.values(pdf).every(n => n >= 1), JSON.stringify(pdf));
+  if (process.env.PDFS) require('fs').writeFileSync(process.env.PDFS + '/menu.pdf', Buffer.from(await page.evaluate(() => buildMenuPDF(menus[1]).output('datauristring').split(',')[1]), 'base64'));
 
   // 7. Écritures et déconnexion
   await page.evaluate(() => logout()); await sleep(600);
