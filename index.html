@@ -1751,7 +1751,7 @@ function renderFiches(){
   if(fil.length===0){grid.innerHTML='<div class="es" style="grid-column:1/-1"><div class="es-icon">'+ic('search',20)+'</div><h3>Aucun résultat</h3><p>Essaie un autre terme</p></div>';return}
   fil.forEach(f=>{
     const c=document.createElement('div');c.className='fc';
-    c.innerHTML=`<div class="fc-top"><div class="fc-name">${escHTML(f.nom)}</div><div class="fc-cat">${escHTML(f.categorie||'Sans catégorie')}</div></div>${tagsCompact(allergArr(f.allergenes))}`;
+    c.innerHTML=`<div class="fc-top"><div class="fc-name">${escHTML(f.nom)}</div><div class="fc-cat">${escHTML(f.categorie||'Sans catégorie')}</div></div>`;
     c.onclick=()=>openFD(f.id);
     c.tabIndex=0;c.setAttribute('role','button');
     c.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openFD(f.id)}};
