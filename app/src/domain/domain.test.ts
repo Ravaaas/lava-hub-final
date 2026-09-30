@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { listeAllergenes, union } from './allergenes';
+import { avecEffectifs, listeAllergenes, separerEffectifs, union } from './allergenes';
 import { identifiantPour, profilsClasses, verifierMotDePasse, postesProposes, etatMembre } from './equipe';
 import { diffFiche, lireConditionnement, quantiteAffichee, quantitePour } from './fiches';
 import { allergenesDesElements, diffFicheRecette, elementsResolus } from './fichesRecette';
 import { lignesJournal, libelleJour } from './journal';
 import { alertesGroupe, platsDuMenu, servicesAffiches, servicesAEnregistrer } from './menus';
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
-import { erreurGroupe, groupesFiltres } from './groupes';
+import { erreurGroupe, groupesEnConflit, groupesFiltres } from './groupes';
 import { normNom } from './texte';
 import type { Fiche, FicheRecette, Groupe, Membre, Menu, ProfilConnexion } from './types';
 
@@ -177,5 +177,25 @@ describe('groupes', () => {
   it('champs obligatoires', () => {
     expect(erreurGroupe({ nom: 'X', date: '2026-10-01', pax: 0 })).toMatch(/obligatoires/);
     expect(erreurGroupe({ nom: 'X', date: '2026-10-01', pax: 4 })).toBeNull();
+    expect(erreurGroupe({ nom: 'X', date: '2026-10-01', pax: 12.5 })).toMatch(/entier/);
+    expect(erreurGroupe({ nom: 'X', date: '2026-10-01', pax: 9999 })).toMatch(/entier/);
+  });
+  it('nombre de personnes par allergie : lu et réécrit sans perte', () => {
+    const { noms, effectifs } = separerEffectifs(['Gluten (2)', 'Lactose']);
+    expect(noms).toEqual(['Gluten', 'Lactose']);
+    expect(effectifs).toEqual({ Gluten: 2 });
+    expect(avecEffectifs(noms, effectifs)).toEqual(['Gluten (2)', 'Lactose']);
+    expect(erreurGroupe({ nom: 'X', date: '2026-10-01', pax: 4, effectifs: { Gluten: 5 } })).toMatch(/entre 1 et 4/);
+  });
+  it('même jour : trié par heure', () => {
+    const l = [{ ...g('b', '2026-10-01'), heure: '20:00' }, { ...g('a', '2026-10-01'), heure: '12:00' }];
+    expect(groupesFiltres(l, 'avenir', '2026-09-30').map(x => x.id)).toEqual(['a', 'b']);
+  });
+  it('conflit : même jour, même salle, à moins de 2 h', () => {
+    const o = { id: 'o', date: '2026-10-01', heure: '12:00', salle: 'Terrasse' } as Groupe;
+    expect(groupesEnConflit({ date: '2026-10-01', heure: '13:30', salle: 'Terrasse' }, [o])).toHaveLength(1);
+    expect(groupesEnConflit({ date: '2026-10-01', heure: '14:00', salle: 'Terrasse' }, [o])).toHaveLength(0);
+    expect(groupesEnConflit({ date: '2026-10-01', heure: '12:30', salle: 'Salon Basalte' }, [o])).toHaveLength(0);
+    expect(groupesEnConflit({ id: 'o', date: '2026-10-01', heure: '12:30', salle: 'Terrasse' }, [o])).toHaveLength(0);
   });
 });

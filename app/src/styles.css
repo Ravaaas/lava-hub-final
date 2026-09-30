@@ -434,3 +434,6 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .l-logo,.h-logo{display:block;background:var(--ink);-webkit-mask:var(--logo) center/contain no-repeat;mask:var(--logo) center/contain no-repeat}
 .l-logo{width:min(280px,66vw);height:calc(min(280px,66vw)*536/1201)}
 .h-logo{width:54px;height:24px}
+.eff-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+.eff-row .fl{margin:0}
+.eff-row .fi2{width:88px;text-align:center}

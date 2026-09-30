@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Membre } from '../../domain/types';
 import { etatMembre, nomListe } from '../../domain/equipe';
-import { contient } from '../../domain/texte';
+import { contient, heureFr } from '../../domain/texte';
 import { enregistrerReglages } from '../../db/config';
 import { idsFichesRecette, chargerPhoto, remplacerPhoto, toutesLesFichesRecette } from '../../db/fichesRecette';
 import { contenuSauvegarde, listerSauvegardes, sauvegarderMaintenant } from '../../db/sauvegardes';
@@ -186,7 +186,7 @@ function Sauvegardes() {
           {Array.isArray(liste) && !liste.length && <div className="ci-label" style={{ color: 'var(--gt)' }}>Aucune sauvegarde pour le moment.</div>}
           {Array.isArray(liste) && liste.map(s => (
             <div key={s.id} className="ci">
-              <span className="ci-label">{new Date(s.creeLe).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span>
+              <span className="ci-label">{heureFr(new Date(s.creeLe).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }))}</span>
               <button type="button" className="btn btn-g btn-sm" onClick={() => void telechargerAuto(s.id)}><Icone nom="download" />Télécharger</button>
             </div>
           ))}

@@ -58,6 +58,8 @@ export interface Groupe {
   menu_nom: string | null;
   allergenes: string[];
   regimes: string[];
+  /** Nombre de personnes concernées par allergie ou régime (facultatif, par nom). */
+  effectifs: Record<string, number>;
   notes: string;
 }
 

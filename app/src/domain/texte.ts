@@ -17,3 +17,6 @@ export const compareFr = (a: string, b: string): number => a.localeCompare(b, 'f
 
 /** Contient, sans tenir compte de la casse (recherches). */
 export const contient = (texte: string, q: string): boolean => texte.toLowerCase().includes(q.trim().toLowerCase());
+
+/** « 14:05 » → « 14h05 » (toute heure au milieu d'un texte). */
+export const heureFr = (s: string): string => s.replace(/\b(\d{1,2}):(\d{2})\b/g, '$1h$2');

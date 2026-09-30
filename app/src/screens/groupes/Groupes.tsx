@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Groupe } from '../../domain/types';
 import { alertesGroupe, platsDuMenu } from '../../domain/menus';
 import { dateCourte, groupesFiltres } from '../../domain/groupes';
-import { contient, pluriel } from '../../domain/texte';
+import { contient, heureFr, pluriel } from '../../domain/texte';
 import { supprimerGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { useMoi } from '../../etat/Session';
@@ -47,7 +47,7 @@ export function Groupes() {
         {pret && !liste.length && <Vide icone="users" titre="Aucun groupe" texte="Rien à afficher ici" />}
         {liste.map(g => {
           const conflit = alertesGroupe(g, menus, fichesRecette, fiches).length > 0;
-          const infos = [dateCourte(g.date), g.heure, `${g.pax} pers.`, g.salle, g.menu_nom ?? ''].filter(Boolean).join(' · ');
+          const infos = [dateCourte(g.date), heureFr(g.heure), `${g.pax} pers.`, g.salle, menus.find(m => m.id === g.menu_id)?.nom ?? g.menu_nom ?? ''].filter(Boolean).join(' · ');
           return (
             <div key={g.id} className="fc" role="button" tabIndex={0} onClick={() => { setOuvert(g.id); }}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOuvert(g.id); } }}>
@@ -55,7 +55,7 @@ export function Groupes() {
               {(conflit || g.allergenes.length > 0) && (
                 <div className="fc-tags">
                   {conflit && <span className="tag tag-danger"><Icone nom="alert" taille={14} />Conflit avec le menu</span>}
-                  <Etiquettes liste={g.allergenes} />
+                  <Etiquettes liste={g.allergenes} effectifs={g.effectifs} />
                 </div>
               )}
             </div>
@@ -80,11 +80,11 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
 
   const supprimer = async () => {
     if (!await confirmer('Supprimer ce groupe ?')) return;
-    onFermer();
     setSynchro(true);
     const r = await supprimerGroupe(g.id);
     setSynchro(false);
     if (!r.ok) { notifier('Suppression impossible : ' + r.message, 'err'); return; }
+    onFermer();
     await journal('suppression groupe', g.nom);
     notifier('Groupe supprimé');
     await recharger();
@@ -105,7 +105,7 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '1rem' }}>
-            {info('Date', dateCourte(g.date))}{info('Heure', g.heure)}{info('Personnes', String(g.pax))}{info('Salle', g.salle)}{info('Reçu par', g.source)}
+            {info('Date', dateCourte(g.date))}{info('Heure', heureFr(g.heure))}{info('Personnes', String(g.pax))}{info('Salle', g.salle)}{info('Reçu par', g.source)}
           </div>
           <div className="fdoc-ptitle">Menu{m ? ` — ${m.nom}` : ''}</div>
           {plats.length
@@ -121,8 +121,8 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
             </div>
           )}
           <div className="fr-allerg-sub" style={{ marginTop: 0 }}><span className="fr-allerg-sub-lbl">Allergies</span>
-            {g.allergenes.length ? <Etiquettes liste={g.allergenes} /> : <span style={{ fontSize: '0.875rem', color: 'var(--gt)' }}>Aucune déclarée</span>}</div>
-          {g.regimes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Régimes</span><Etiquettes liste={g.regimes} /></div>}
+            {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span style={{ fontSize: '0.875rem', color: 'var(--gt)' }}>Aucune déclarée</span>}</div>
+          {g.regimes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Régimes</span><Etiquettes liste={g.regimes} effectifs={g.effectifs} /></div>}
           {g.notes && <><div className="fdoc-ptitle">Notes</div><div style={{ fontSize: '0.9375rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{g.notes}</div></>}
         </div>
       </div>

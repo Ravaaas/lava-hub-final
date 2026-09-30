@@ -14,6 +14,28 @@ export function listeAllergenes(v: unknown): string[] {
 /** Format d'enregistrement : « Céleri, Lactose ». */
 export const joindre = (l: readonly string[]): string => l.join(', ');
 
+export type Effectifs = Readonly<Record<string, number>>;
+
+/** « Gluten (2) » → nom « Gluten » et nombre de personnes concernées (2). Sans nombre : pas d'effectif. */
+export function separerEffectifs(liste: readonly string[]): { noms: string[]; effectifs: Record<string, number> } {
+  const noms: string[] = [];
+  const effectifs: Record<string, number> = {};
+  for (const s of liste) {
+    const m = /^(.+?)\s*\((\d+)\)$/.exec(s);
+    const nom = m?.[1] ?? s;
+    noms.push(nom);
+    if (m?.[2]) effectifs[nom] = Number(m[2]);
+  }
+  return { noms, effectifs };
+}
+
+/** Inverse de `separerEffectifs` : « Gluten (2) » pour l'enregistrement en base. */
+export const avecEffectifs = (noms: readonly string[], effectifs: Effectifs): string[] =>
+  noms.map(n => (effectifs[n] ? `${n} (${effectifs[n]})` : n));
+
+/** Texte affiché : « Gluten × 2 ». */
+export const libelleEffectif = (nom: string, effectifs: Effectifs): string => (effectifs[nom] ? `${nom} × ${effectifs[nom]}` : nom);
+
 /** Union triée (ordre alphabétique français) de plusieurs listes. */
 export function union(listes: readonly (readonly string[])[]): string[] {
   return [...new Set(listes.flat())].sort((a, b) => a.localeCompare(b, 'fr'));

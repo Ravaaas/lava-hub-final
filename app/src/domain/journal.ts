@@ -1,4 +1,5 @@
 import type { EvenementJournal } from './types';
+import { heureFr } from './texte';
 
 export type LigneJournal =
   | { type: 'app'; ts: number; titre: string; desc: string }
@@ -46,5 +47,5 @@ export function libelleJour(d: Date, maintenant = new Date()): string {
 
 export const heure = (ts: number): string => {
   const d = new Date(ts);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return Number.isNaN(d.getTime()) ? '' : heureFr(d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }));
 };

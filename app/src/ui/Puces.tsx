@@ -1,3 +1,4 @@
+import { libelleEffectif, type Effectifs } from '../domain/allergenes';
 import { Icone } from './Icone';
 
 /** Puces cochables (allergènes, régimes). */
@@ -20,8 +21,8 @@ export function Puces({ choix, selection, onChange }: { choix: readonly string[]
 }
 
 /** Étiquettes d'allergènes (lecture seule). */
-export const Etiquettes = ({ liste }: { liste: readonly string[] }) => (
-  <>{liste.map(a => <span key={a} className="fr-allerg-tag">{a}</span>)}</>
+export const Etiquettes = ({ liste, effectifs = {} }: { liste: readonly string[]; effectifs?: Effectifs }) => (
+  <>{liste.map(a => <span key={a} className="fr-allerg-tag">{libelleEffectif(a, effectifs)}</span>)}</>
 );
 
 /** Au plus 4 étiquettes à droite d'une ligne de liste, le reste en « +n ». */

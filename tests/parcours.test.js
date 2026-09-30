@@ -403,13 +403,19 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   await a.remplir('Nom du groupe', 'Anniversaire Leroy');
   let m = await a.marque(); await a.clic('Enregistrer');
   check('champs obligatoires vérifiés', await a.notif(m, /obligatoires/i) && a.ecritures('groupes', 'POST').length === 0);
+  await a.remplir('Nombre de personnes', '8.5');
+  m = await a.marque(); await a.clic('Enregistrer');
+  check('nombre de personnes : entier exigé', await a.notif(m, /entier/i) && a.ecritures('groupes', 'POST').length === 0);
   await a.remplir('Nombre de personnes', '8'); await a.remplir('Menu', 'Carte du soir');
   await a.clic('Gluten'); await a.clic('Végétarien');
+  await a.remplir('Gluten — nombre de personnes', '2');
+  check('allergie : pas plus de personnes que le groupe', await (async () => { await a.remplir('Végétarien — nombre de personnes', '9'); m = await a.marque(); await a.clic('Enregistrer'); return a.notif(m, /entre 1 et 8/i); })());
+  await a.remplir('Végétarien — nombre de personnes', '3');
   await a.remplir('Notes', '2 enfants');
   await a.clic('Enregistrer');
   const cree = await a.attendEcriture('groupes', 'POST');
   check('groupe enregistré', cree && cree.corps.nom === 'Anniversaire Leroy' && cree.corps.pax === 8 && cree.corps.menu_id === 'm1' && cree.corps.menu_nom === 'Carte du soir'
-    && cree.corps.allergenes === 'Gluten' && cree.corps.regimes === 'Végétarien' && cree.corps.notes === '2 enfants', JSON.stringify(cree && cree.corps));
+    && cree.corps.allergenes === 'Gluten (2)' && cree.corps.regimes === 'Végétarien (3)' && cree.corps.notes === '2 enfants', JSON.stringify(cree && cree.corps));
   check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit avec le menu'));
   await a.clic('Anniversaire Leroy');
   check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques\s*:\s*gluten/.test(await a.texte()));

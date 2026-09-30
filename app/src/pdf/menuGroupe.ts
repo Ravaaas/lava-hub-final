@@ -2,6 +2,8 @@ import type { jsPDF as JsPDF } from 'jspdf';
 import type { Fiche, FicheRecette, Groupe, Menu } from '../domain/types';
 import { alertesGroupe, platAffiche, platsDuMenu, servicesAffiches } from '../domain/menus';
 import { dateCourte } from '../domain/groupes';
+import { libelleEffectif } from '../domain/allergenes';
+import { heureFr } from '../domain/texte';
 import { BORD_PASTILLE, BORDURE, GRIS_FONCE, NOIR, ROSE_ALT, ROUGE, dessinerPastilles, hauteurPastilles, type Couleur, type OutilsPdf } from './commun';
 
 /** Menu : chaque plat sur trois niveaux (titre, éléments, allergènes en pastilles), lignes roses alternées. */
@@ -76,7 +78,7 @@ export function pdfGroupe(o: OutilsPdf, g: Groupe, menus: readonly Menu[], frs: 
   ligne('Fiche Groupe', 9, false, ROUGE);
   y += 2;
   doc.setDrawColor(...ROUGE); doc.setLineWidth(0.6); doc.line(mX, y, mX + W, y); y += 6;
-  ligne(`${dateCourte(g.date)}${g.heure ? ' à ' + g.heure : ''}  ·  ${g.pax} personnes  ·  ${g.salle}`, 11, true, NOIR);
+  ligne(`${dateCourte(g.date)}${g.heure ? ' à ' + heureFr(g.heure) : ''}  ·  ${g.pax} personnes  ·  ${g.salle}`, 11, true, NOIR);
   if (g.source) ligne('Reçu par : ' + g.source, 9, false, GRIS_FONCE);
   y += 3;
   ligne('MENU' + (m ? ' — ' + m.nom : ' sur mesure'), 10, true, ROUGE);
@@ -84,8 +86,8 @@ export function pdfGroupe(o: OutilsPdf, g: Groupe, menus: readonly Menu[], frs: 
   y += 3;
   ligne('RESTRICTIONS', 10, true, ROUGE);
   for (const a of alertesGroupe(g, menus, frs, fiches)) ligne(`! ${a.plat} contient : ${a.allergenes.join(', ')}`, 10, true, [140, 48, 42]);
-  ligne('Allergies : ' + (g.allergenes.join(', ') || 'aucune déclarée'), 10, false, NOIR);
-  if (g.regimes.length) ligne('Régimes : ' + g.regimes.join(', '), 10, false, NOIR);
+  ligne('Allergies : ' + (g.allergenes.map(a => libelleEffectif(a, g.effectifs)).join(', ') || 'aucune déclarée'), 10, false, NOIR);
+  if (g.regimes.length) ligne('Régimes : ' + g.regimes.map(r => libelleEffectif(r, g.effectifs)).join(', '), 10, false, NOIR);
   if (g.notes) { y += 3; ligne('NOTES', 10, true, ROUGE); ligne(g.notes, 10, false, NOIR); }
   return doc;
 }
