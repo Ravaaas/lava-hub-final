@@ -134,7 +134,13 @@ const check = (nom, ok, detail = '') => { results.push([ok, nom, detail]); conso
   check('4 menus créés en onglets', JSON.stringify(pills) === JSON.stringify(['Lunch', 'Carte du soir', '3 temps', '5 temps']), JSON.stringify(pills));
   await page.evaluate(() => setMenuTab(menus[1].id));
   const svc = await page.evaluate(() => [...document.querySelectorAll('#menus-list .fsect')].map(e => e.textContent));
-  check('Carte du soir = Plat + Dessert', JSON.stringify(svc) === JSON.stringify(['Plat', 'Dessert']), JSON.stringify(svc));
+  check('Carte du soir = Partages + Plat + Dessert', JSON.stringify(svc) === JSON.stringify(['Partages', 'Plat', 'Dessert']), JSON.stringify(svc));
+  const t3 = await page.evaluate(() => [menus[2], {nom:'3 temps',services:[{nom:'Entrée',plats:[]},{nom:'Plat',plats:[]},{nom:'Dessert',plats:[]}]}].map(m => normMenu(m).services.map(s => s.nom).join('|')));
+  check('menu 3 temps : Temps 1, 2 et 3 (même pour un ancien menu)', t3.every(x => x === 'Temps 1|Temps 2|Temps 3'), JSON.stringify(t3));
+  await page.evaluate(() => openMenu(2)); await sleep(200);
+  const lock = await page.evaluate(() => ({ nom: document.getElementById('mn-nom').readOnly, noms: [...document.querySelectorAll('#mn-services input[placeholder^="Nom du temps"]')].every(i => i.readOnly), btns: document.querySelectorAll('#mn-services [aria-label="Retirer ce temps"]').length }));
+  check('menu 3 temps verrouillé (nom, temps, pas de suppression)', lock.nom && lock.noms && lock.btns === 0, JSON.stringify(lock));
+  await page.evaluate(() => closeModal('modal-menu'));
   // ajout d'un plat via la fenêtre d'édition
   await page.evaluate(() => openMenu(1)); await sleep(300);
   await page.evaluate(() => { document.getElementById('ms-sel-0').value = 'r1'; addMenuPlat(0); });
