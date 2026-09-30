@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
-// La nouvelle version vit dans app/ tant que l'ancienne (index.html à la racine) est en ligne.
+// Le code de l'app est dans app/ ; la version compilée va dans dist/, publiée sur GitHub Pages.
 // base './' : le site fonctionne aussi bien sur GitHub Pages (/lava-hub-final/) qu'en local.
 export default defineConfig({
   root: 'app',

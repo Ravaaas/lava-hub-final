@@ -4,12 +4,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview --port 4173 --strictPort",
     "test": "vitest run",
     "lint": "eslint app",
-    "check": "npm run lint && npm run test && npm run build",
-    "parcours": "node tests/parcours.test.js",
-    "parcours:nouvelle": "npm run build && node tests/nouvelle-version.js"
+    "secrets": "node tests/secrets.js",
+    "parcours": "npm run build && node tests/parcours.test.js",
+    "check": "npm run lint && npm run test && npm run secrets && npm run parcours"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

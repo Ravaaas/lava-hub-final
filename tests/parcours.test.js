@@ -2,14 +2,13 @@
 // (on clique sur des textes visibles, on remplit des champs par leur libellé), avec une base Supabase SIMULÉE.
 // Ce test ne connaît rien du code : la nouvelle version de l'app doit le réussir tel quel.
 //
-// Lancer : npm i --no-save puppeteer-core && node tests/parcours.test.js
-//   CHROME_PATH = navigateur ; APP_URL = adresse de l'app (par défaut index.html) ; SCREENSHOTS = dossier de captures ;
+// Lancer : npm run parcours (compile l'app puis joue les parcours sur dist/, servi en local)
+//   CHROME_PATH = navigateur ; APP_URL = autre adresse à tester (par défaut dist/ servi sur le port 4173) ; SCREENSHOTS = dossier de captures ;
 //   SEUL = « mot » pour ne jouer que les scénarios dont le nom le contient.
 const puppeteer = require('puppeteer-core');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { pathToFileURL } = require('url');
 const { creerBase, MOT_DE_PASSE, HOST } = require('./mock-supabase');
 
 const CHEMINS = [process.env.CHROME_PATH, '/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium',
@@ -17,7 +16,7 @@ const CHEMINS = [process.env.CHROME_PATH, '/usr/bin/google-chrome', '/usr/bin/ch
   'C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe'].filter(Boolean);
 const NAVIGATEUR = CHEMINS.find(p => fs.existsSync(p));
 if (!NAVIGATEUR) { console.error('Aucun navigateur trouvé : définis CHROME_PATH'); process.exit(2); }
-const APP_URL = process.env.APP_URL || pathToFileURL(path.join(__dirname, '..', 'index.html')).href;
+let APP_URL = process.env.APP_URL;
 const SHOTS = process.env.SCREENSHOTS;
 const SEUL = (process.env.SEUL || '').toLowerCase();
 
@@ -494,6 +493,13 @@ scenario('Téléphone', { mobile: true }, async (a, page) => {
 
 // ── Déroulé ──
 (async () => {
+  // Sans APP_URL : sert la version compilée (dist/) le temps du test.
+  let serveur = null;
+  if (!APP_URL) {
+    const { preview } = await import('vite');
+    serveur = await preview({ configFile: path.join(__dirname, '..', 'vite.config.mts'), preview: { port: 4173, strictPort: true } });
+    APP_URL = serveur.resolvedUrls.local[0];
+  }
   const navigateur = await puppeteer.launch({ executablePath: NAVIGATEUR, headless: 'new', args: ['--no-sandbox', '--allow-file-access-from-files'] });
   const erreurs = [];
   for (const s of SCENARIOS) {
@@ -523,5 +529,6 @@ scenario('Téléphone', { mobile: true }, async (a, page) => {
   const ko = resultats.filter(r => !r).length;
   console.log(`\n${resultats.length - ko}/${resultats.length} vérifications réussies`);
   await navigateur.close();
+  if (serveur) await serveur.close();
   process.exit(ko ? 1 : 0);
 })().catch(e => { console.error('ECHEC DU TEST', e); process.exit(2); });

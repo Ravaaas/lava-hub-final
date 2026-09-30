@@ -16,7 +16,7 @@ Application interne qui centralise fiches techniques, fiches recette, menus, gro
 Outil interne sur mesure, propre au restaurant : allergènes recalculés par la base depuis les fiches techniques, comptes individuels sans identifiant visible, sauvegardes nocturnes.
 
 ## Operating Context
-Plus Jakarta Sansface entièrement en français. Un seul `index.html` (HTML, CSS, JS inline), sans build, publié sur GitHub Pages ; données dans Supabase. Export PDF des fiches recette, menus et groupes (la charte des PDF ne change pas).
+Plus Jakarta Sansface entièrement en français. Application React + TypeScript (dossier `app/`), publiée sur GitHub Pages ; données dans Supabase. Export PDF des fiches recette, menus et groupes (la charte des PDF ne change pas).
 
 ## Capabilities and Constraints
 - Noms de fiches techniques en MAJUSCULES ; pas de prix dans les menus ; Config = Équipe / Catégories / Sauvegarde.
@@ -29,7 +29,7 @@ Plus Jakarta Sansface entièrement en français. Un seul `index.html` (HTML, CSS
 Nom : LAVA Hub Cuisine. Refonte visuelle **complète** voulue (2026-09-30), identité libre. Première version (clair épuré Notion/Linear) jugée par le propriétaire « pas assez moderne et pas épurée » : trop de traits et de bordures, en-tête chargé, look de tableau, trop petit et serré. **Direction retenue : application de type iPhone / Apple** : grands titres, cartes blanches très arrondies sans bordure sur fond gris doux, séparateurs fins en retrait, beaucoup d'air, boutons en pilule, champs remplis sans contour, navigation en barre du bas sur téléphone et tablette, en-tête presque vide (marque + pastille de profil qui ouvre un menu), animations douces. Clair par défaut, mode sombre disponible (fond noir, cartes graphite). Un seul accent (rouge LAVA). L'accent est le rouge LAVA d'origine (#B5433C) ; l'ambre est réservé aux allergènes.
 
 ## Evidence on Hand
-Code et données réels dans `index.html` et Supabase ; tests dans `tests/` (20 vérifications en navigateur). Aucun témoignage ni chiffre externe : ne rien inventer.
+Code dans `app/`, données dans Supabase ; tests dans `tests/` (parcours de l'équipe en navigateur) et `app/src/**/*.test.ts`. Aucun témoignage ni chiffre externe : ne rien inventer.
 
 ## Product Principles
 - Clarté avant densité : listes sobres, détail en fenêtre, peu de champs par ligne.

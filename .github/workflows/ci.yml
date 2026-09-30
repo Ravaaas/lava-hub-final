@@ -1,0 +1,45 @@
+name: Vérification et mise en ligne
+
+# À chaque envoi : qualité du code, tests unitaires, secrets, puis les parcours de l'équipe dans un vrai navigateur
+# (base Supabase simulée : rien n'est écrit dans la vraie base). Sur main, si tout est vert, dist/ est publié sur GitHub Pages.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verifier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tout vérifier (ESLint, Vitest, secrets, parcours)
+        run: CHROME_PATH=$(which google-chrome || which chromium-browser || which chromium) npm run check
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: dist
+
+  publier:
+    needs: verifier
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.publication.outputs.page_url }}
+    steps:
+      - id: publication
+        uses: actions/deploy-pages@v4
