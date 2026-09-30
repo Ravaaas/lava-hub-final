@@ -988,7 +988,6 @@ async function openPDF(build){
 function denied(res){return !!res.error||(Array.isArray(res.data)&&!res.data.length)}
 function deniedMsg(res){return res.error?res.error.message:'droits insuffisants — reconnecte-toi en admin'}
 // « · modifiée par Julien le 12/10/2026 » (rempli par la base ; vide tant que le SQL d'automatisation n'est pas appliqué)
-const modLine=x=>x&&x.modifie_par&&x.modifie_le?` · modifié par ${escHTML(x.modifie_par)} le ${new Date(x.modifie_le).toLocaleDateString('fr-FR')}`:'';
 // Icônes dessinées (trait unique de 1,75 px) : jamais d'émoji ni de symbole texte à la place d'une icône.
 const IC={
   search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
@@ -3120,7 +3119,7 @@ function buildGroupeDoc(g){
     ?`<div class="fdoc-steps">${plats.map((p,i)=>`<div class="fdoc-step"><div class="fdoc-snum">${i+1}</div><div class="fdoc-stxt">${escHTML(p.nom)}${p.allerg.length?`<div class="fr-sr-allerg" style="margin:0.3rem 0 0">${tags(p.allerg)}</div>`:''}</div></div>`).join('')}</div>`
     :`<div class="ci-label" style="color:var(--gt)">${m?"Ce menu n'a pas encore de plats.":'Menu sur mesure — voir les notes.'}</div>`;
   return `<div class="fdoc">
-    <div class="fdoc-hdr"><div class="fdoc-nom">${escHTML(g.nom)}</div><div class="fdoc-sub">Fiche Groupe${modLine(g)}</div></div>
+    <div class="fdoc-hdr"><div class="fdoc-nom">${escHTML(g.nom)}</div><div class="fdoc-sub">Fiche Groupe</div></div>
     <div class="fdoc-body">
       <hr class="fdoc-sep">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem">${info('Date',fmtDate(g.date))}${info('Heure',g.heure)}${info('Personnes',String(g.pax))}${info('Salle',g.salle)}${info('Reçu par',g.source)}</div>
