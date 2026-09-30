@@ -1,22 +1,39 @@
 name: Vérification
 
-# À chaque envoi de code : vérifie que index.html est valide, puis fait tourner l'app dans un vrai navigateur
-# (base Supabase simulée, rien n'est écrit dans ta vraie base). Un échec s'affiche en rouge sur GitHub.
+# À chaque envoi de code (base Supabase simulée : rien n'est écrit dans la vraie base). Un échec s'affiche en rouge sur GitHub.
 on:
   push:
   pull_request:
 
 jobs:
-  verifier:
+  # Version en ligne : index.html à la racine
+  version-en-ligne:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
+      - run: npm ci
       - name: Vérification statique (script, ids, HTML, secrets)
         run: node tests/static.js
       - name: Parcours de l'équipe dans un navigateur
-        run: |
-          npm install --no-save puppeteer-core
-          CHROME_PATH=$(which google-chrome || which chromium-browser || which chromium) node tests/parcours.test.js
+        run: CHROME_PATH=$(which google-chrome || which chromium-browser || which chromium) node tests/parcours.test.js
+
+  # Nouvelle version (dossier app/) : code vérifié, tests unitaires, compilation
+  nouvelle-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Qualité du code (ESLint)
+        run: npm run lint
+      - name: Tests unitaires (Vitest)
+        run: npm test
+      - name: Compilation (TypeScript + Vite)
+        run: npm run build

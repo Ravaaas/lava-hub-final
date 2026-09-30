@@ -32,9 +32,25 @@ const corps = m ? html.slice(0, html.indexOf(m[0])) : html;
 const ouverts = (corps.match(/<div[\s>]/g) || []).length, fermes = (corps.match(/<\/div>/g) || []).length;
 if (ouverts !== fermes) problemes.push(`<div> déséquilibrés : ${ouverts} ouverts, ${fermes} fermés`);
 
-// Filet de sécurité : aucun secret ne doit apparaître dans la page (seule la clé publique « anon » est normale)
-for (const [motif, nom] of [[/service_role/i, 'clé service_role'], [/sb_secret_/i, 'clé secrète Supabase'], [/lava_secret/i, 'mot de passe en clair']]) {
-  if (motif.test(html)) problemes.push(`secret possible dans index.html : ${nom}`);
+// Filet de sécurité : aucun secret dans le code publié (ancienne version et nouvelle, app/src).
+// Chaque clé Supabase (JWT) trouvée est décodée : seule la clé publique « anon » est admise.
+const fichiers = [path.join(__dirname, '..', 'index.html')];
+(function parcourir(d) {
+  if (!fs.existsSync(d)) return;
+  for (const f of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, f.name);
+    if (f.isDirectory()) parcourir(p); else if (/\.(ts|tsx|js|html|css|json)$/.test(f.name)) fichiers.push(p);
+  }
+})(path.join(__dirname, '..', 'app'));
+for (const f of fichiers) {
+  const texte = fs.readFileSync(f, 'utf8'), nom = path.relative(path.join(__dirname, '..'), f);
+  for (const [jwt] of texte.matchAll(/eyJ[\w-]+\.(eyJ[\w-]+)\.[\w-]+/g)) {
+    let role = '?';
+    try { role = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64url').toString()).role; } catch (e) {}
+    if (role !== 'anon') problemes.push(`${nom} : clé Supabase de rôle « ${role} » (seule la clé anon est publique)`);
+  }
+  if (/sb_secret_/i.test(texte)) problemes.push(`${nom} : clé secrète Supabase (sb_secret_)`);
+  if (/lava_secret/i.test(texte)) problemes.push(`${nom} : mot de passe en clair`);
 }
 
 if (problemes.length) {

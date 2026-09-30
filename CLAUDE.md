@@ -1,14 +1,27 @@
 # LAVA Hub Cuisine
 
 Application interne du restaurant LAVA (Paris 5e) : fiches techniques, fiches recette, menus, groupes, journal, équipe.
-**Un seul fichier `index.html`** (HTML + CSS + JS inline, ~3 000 lignes), sans étape de build.
+**Version en ligne : un seul fichier `index.html`** (HTML + CSS + JS inline, ~3 300 lignes), sans étape de build.
 Publiée sur GitHub Pages depuis `main` (https://ravaaas.github.io/lava-hub-final/). Interface **en français**.
 
+**Refonte en cours (branche `refonte`)** : nouvelle version dans `app/` (React 19 + TypeScript strict + Vite, Supabase inchangé).
+Elle remplacera `index.html` à la bascule, quand elle réussira `tests/parcours.test.js` tel quel. Étapes : 1 contrat ✓, 2 squelette ✓,
+3 couche données (`app/src/db/`), 4 règles métier testées, 5 écrans un par un, 6 sécurité (CSP), 7 bascule (Pages via Actions depuis `dist/`).
+
 ## Commandes
-- `node tests/static.js` : script valide, ids uniques, `<div>` équilibrés, aucun secret. À lancer avant chaque commit.
-- `npm i --no-save puppeteer-core && node tests/parcours.test.js` : **contrat de l'app**, les parcours de l'équipe joués comme un utilisateur (textes visibles, libellés des champs), base Supabase simulée (`tests/mock-supabase.js`, mêmes droits que la RLS ; rien n'est écrit dans la vraie base). `CHROME_PATH` choisit le navigateur, `APP_URL` l'adresse de l'app, `SCREENSHOTS=dossier` sauve des captures, `SEUL=mot` ne joue que certains scénarios. Ne pas s'appuyer sur les fonctions internes : la refonte (branche `refonte`) doit réussir ce test tel quel.
-- GitHub Actions (`.github/workflows/verification.yml`) lance les deux à chaque push.
-- Pas de serveur local : ouvrir `index.html` suffit (les données viennent de Supabase).
+- `npm ci` une fois (installe aussi puppeteer-core pour les tests navigateur).
+- `node tests/static.js` : script d'index.html valide, ids uniques, `<div>` équilibrés, et **aucun secret** (chaque clé Supabase trouvée dans index.html et app/ est décodée : seule `anon` est admise). À lancer avant chaque commit.
+- `npm run parcours` : **contrat de l'app**, les parcours de l'équipe joués comme un utilisateur (textes visibles, libellés des champs), base Supabase simulée (`tests/mock-supabase.js`, mêmes droits que la RLS ; rien n'est écrit dans la vraie base). `CHROME_PATH` choisit le navigateur, `APP_URL` l'adresse de l'app, `SCREENSHOTS=dossier` sauve des captures, `SEUL=mot` ne joue que certains scénarios. Ne jamais s'appuyer sur les fonctions internes.
+- `npm run parcours:nouvelle` : compile app/ et joue le même contrat sur la nouvelle version (servie sur le port 4173).
+- `npm run check` : nouvelle version — ESLint (typescript-eslint strict), Vitest, compilation. `npm run dev` pour la développer.
+- GitHub Actions (`.github/workflows/verification.yml`) vérifie les deux versions à chaque push.
+- TypeScript reste en 6.x : typescript-eslint ne prend pas encore en charge TypeScript 7.
+
+## Nouvelle version (`app/`)
+- `src/lib/supabase.ts` : client typé (`src/db/database.types.ts`, écrit à la main d'après la base ; jsonb en `Json`, normalisé par `src/db/`).
+- `src/lib/denied.ts` : toute écriture fait `.select()` et passe par `denied` (RLS silencieuse = 0 ligne).
+- `src/styles.css` : la feuille de style de index.html, reprise telle quelle (même apparence) ; logo en fichier (`src/assets/logo.avif`).
+- React échappe le texte : pas de `escHTML`, jamais de `dangerouslySetInnerHTML` avec des données de la base.
 
 ## Architecture de `index.html`
 Ordre du script : utilitaires (`escHTML`, `denied`, chargement PDF à la demande) → login (`pickTeam`, `pickProfile`, `checkPW`, `enterApp`, `loginAs`) → équipe (`loadMembres`, `openMembre`, `saveMembre`) → config → journal → chargement (`loadAll`) → fiches techniques → fiches recette → PDF (`buildFicheRecettePDF`, `addFicheToPDF`, `buildMenuPDF`, `buildGroupePDF`) → menus → groupes → glisser-déposer.
