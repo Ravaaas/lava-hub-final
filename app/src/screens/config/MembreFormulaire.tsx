@@ -7,6 +7,10 @@ import { useMoi } from '../../etat/Session';
 import { Fenetre } from '../../ui/Fenetre';
 import { useNotifier } from '../../ui/Notifications';
 import { useConfirmer } from '../../ui/Confirmation';
+import { Choix } from '../../ui/Choix';
+import { Selecteur, enOptions } from '../../ui/Selecteur';
+
+const EQUIPES: readonly { valeur: Equipe; libelle: string }[] = [{ valeur: 'cuisine', libelle: 'Cuisine' }, { valeur: 'salle', libelle: 'Salle' }];
 
 /** Fiche d'un membre. L'identifiant de connexion n'est jamais affiché ; on ne peut ni se couper l'accès ni se retirer. */
 export function MembreFormulaire({ membre: m, onFermer }: { membre: Membre | null; onFermer: () => void }) {
@@ -14,7 +18,7 @@ export function MembreFormulaire({ membre: m, onFermer }: { membre: Membre | nul
   const { membres, rechargerMembres, journal } = useDonnees();
   const notifier = useNotifier();
   const confirmer = useConfirmer();
-  const id = { prenom: useId(), nom: useId(), poste: useId(), equipe: useId(), role: useId(), actif: useId() };
+  const id = { prenom: useId(), nom: useId(), poste: useId(), actif: useId() };
   const moiMeme = !!m && m.email === moi.email;
   const [prenom, setPrenom] = useState(m?.prenom ?? '');
   const [nom, setNom] = useState(m?.nom ?? '');
@@ -82,20 +86,11 @@ export function MembreFormulaire({ membre: m, onFermer }: { membre: Membre | nul
         <div className="fg2"><label className="fl" htmlFor={id.nom}>Nom</label><input className="fi2" id={id.nom} type="text" value={nom} onChange={e => { setNom(e.target.value); }} /></div>
       </div>
       <div className="fg2"><label className="fl" htmlFor={id.poste}>Poste</label>
-        <select className="fsel" id={id.poste} value={poste} onChange={e => { setPoste(e.target.value); }}>
-          <option value="">— Aucun —</option>
-          {postesProposes(equipe, poste).map(p => <option key={p} value={p}>{p}</option>)}
-        </select></div>
-      <div className="fr">
-        <div className="fg2"><label className="fl" htmlFor={id.equipe}>Équipe</label>
-          <select className="fsel" id={id.equipe} value={equipe} onChange={e => { setEquipe(e.target.value === 'salle' ? 'salle' : 'cuisine'); }}>
-            <option value="cuisine">Cuisine</option><option value="salle">Salle</option>
-          </select></div>
-        <div className="fg2"><label className="fl" htmlFor={id.role}>Droits</label>
-          <select className="fsel" id={id.role} value={role} disabled={moiMeme} onChange={e => { const r = ROLES.find(x => x.valeur === e.target.value); if (r) setRole(r.valeur); }}>
-            {ROLES.map(r => <option key={r.valeur} value={r.valeur}>{r.libelle}</option>)}
-          </select></div>
-      </div>
+        <Selecteur id={id.poste} vide="— Aucun —" options={enOptions(postesProposes(equipe, poste))} valeur={poste} onChange={setPoste} /></div>
+      <div className="fg2"><span className="fl">Équipe</span>
+        <Choix libelle="Équipe" options={EQUIPES} valeur={equipe} onChange={setEquipe} /></div>
+      <div className="fg2"><span className="fl">Droits</span>
+        <Choix libelle="Droits" options={ROLES} valeur={role} onChange={setRole} desactive={moiMeme} /></div>
       {!m && <p style={{ fontSize: '0.875rem', color: 'var(--gt)', lineHeight: 1.6 }}>Après l'ajout, la personne retrouve son profil sur l'écran de connexion et crée son mot de passe.</p>}
       {m && !moiMeme && (
         <div className="fg2" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

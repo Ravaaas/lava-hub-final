@@ -9,6 +9,7 @@ import { Fenetre } from '../../ui/Fenetre';
 import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 import { Puces } from '../../ui/Puces';
+import { Selecteur, enOptions } from '../../ui/Selecteur';
 import { useReordonner } from '../../ui/useReordonner';
 
 // Lignes en cours de saisie ; `cle` = identité stable pour React pendant qu'on réordonne.
@@ -92,10 +93,7 @@ export function FicheFormulaire({ fiche, onFermer }: { fiche: Fiche | null; onFe
         <div className="fg2"><label className="fl" htmlFor={ids.nom}>Nom *</label>
           <input className="fi2" id={ids.nom} type="text" placeholder="ex: Velouté Curry" value={nom} onChange={e => { setNom(e.target.value.toUpperCase()); }} /></div>
         <div className="fg2"><label className="fl" htmlFor={ids.cat}>Catégorie</label>
-          <select className="fsel" id={ids.cat} value={categorie} onChange={e => { setCategorie(e.target.value); }}>
-            {!reglages.categories.includes(categorie) && categorie && <option value={categorie}>{categorie}</option>}
-            {reglages.categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select></div>
+          <Selecteur id={ids.cat} options={enOptions(reglages.categories, categorie)} valeur={categorie} onChange={setCategorie} /></div>
       </div>
       <div className="fr" style={{ gridTemplateColumns: '1fr' }}>
         <div className="fg2"><label className="fl" htmlFor={ids.qte}>Quantité nette</label>
@@ -104,11 +102,8 @@ export function FicheFormulaire({ fiche, onFermer }: { fiche: Fiche | null; onFe
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
             {conds.map(c => (
               <div key={c.cle} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,120px) 44px', gap: 8, alignItems: 'center' }}>
-                <select className="fsel" aria-label="Type de conditionnement" value={c.type} onChange={e => { setConds(l => l.map(x => (x.cle === c.cle ? { ...x, type: e.target.value } : x))); }}>
-                  <option value="">— Choisir —</option>
-                  {!(TYPES_CONDITIONNEMENT as readonly string[]).includes(c.type) && c.type && <option value={c.type}>{c.type}</option>}
-                  {TYPES_CONDITIONNEMENT.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                <Selecteur libelle="Type de conditionnement" vide="— Choisir —" options={enOptions(TYPES_CONDITIONNEMENT, c.type)} valeur={c.type}
+                  onChange={v => { setConds(l => l.map(x => (x.cle === c.cle ? { ...x, type: v } : x))); }} />
                 <input className="fi2" type="text" placeholder="ex: 850 g" aria-label="Quantité du conditionnement" value={c.quantite}
                   onChange={e => { setConds(l => l.map(x => (x.cle === c.cle ? { ...x, quantite: e.target.value } : x))); }} />
                 <button type="button" className="btn-rm" aria-label="Retirer ce conditionnement" onClick={() => { setConds(l => l.filter(x => x.cle !== c.cle)); }}><Icone nom="x" /></button>
@@ -126,16 +121,12 @@ export function FicheFormulaire({ fiche, onFermer }: { fiche: Fiche | null; onFe
           <div key={l.cle} {...ordreIng.ligne(i)} className={`ir${l.brut ? ' has-net' : ''}${ordreIng.glisse === i ? ' dragging' : ''}`}>
             <div {...ordreIng.poignee(i)}><Icone nom="grip" /></div>
             {l.lie
-              ? <select className="fsel ing-fiche-sel" aria-label="Fiche liée" style={{ color: 'var(--rouge)', fontWeight: 600 }} value={l.ficheId} onChange={e => { changerIng(l.cle, { ficheId: e.target.value }); }}>
-                  <option value="">— Choisir une fiche —</option>
-                  {optionsFiches.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                </select>
+              ? <Selecteur className="ing-fiche-sel" libelle="Fiche liée" vide="— Choisir une fiche —" options={optionsFiches.map(f => ({ valeur: f.id, libelle: f.nom }))}
+                  valeur={l.ficheId} onChange={v => { changerIng(l.cle, { ficheId: v }); }} />
               : <input ref={focusSiNouveau(l.cle)} className="fi2 ing-n" type="text" placeholder="Ingrédient" value={l.nom} onChange={e => { changerIng(l.cle, { nom: e.target.value.toUpperCase() }); }} />}
             <input className="fi2 ing-q" type="number" step="any" min="0" placeholder="Qté" value={l.quantite} onChange={e => { changerIng(l.cle, { quantite: e.target.value }); }} />
             <input className="fi2 ing-net" type="number" step="any" min="0" placeholder="Net" title="Poids net" value={l.net} onChange={e => { changerIng(l.cle, { net: e.target.value }); }} />
-            <select className="fsel ing-u" aria-label="Unité" value={l.unite} onChange={e => { changerIng(l.cle, { unite: e.target.value }); }}>
-              {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
-            </select>
+            <Selecteur className="ing-u" libelle="Unité" options={enOptions(UNITES)} valeur={l.unite} onChange={v => { changerIng(l.cle, { unite: v }); }} />
             <button type="button" className={`btn-brut${l.brut ? ' active' : ''}`} title="Poids brut" aria-pressed={l.brut} onClick={() => { changerIng(l.cle, { brut: !l.brut, net: l.brut ? '' : l.net }); }}>B</button>
             <button type="button" className="btn-lnk" title={l.lie ? 'Délier' : 'Lier une recette'} aria-label={l.lie ? 'Délier' : 'Lier une recette'} onClick={() => { changerIng(l.cle, { lie: !l.lie }); }}><Icone nom="link" /></button>
             <button type="button" className="btn-rm" aria-label="Retirer" onClick={() => { setIngredients(x => x.filter(y => y.cle !== l.cle)); }}><Icone nom="x" /></button>

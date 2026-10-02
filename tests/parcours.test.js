@@ -58,7 +58,7 @@ const OUTILS = () => {
   // Champs dont le libellé, le texte d'aide ou l'aria-label vaut `txt`.
   function champs(txt) {
     const c = norm(txt), racine = couche();
-    const saisies = [...racine.querySelectorAll('input:not([type=file]),select,textarea')].filter(visible);
+    const saisies = [...racine.querySelectorAll('input:not([type=file]),select,textarea,[aria-haspopup=listbox]')].filter(visible);
     const sansEtoile = s => norm(s).replace(/\s*\*$/, '');
     const trouves = [];
     const ajoute = e => { if (e && visible(e) && !trouves.includes(e)) trouves.push(e); };
@@ -67,14 +67,23 @@ const OUTILS = () => {
       saisies.filter(i => ok(i.getAttribute('aria-label')) || ok(i.placeholder)).forEach(ajoute);
       for (const l of [...racine.querySelectorAll('label,.fl')].filter(visible)) {
         if (!ok(l.innerText)) continue;
-        ajoute(l.htmlFor ? document.getElementById(l.htmlFor) : (l.querySelector('input,select,textarea') || l.parentElement.querySelector('input,select,textarea')));
+        ajoute(l.htmlFor ? document.getElementById(l.htmlFor) : (l.querySelector('input,select,textarea') || l.parentElement.querySelector('input,select,textarea,[aria-haspopup=listbox]')));
       }
+      saisies.filter(s => s.matches('[aria-haspopup=listbox]') && sansEtoile(s.innerText) === c).forEach(ajoute);   // liste de choix : par sa valeur affichée
       saisies.filter(s => s.tagName === 'SELECT' && [...s.options].some(o => sansEtoile(o.textContent) === c && o.index === 0)).forEach(ajoute);
       if (trouves.length) return trouves;
     }
     return trouves;
   }
+  // Liste de choix (bouton + liste) : on l'ouvre puis on clique l'option, comme un utilisateur.
+  async function choisir(el, v) {
+    el.click(); await new Promise(r => setTimeout(r, 80));
+    const o = [...el.closest('.sel').querySelectorAll('[role=option]')].find(o => norm(o.innerText) === norm(v));
+    if (!o) throw new Error(`option « ${v} » absente`);
+    o.click(); await new Promise(r => setTimeout(r, 80));
+  }
   function remplir(el, v) {
+    if (el.matches('[aria-haspopup=listbox]')) return choisir(el, v);
     el.focus();
     if (el.type === 'checkbox') { if (el.checked !== !!v) el.click(); return; }
     if (el.tagName === 'SELECT') {
@@ -123,7 +132,7 @@ function actions(page, base) {
     },
     existe: txt => page.evaluate(t => __t.tous(t).length > 0, txt),
     async remplir(champ, v, n = 0) {
-      const ok = await page.evaluate((c, v, n) => { const e = __t.champs(c)[n]; if (!e) return false; __t.remplir(e, v); return true; }, champ, v, n);
+      const ok = await page.evaluate(async (c, v, n) => { const e = __t.champs(c)[n]; if (!e) return false; await __t.remplir(e, v); return true; }, champ, v, n);
       if (!ok) throw new Error(`champ « ${champ} » introuvable`);
       await sleep(150);
     },
@@ -257,9 +266,9 @@ scenario('Fiches techniques', {}, async (a, page) => {
   await a.remplir('Rechercher…', 'sarrasin');
   check('recherche par ingrédient', await a.attend('GANACHE CHOCOLAT') && !(await a.voit('VELOUTÉ CURRY')));
   await a.remplir('Rechercher…', '');
-  await a.remplir('Toutes les catégories', 'Dessert');
+  await a.remplir('Catégorie', 'Dessert');
   check('filtre par catégorie', await a.attendPlus('VELOUTÉ CURRY') && await a.voit('GANACHE CHOCOLAT'));
-  await a.remplir('Toutes les catégories', 'Toutes les catégories');
+  await a.remplir('Catégorie', 'Toutes les catégories');
   // détail
   await a.clic('VELOUTÉ CURRY');
   check('détail : ingrédients, quantités, process, conditionnement', await a.attend('CRÈME') && await a.voit('500 g') && await a.voit('Chauffer la crème') && await a.voit('Sac sous vide'));
@@ -339,7 +348,7 @@ scenario('Fiches recette', {}, async (a, page) => {
   await a.clic('Retour');
   // création avec photo portrait
   await a.clic('Nouvelle fiche recette');
-  await a.remplir('Nom du plat', 'Tartare de boeuf'); await a.remplir('Statut', 'Partages');
+  await a.remplir('Nom du plat', 'Tartare de boeuf'); await a.clic('Partages');
   await a.remplir('Rechercher une fiche technique…', 'velo');
   await a.clicLigne('VELOUTÉ CURRY', 'Ajouter');
   await a.remplir('Grammage', '60g');
@@ -470,8 +479,8 @@ scenario('Équipe', {}, async (a) => {
   await a.clic('Annuler');
   // ajout
   await a.clic('Ajouter un membre');
-  await a.remplir('Prénom', 'Zoé'); await a.remplir('Nom', 'Lefèvre'); await a.remplir('Équipe', 'Salle');
-  await a.remplir('Poste', 'Chef de rang'); await a.remplir('Droits', 'Salle (groupes)');
+  await a.remplir('Prénom', 'Zoé'); await a.remplir('Nom', 'Lefèvre'); await a.clic('Salle');
+  await a.remplir('Poste', 'Chef de rang'); await a.clic('Salle (groupes)');
   await a.clic('Enregistrer');
   const ajout = await a.attendEcriture('membres', 'POST');
   check('membre ajouté (identifiant fabriqué, compte à créer)', ajout && ajout.corps.email === 'zoe.lefevre@lava-hub.local' && ajout.corps.compte_cree === false && ajout.corps.role === 'salle' && ajout.corps.poste === 'Chef de rang', JSON.stringify(ajout && ajout.corps));

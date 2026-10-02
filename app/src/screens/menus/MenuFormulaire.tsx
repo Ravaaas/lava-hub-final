@@ -5,6 +5,7 @@ import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
 import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
+import { Selecteur } from '../../ui/Selecteur';
 import { useEnregistrerMenus } from './Menus';
 
 /** Édition d'un menu : ses temps et leurs plats (fiches recette ou plats libres). Menus à temps fixes : nom et temps verrouillés. */
@@ -71,10 +72,9 @@ export function MenuFormulaire({ menu, onFermer }: { menu: Menu | null; onFermer
             </div>
           ))}
           <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
-            <select className="fsel" style={{ flex: 1 }} aria-label={`Fiche recette à ajouter (${s.nom || `temps ${i + 1}`})`} value={choix[i] ?? recettes[0]?.id ?? ''}
-              onChange={e => { setChoix(c => ({ ...c, [i]: e.target.value })); }}>
-              {recettes.length ? recettes.map(f => <option key={f.id} value={f.id}>{f.nom}</option>) : <option value="">Aucune fiche recette</option>}
-            </select>
+            <Selecteur style={{ flex: 1 }} libelle={`Fiche recette à ajouter (${s.nom || `temps ${i + 1}`})`} valeur={choix[i] ?? recettes[0]?.id ?? ''}
+              vide={recettes.length ? undefined : 'Aucune fiche recette'} options={recettes.map(f => ({ valeur: f.id, libelle: f.nom }))}
+              onChange={v => { setChoix(c => ({ ...c, [i]: v })); }} />
             <button type="button" className="btn btn-o btn-sm" onClick={() => { ajouterRecette(i); }}><Icone nom="plus" />Recette</button>
           </div>
           <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>

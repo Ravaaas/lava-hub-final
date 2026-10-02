@@ -5,6 +5,7 @@ import { contient, pluriel } from '../../domain/texte';
 import type { Fiche } from '../../domain/types';
 import { Icone } from '../../ui/Icone';
 import { Vide } from '../../ui/Puces';
+import { Selecteur, enOptions } from '../../ui/Selecteur';
 import { FicheDetail } from './FicheDetail';
 import { FicheFormulaire } from './FicheFormulaire';
 
@@ -39,10 +40,7 @@ export function FichesTechniques() {
           <Icone nom="search" />
           <input className="si" type="text" placeholder="Rechercher…" value={q} onChange={e => { setQ(e.target.value); }} />
         </div>
-        <select className="fs" aria-label="Catégorie" value={categorie} onChange={e => { setCategorie(e.target.value); }}>
-          <option value="">Toutes les catégories</option>
-          {reglages.categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <Selecteur className="sel-filtre" libelle="Catégorie" options={[{ valeur: '', libelle: 'Toutes les catégories' }, ...enOptions(reglages.categories)]} valeur={categorie} onChange={setCategorie} />
       </div>
       <div className="fg">
         {!pret ? <div className="es" style={{ gridColumn: '1/-1' }}><div className="spinner" /></div>

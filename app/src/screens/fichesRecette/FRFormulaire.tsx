@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import type { Element, FicheRecette, StatutFR } from '../../domain/types';
-import { STATUTS, allergenesDesElements, diffFicheRecette, estStatut } from '../../domain/fichesRecette';
+import { STATUTS, allergenesDesElements, diffFicheRecette } from '../../domain/fichesRecette';
 import { contient } from '../../domain/texte';
 import { creerFicheRecette, modifierFicheRecette } from '../../db/fichesRecette';
 import { useDonnees } from '../../etat/Donnees';
@@ -9,6 +9,7 @@ import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 import { useReordonner } from '../../ui/useReordonner';
 import { Cadreur } from './Cadreur';
+import { Choix } from '../../ui/Choix';
 
 type Ligne = Element & { cle: number };
 let compteur = 0;
@@ -16,7 +17,7 @@ let compteur = 0;
 export function FRFormulaire({ fr, statutParDefaut, onFermer }: { fr: FicheRecette | null; statutParDefaut: StatutFR; onFermer: () => void }) {
   const { fiches, photo, chargerPhotoDe, oublierPhoto, recharger, journal, setSynchro } = useDonnees();
   const notifier = useNotifier();
-  const ids = { nom: useId(), statut: useId() };
+  const ids = { nom: useId() };
   const [nom, setNom] = useState(fr?.nom ?? '');
   const [statut, setStatut] = useState<StatutFR>(fr?.statut ?? statutParDefaut);
   const [lignes, setLignes] = useState<Ligne[]>(() => (fr?.elements ?? []).map(e => ({ ...e, cle: ++compteur })));
@@ -68,10 +69,8 @@ export function FRFormulaire({ fr, statutParDefaut, onFermer }: { fr: FicheRecet
       </>}>
       <div className="fg2"><label className="fl" htmlFor={ids.nom}>Nom du plat *</label>
         <input className="fi2" id={ids.nom} type="text" placeholder="ex: Cassolette de Saint-Jacques" value={nom} onChange={e => { setNom(e.target.value); }} /></div>
-      <div className="fg2"><label className="fl" htmlFor={ids.statut}>Statut</label>
-        <select className="fsel" id={ids.statut} value={statut} onChange={e => { if (estStatut(e.target.value)) setStatut(e.target.value); }}>
-          {STATUTS.map(s => <option key={s.valeur} value={s.valeur}>{s.libelle}</option>)}
-        </select></div>
+      <div className="fg2"><span className="fl">Statut</span>
+        <Choix libelle="Statut" options={STATUTS} valeur={statut} onChange={setStatut} /></div>
       <div className="fg2"><span className="fl">Photo</span>
         {photoPrete ? <Cadreur initiale={photoEnBase ?? null} onChange={setNouvellePhoto} /> : <div className="spinner" style={{ margin: 0 }} />}
       </div>

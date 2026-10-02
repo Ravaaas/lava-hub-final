@@ -10,13 +10,15 @@ import { useNotifier } from '../../ui/Notifications';
 import { heureFr } from '../../domain/texte';
 import { Icone } from '../../ui/Icone';
 import { Puces } from '../../ui/Puces';
+import { Choix } from '../../ui/Choix';
+import { Selecteur } from '../../ui/Selecteur';
 import { useConfirmer } from '../../ui/Confirmation';
 
 export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | null; onFermer: () => void }) {
   const { menus, groupes, fichesRecette, recharger, journal, setSynchro } = useDonnees();
   const confirmer = useConfirmer();
   const notifier = useNotifier();
-  const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), salle: useId(), menu: useId(), notes: useId() };
+  const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), menu: useId(), notes: useId() };
   const [nom, setNom] = useState(g?.nom ?? '');
   const [date, setDate] = useState(g?.date ?? aujourdhui());
   const [heure, setHeure] = useState(g?.heure ?? '');
@@ -73,14 +75,11 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
       </div>
       <div className="fr">
         <div className="fg2"><label className="fl" htmlFor={id.pax}>Nombre de personnes *</label><input className="fi2" id={id.pax} type="number" min="1" step="1" value={pax} onChange={e => { setPax(e.target.value); }} /></div>
-        <div className="fg2"><label className="fl" htmlFor={id.salle}>Salle</label>
-          <select className="fsel" id={id.salle} value={salle} onChange={e => { setSalle(e.target.value); }}>{liste(SALLES, salle).map(s => <option key={s}>{s}</option>)}</select></div>
+        <div className="fg2"><span className="fl">Salle</span>
+          <Choix libelle="Salle" options={liste(SALLES, salle).map(s => ({ valeur: s, libelle: s }))} valeur={salle} onChange={setSalle} /></div>
       </div>
       <div className="fg2"><label className="fl" htmlFor={id.menu}>Menu choisi</label>
-          <select className="fsel" id={id.menu} value={menuId} onChange={e => { setMenuId(e.target.value); }}>
-            <option value="">Sur mesure</option>
-            {menus.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
-          </select></div>
+          <Selecteur id={id.menu} options={[{ valeur: '', libelle: 'Sur mesure' }, ...menus.map(m => ({ valeur: m.id, libelle: m.nom }))]} valeur={menuId} onChange={setMenuId} /></div>
       {!menuId && <PlatsSurMesure plats={plats} onChange={setPlats} />}
       <div className="fsect">Allergies déclarées</div>
       <Puces choix={ALLERGENES} selection={allergenes} onChange={setAllergenes} />
@@ -128,9 +127,8 @@ function PlatsSurMesure({ plats, onChange }: { plats: Plat[]; onChange: (p: Plat
         </div>
       ))}
       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
-        <select className="fsel" style={{ flex: 1 }} aria-label="Fiche recette à ajouter" value={selection} onChange={e => { setChoix(e.target.value); }}>
-          {recettes.length ? recettes.map(f => <option key={f.id} value={f.id}>{f.nom}</option>) : <option value="">Aucune fiche recette</option>}
-        </select>
+        <Selecteur style={{ flex: 1 }} libelle="Fiche recette à ajouter" vide={recettes.length ? undefined : 'Aucune fiche recette'}
+          options={recettes.map(f => ({ valeur: f.id, libelle: f.nom }))} valeur={selection} onChange={setChoix} />
         <button type="button" className="btn btn-o btn-sm" onClick={() => { if (selection) onChange([...plats, { frId: selection }]); }}><Icone nom="plus" />Recette</button>
       </div>
       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
