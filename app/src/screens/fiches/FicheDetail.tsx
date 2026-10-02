@@ -91,7 +91,9 @@ export function FicheDetail({ fiche: f, voisines, onOuvrir, onFermer, onModifier
       )}
     </>}>
       <div className="fdoc">
-        <div className="fdoc-hdr"><div className="fdoc-nom">{f.nom}</div><div className="fdoc-sub">Fiche Technique</div></div>
+        <div className="fdoc-hdr"><div className="fdoc-sur">Fiche technique</div><div className="fdoc-nom">{f.nom}</div>
+          {f.categorie && <div className="fdoc-cles"><span>{f.categorie}</span></div>}
+        </div>
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
           <table className="fdoc-table">

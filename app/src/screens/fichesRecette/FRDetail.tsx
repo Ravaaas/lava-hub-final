@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { FicheRecette } from '../../domain/types';
-import { elementsResolus } from '../../domain/fichesRecette';
+import { elementsResolus, libelleStatut } from '../../domain/fichesRecette';
 import { supprimerFicheRecette } from '../../db/fichesRecette';
 import { useDonnees } from '../../etat/Donnees';
 import { useMoi } from '../../etat/Session';
@@ -48,8 +48,9 @@ export function FRDetail({ fr, onFermer, onModifier }: { fr: FicheRecette; onFer
     )}>
       <div className="fdoc">
         <div className="fdoc-hdr">
+          <div className="fdoc-sur">Fiche recette</div>
           <div className="fdoc-nom">{fr.nom}</div>
-          <div className="fdoc-sub">Fiche Recette</div>
+          <div className="fdoc-cles"><span>{libelleStatut(fr.statut)}</span></div>
           {fr.allergenes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Allergènes</span><Etiquettes liste={fr.allergenes} /></div>}
           {image && (
             // Cadre 16/10 : la photo entière, les bords comblés par une version floutée d'elle-même.

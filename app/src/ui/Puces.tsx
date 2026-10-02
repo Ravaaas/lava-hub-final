@@ -20,9 +20,9 @@ export function Puces({ choix, selection, onChange }: { choix: readonly string[]
   );
 }
 
-/** Étiquettes d'allergènes (lecture seule). */
-export const Etiquettes = ({ liste, effectifs = {} }: { liste: readonly string[]; effectifs?: Effectifs }) => (
-  <>{liste.map(a => <span key={a} className="fr-allerg-tag">{libelleEffectif(a, effectifs)}</span>)}</>
+/** Étiquettes d'allergènes (lecture seule) ; avec effectifs (groupe), le nombre de personnes : « Gluten × 1 ». */
+export const Etiquettes = ({ liste, effectifs }: { liste: readonly string[]; effectifs?: Effectifs }) => (
+  <>{liste.map(a => <span key={a} className="fr-allerg-tag">{effectifs ? libelleEffectif(a, effectifs) : a}</span>)}</>
 );
 
 /** Au plus 4 étiquettes à droite d'une ligne de liste, le reste en « +n ». */

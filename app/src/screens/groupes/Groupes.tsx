@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Groupe } from '../../domain/types';
 import { alertesGroupe, menuDuGroupe, platsDuMenu } from '../../domain/menus';
-import { dateCourte, groupesFiltres } from '../../domain/groupes';
+import { dateCourte, dateLongue, groupesFiltres } from '../../domain/groupes';
 import { contient, heureFr, pluriel } from '../../domain/texte';
 import { supprimerGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
@@ -74,7 +74,6 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
   const confirmer = useConfirmer();
   const m = menuDuGroupe(g, menus);
   const plats = m ? platsDuMenu(m, fichesRecette, fiches) : [];
-  const info = (l: string, v: string) => v ? <div><div className="fdoc-fl">{l}</div><div className="fdoc-fv" style={{ fontSize: '0.95rem' }}>{v}</div></div> : null;
 
   const supprimer = async () => {
     if (!await confirmer('Supprimer ce groupe ?')) return;
@@ -99,13 +98,12 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
       </div>
     }>
       <div className="fdoc">
-        <div className="fdoc-hdr"><div className="fdoc-nom">{g.nom}</div><div className="fdoc-sub">Fiche Groupe</div></div>
+        <div className="fdoc-hdr"><div className="fdoc-sur">Fiche groupe</div><div className="fdoc-nom">{g.nom}</div>
+          <div className="fdoc-cles">{[dateLongue(g.date), heureFr(g.heure), pluriel(g.pax, 'personne')].filter(Boolean).map(t => <span key={t}>{t}</span>)}</div>
+        </div>
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '1rem' }}>
-            {info('Date', dateCourte(g.date))}{info('Arrivée des clients', heureFr(g.heure))}{info('Personnes', String(g.pax))}{info('Salle', g.salle)}
-          </div>
-          <div className="fdoc-ptitle">Menu choisi{m ? ` — ${m.nom}` : ''}</div>
+          <div className="fdoc-ptitle">Menu{m?.id ? ` — ${m.nom}` : ''}</div>
           {plats.length
             ? <div className="fdoc-steps">{plats.map((p, i) => (
                 <div key={i} className="fdoc-step"><div className="fdoc-snum">{i + 1}</div>

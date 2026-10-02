@@ -96,7 +96,7 @@ export function pdfGroupe(o: OutilsPdf, g: Groupe, menus: readonly Menu[], frs: 
       place(LIGNE);
       trait(ROSE_PASTILLE); doc.roundedRect(mX, y, W, 9, 2, 2, 'FD');
       texte(n, mX + RETRAIT, y + 6.3, 13, true, NOIR);
-      const nb = g.effectifs[n];
+      const nb = g.effectifs[n] ?? 1;   // sans nombre saisi : au moins une personne
       if (nb) texte(`${nb} ${nb === 1 ? 'personne' : 'personnes'}`, mX + W - RETRAIT, y + 6.3, 13, true, ROUGE, { align: 'right' });
       y += LIGNE;
     }

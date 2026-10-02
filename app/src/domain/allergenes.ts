@@ -33,8 +33,8 @@ export function separerEffectifs(liste: readonly string[]): { noms: string[]; ef
 export const avecEffectifs = (noms: readonly string[], effectifs: Effectifs): string[] =>
   noms.map(n => (effectifs[n] ? `${n} (${effectifs[n]})` : n));
 
-/** Texte affiché : « Gluten × 2 ». */
-export const libelleEffectif = (nom: string, effectifs: Effectifs): string => (effectifs[nom] ? `${nom} × ${effectifs[nom]}` : nom);
+/** Texte affiché dans un groupe : « Gluten × 2 » ; sans nombre saisi, au moins une personne : « Gluten × 1 ». */
+export const libelleEffectif = (nom: string, effectifs: Effectifs): string => `${nom} × ${effectifs[nom] ?? 1}`;
 
 /** Union triée (ordre alphabétique français) de plusieurs listes. */
 export function union(listes: readonly (readonly string[])[]): string[] {

@@ -396,6 +396,7 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   await a.connexion('Cuisine', 'Alexandre RAVASIO');
   await a.onglet('Groupes');
   check('à venir seulement', await a.attend('Séminaire Dupont') && !(await a.voit('Mariage Garnier')));
+  check('allergie sans nombre saisi : × 1', await a.voit('Gluten × 1'));
   await a.clic('Passés');
   check('passés', await a.attend('Mariage Garnier') && !(await a.voit('Séminaire Dupont')));
   await a.clic('À venir');
@@ -437,6 +438,8 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   const sm = await a.attendEcriture('groupes', 'POST');
   check('menu sur mesure enregistré', sm && sm.corps.menu_id === null && JSON.stringify(sm.corps.plats_sur_mesure) === JSON.stringify([{ frId: 'r1' }, { text: 'Pain maison' }]), JSON.stringify(sm && sm.corps.plats_sur_mesure));
   check("sur mesure : conflit avec l'allergie", await a.attend('Cocktail Petit') && await a.voit('Conflit avec le menu'));
+  await a.clic('Cocktail Petit');
+  check('sur mesure : titre « Menu » seul', await a.attend('Pain maison') && !(await a.voit('Menu choisi')) && !(await a.voit('Menu — Sur mesure')));
 });
 
 scenario('Équipe', {}, async (a) => {
