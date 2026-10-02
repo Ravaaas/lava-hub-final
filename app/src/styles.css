@@ -319,7 +319,7 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .fdoc-snum{width:32px;flex-shrink:0;background:#B5433C;color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.8125rem;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .fdoc-stxt{flex:1;padding:0.55rem 0.75rem;font-size:0.9375rem;color:#221818;line-height:1.45}
 .fdoc-footer{position:absolute;bottom:1.25cm;left:2cm;right:2cm;display:flex;justify-content:space-between;padding-top:0.6rem;border-top:1px solid #E0D0D0}
-.fdoc-fl{font-size:0.8125rem;color:#B5433C;margin-bottom:0.2rem}
+.fdoc-fl{font-size:0.6875rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#B5433C;margin-bottom:0.3rem}
 .fdoc-fv{font-size:1.1rem;font-weight:700;color:#221818}
 /* en-tête de toutes les fiches : type en petit au-dessus du nom, puis une ligne d'infos grises, puis la ligne rouge */
 .fdoc-sur{font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#B5433C;margin-bottom:0.5rem}
@@ -336,11 +336,12 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .fr-sr-gram{margin-left:auto;font-size:0.875rem;font-weight:600;color:#8a6a68;background:#fff;padding:2px 8px;border-radius:8px;border:1px solid #E0D0D0}
 .fr-sr-card .fdoc-table{border:none}
 .fr-sr-card .fdoc-steps{border:none;border-top:1px solid #EDD8D8}
-.fr-sr-card .fdoc-ptitle{margin:1rem 1rem 0.5rem}
+.fr-sr-card .fdoc-ptitle{margin:1rem 0.75rem 0.5rem}
+.fr-sr-head:last-child{border-bottom:none}
 .fr-photo{position:relative;overflow:hidden;aspect-ratio:16/10;max-height:340px;width:100%;border-radius:12px;margin-top:1.25rem}
 .fdoc-notes{font-size:0.9375rem;line-height:1.6;white-space:pre-wrap;color:#221818}
 .fdoc .fr-allerg-tag{background:#FBEDEC;color:#B5433C}
-.fdoc .fr-allerg-sub-lbl{color:#B5433C}
+.fdoc .fr-allerg-sub-lbl{min-width:6.25rem;color:#B5433C;font-size:0.6875rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase}
 .fdoc .ci-label{color:#6B5C5C}
 
 /* ── états vides, chargement, notifications ── */
@@ -474,11 +475,15 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fdoc-table tbody td{font-size:9.5pt;padding:1.1mm 2.5mm}
   .fdoc-snum{width:7mm;font-size:8pt}
   .fdoc-stxt{font-size:9.5pt;padding:1.1mm 2.5mm;line-height:1.35}
-  .fdoc-footer{position:static;margin-top:4mm;padding-top:2mm}
-  .fdoc-fl{font-size:8pt;margin-bottom:0.5mm}
+  /* fiche technique : quantité nette et conditionnement toujours en bas de la page A4 (hauteur utile 272 mm) */
+  .fdoc:has(.fdoc-footer){display:flex;flex-direction:column;min-height:270mm}
+  .fdoc:has(.fdoc-footer) .fdoc-body{flex:1;display:flex;flex-direction:column}
+  .fdoc-footer{position:static;margin-top:auto;padding-top:2mm}
+  .fdoc:has(.fdoc-footer) .fdoc-steps{margin-bottom:4mm}
+  .fdoc-fl{font-size:7pt;margin-bottom:0.8mm}
   .fdoc-fv{font-size:10.5pt}
   .fr-allerg-sub{margin-top:2mm;gap:1.5mm}
-  .fr-allerg-sub-lbl{font-size:9pt}
+  .fdoc .fr-allerg-sub-lbl{min-width:19mm;font-size:7pt}
   .fr-allerg-tag{height:auto;padding:0.7mm 2.2mm;font-size:8pt}
   .fr-photo{max-height:60mm;margin-top:3mm;border-radius:2.5mm}
   .fdoc-notes{font-size:9.5pt;line-height:1.45}
