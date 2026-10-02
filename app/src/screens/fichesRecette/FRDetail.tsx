@@ -50,7 +50,7 @@ export function FRDetail({ fr, onFermer, onModifier }: { fr: FicheRecette; onFer
           {fr.allergenes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Allergènes</span><Etiquettes liste={fr.allergenes} /></div>}
           {image && (
             // Cadre 16/10 : la photo entière, les bords comblés par une version floutée d'elle-même.
-            <div style={{ position: 'relative', overflow: 'hidden', aspectRatio: '16/10', maxHeight: 340, width: '100%', borderRadius: 12, marginTop: '1.25rem' }}>
+            <div className="fr-photo">
               <img src={image} alt="" aria-hidden="true" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(24px) brightness(.85)', transform: 'scale(1.1)' }} />
               <img src={image} alt={`Photo : ${fr.nom}`} style={{ position: 'relative', width: '100%', height: '100%', objectFit: 'contain' }} />
             </div>
@@ -74,7 +74,7 @@ export function FRDetail({ fr, onFermer, onModifier }: { fr: FicheRecette; onFer
                     <tbody>{f.ingredients.map((i, k) => <tr key={k}><td>{i.nom.toUpperCase()}</td><td>{i.unite === 'pm' ? 'pm' : i.quantite ? `${i.quantite} ${i.unite}` : '—'}</td></tr>)}</tbody>
                   </table>
                   {f.process.length > 0 && <>
-                    <div className="fdoc-ptitle" style={{ margin: '1rem 1rem 0.5rem' }}>Process</div>
+                    <div className="fdoc-ptitle">Process</div>
                     <div className="fdoc-steps">{f.process.map((s, k) => <div key={k} className="fdoc-step"><div className="fdoc-snum">{k + 1}</div><div className="fdoc-stxt">{s}</div></div>)}</div>
                   </>}
                 </>}

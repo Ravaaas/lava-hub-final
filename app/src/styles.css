@@ -332,10 +332,13 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .fr-sr-card{border:1px solid #E0D0D0;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(34,24,24,0.06)}
 .fr-sr-head{display:flex;flex-wrap:wrap;align-items:center;gap:0.65rem;padding:0.75rem 1rem;background:#FBF3F1;border-bottom:1px solid #E0D0D0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .fr-sr-badge{width:22px;height:22px;border-radius:50%;background:#B5433C;color:#fff;font-size:0.8125rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.fr-sr-name{font-size:0.9375rem;font-weight:700;color:#221818;text-transform:uppercase;letter-spacing:0.02em}
+.fr-sr-name{flex:1;min-width:0;font-size:0.9375rem;font-weight:700;color:#221818;text-transform:uppercase;letter-spacing:0.02em}
 .fr-sr-gram{margin-left:auto;font-size:0.875rem;font-weight:600;color:#8a6a68;background:#fff;padding:2px 8px;border-radius:8px;border:1px solid #E0D0D0}
 .fr-sr-card .fdoc-table{border:none}
 .fr-sr-card .fdoc-steps{border:none;border-top:1px solid #EDD8D8}
+.fr-sr-card .fdoc-ptitle{margin:1rem 1rem 0.5rem}
+.fr-photo{position:relative;overflow:hidden;aspect-ratio:16/10;max-height:340px;width:100%;border-radius:12px;margin-top:1.25rem}
+.fdoc-notes{font-size:0.9375rem;line-height:1.6;white-space:pre-wrap;color:#221818}
 .fdoc .fr-allerg-tag{background:#FBEDEC;color:#B5433C}
 .fdoc .fr-allerg-sub-lbl{color:#B5433C}
 .fdoc .ci-label{color:#6B5C5C}
@@ -445,10 +448,11 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .eff-row .fl{margin:0}
 .eff-row .fi2{width:88px;text-align:center}
 
-/* Impression (bouton « Imprimer » d'une fiche ouverte) : seule la fiche, telle qu'à l'écran, sur une page A4.
-   Marges à 0 : le navigateur n'ajoute ni date ni adresse ; les marges sont celles de la fiche. */
+/* Impression (bouton « Imprimer » d'une fiche ouverte) : seule la fiche, sur A4, même dessin qu'à l'écran mais resserré pour le papier.
+   Objectif : fiche technique et fiche groupe sur 1 page, fiche recette sur 2 pages au plus (éléments sur deux colonnes).
+   Les cases de marge (@bottom-right) remplacent la date et l'adresse que Chrome ajouterait sinon. */
 @media print{
-  @page{size:A4;margin:0}
+  @page{size:A4;margin:12mm 14mm 13mm;@bottom-right{content:counter(page) " / " counter(pages);font-family:system-ui,sans-serif;font-size:7.5pt;color:#8a7a7a}}
   html,body{background:#fff}
   body:has(.fd.open) *:not(:has(.fd.open)):not(.fd.open):not(.fd.open *){display:none}
   body:has(.fd.open) *:has(.fd.open){margin:0;padding:0;max-width:none;position:static}
@@ -456,6 +460,32 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fd.open .fd-nav{display:none}
   .fd.open .fd-content{max-width:none;padding:0}
   .fdoc{min-height:0;border-radius:0;box-shadow:none}
-  .fdoc-step,.fr-allerg-sub,.fdoc-table tr,.fr-sr-card{break-inside:avoid}
-  .fdoc-ptitle{break-after:avoid}
+  .fdoc-hdr,.fdoc-body{padding:0}
+  .fdoc-sur{font-size:7.5pt;margin-bottom:1mm}
+  .fdoc-nom{font-size:18pt}
+  .fdoc-cles{font-size:10.5pt;margin-top:1.5mm}
+  .fdoc-sep{margin:3mm 0 4mm}
+  .fdoc-ptitle{font-size:8pt;margin:4.5mm 0 2mm;padding-bottom:1mm;break-after:avoid}
+  .fdoc-table thead th{font-size:8pt;padding:1.2mm 2.5mm}
+  .fdoc-table tbody td{font-size:9.5pt;padding:1.1mm 2.5mm}
+  .fdoc-snum{width:7mm;font-size:8pt}
+  .fdoc-stxt{font-size:9.5pt;padding:1.1mm 2.5mm;line-height:1.35}
+  .fdoc-footer{position:static;margin-top:4mm;padding-top:2mm}
+  .fdoc-fl{font-size:8pt;margin-bottom:0.5mm}
+  .fdoc-fv{font-size:10.5pt}
+  .fr-allerg-sub{margin-top:2mm;gap:1.5mm}
+  .fr-allerg-sub-lbl{font-size:9pt}
+  .fr-allerg-tag{height:auto;padding:0.7mm 2.2mm;font-size:8pt}
+  .fr-photo{max-height:60mm;margin-top:3mm;border-radius:2.5mm}
+  .fdoc-notes{font-size:9.5pt;line-height:1.45}
+  .fr-sr-title{font-size:8pt;margin-bottom:2.5mm}
+  .fr-sr-list{display:block;columns:2;column-gap:5mm}
+  .fr-sr-card{margin-bottom:4mm;border-radius:2.5mm;box-shadow:none}
+  .fr-sr-head{padding:1.5mm 2.5mm;gap:1.5mm}
+  .fr-sr-badge{width:4.5mm;height:4.5mm;font-size:7.5pt}
+  .fr-sr-name{font-size:9pt}
+  .fr-sr-gram{font-size:8pt;padding:0 1.5mm;border-radius:1.5mm}
+  .fr-sr-allerg{margin-top:0.5mm;gap:1.2mm}
+  .fr-sr-card .fdoc-ptitle{margin:2.5mm 2.5mm 1mm}
+  .fdoc-step,.fdoc-table tr,.fr-allerg-sub,.fr-sr-card,.fdoc-footer{break-inside:avoid}
 }

@@ -112,7 +112,7 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
           <div className="fr-allerg-sub" style={{ marginTop: 0 }}><span className="fr-allerg-sub-lbl">Allergies</span>
             {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span style={{ fontSize: '0.875rem', color: 'var(--gt)' }}>Aucune déclarée</span>}</div>
           {g.regimes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Régimes</span><Etiquettes liste={g.regimes} effectifs={g.effectifs} /></div>}
-          {g.notes && <><div className="fdoc-ptitle">Notes</div><div style={{ fontSize: '0.9375rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{g.notes}</div></>}
+          {g.notes && <><div className="fdoc-ptitle">Notes</div><div className="fdoc-notes">{g.notes}</div></>}
         </div>
       </div>
     </PleinEcran>
