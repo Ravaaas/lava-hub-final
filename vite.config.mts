@@ -33,6 +33,7 @@ const apercu = (script: string): Plugin => ({
 
 export default defineConfig(({ mode }) => ({
   root: 'app',
+  envDir: '..',   // .env.local est à la racine du dépôt, pas dans app/
   base: './',
   plugins: [react(), securite(), ...(mode === 'demo' ? [apercu('apercu-demo.mjs')] : mode === 'live' ? [apercu('apercu-reel.mjs')] : [])],
   server: { fs: { allow: ['..'] } },   // le script de démo est hors de app/
