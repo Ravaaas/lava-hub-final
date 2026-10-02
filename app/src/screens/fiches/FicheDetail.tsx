@@ -9,8 +9,6 @@ import { PleinEcran } from '../../ui/Fenetre';
 import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 import { useConfirmer } from '../../ui/Confirmation';
-import { ouvrirPdf } from '../../pdf/commun';
-import { pdfFiche } from '../../pdf/fiche';
 
 const Badge = ({ texte }: { texte: string }) => (
   <span style={{ display: 'inline-block', marginLeft: 6, fontSize: 11, background: '#FBE8E7', color: '#B5433C', padding: '2px 6px', borderRadius: 10, fontWeight: 700, letterSpacing: '0.06em', verticalAlign: 'middle', border: '1px solid #E8C4C2' }}>{texte}</span>
@@ -41,7 +39,8 @@ export function FicheDetail({ fiche: f, voisines, onOuvrir, onFermer, onModifier
     return () => { document.removeEventListener('keydown', surTouche); };
   }, [f.id, voisines, onOuvrir]);
 
-  const imprimer = async () => { if (!await ouvrirPdf(o => pdfFiche(o, f, coef))) notifier('Erreur à la génération du PDF', 'err'); };
+  // Impression : la fiche telle qu'à l'écran, portions et brut/net compris (styles @media print)
+  const imprimer = () => { window.print(); };
 
   const copier = async () => {
     onFermer();
@@ -83,7 +82,7 @@ export function FicheDetail({ fiche: f, voisines, onOuvrir, onFermer, onModifier
       )}
       {admin && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-g btn-sm" onClick={() => void imprimer()}><Icone nom="printer" />Imprimer</button>
+          <button type="button" className="btn btn-g btn-sm" onClick={imprimer}><Icone nom="printer" />Imprimer</button>
           <button type="button" className="btn btn-g btn-sm" onClick={() => void copier()}>Copier</button>
           <button type="button" className="btn btn-g btn-sm" onClick={onModifier}>Modifier</button>
           <button type="button" className="btn btn-d btn-sm" onClick={() => void supprimer()}>Supprimer</button>

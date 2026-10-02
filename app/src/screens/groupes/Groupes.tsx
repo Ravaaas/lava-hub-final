@@ -11,8 +11,6 @@ import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 import { useConfirmer } from '../../ui/Confirmation';
 import { Etiquettes, Vide } from '../../ui/Puces';
-import { ouvrirPdf } from '../../pdf/commun';
-import { pdfGroupe } from '../../pdf/menuGroupe';
 import { GroupeFormulaire } from './GroupeFormulaire';
 
 export function Groupes() {
@@ -90,7 +88,7 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
   return (
     <PleinEcran titre={g.nom} onRetour={onFermer} actions={
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button type="button" className="btn btn-g btn-sm" onClick={() => void ouvrirPdf(o => pdfGroupe(o, g, menus, fichesRecette, fiches)).then(ok => { if (!ok) notifier('Erreur à la génération du PDF', 'err'); })}><Icone nom="printer" />Imprimer</button>
+        <button type="button" className="btn btn-g btn-sm" onClick={() => { window.print(); }}><Icone nom="printer" />Imprimer</button>
         {peutGererGroupes && <>
           <button type="button" className="btn btn-g btn-sm" onClick={onModifier}>Modifier</button>
           <button type="button" className="btn btn-d btn-sm" onClick={() => void supprimer()}>Supprimer</button>

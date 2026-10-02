@@ -70,12 +70,6 @@ export function ajouterFiche(o: OutilsPdf, doc: JsPDF, f: Fiche, coef = 1): void
   doc.text(f.conditionnement.length ? f.conditionnement.join(' / ') : '—', pageW - mX, fy + 6, { align: 'right' });
 }
 
-export function pdfFiche(o: OutilsPdf, f: Fiche, coef = 1): JsPDF {
-  const doc = o.nouveau();
-  ajouterFiche(o, doc, f, coef);
-  return doc;
-}
-
 /** Plusieurs fiches, une par page (export depuis Config). */
 export function pdfFiches(o: OutilsPdf, fiches: readonly Fiche[]): JsPDF {
   const doc = o.nouveau();

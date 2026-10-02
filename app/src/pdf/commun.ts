@@ -9,7 +9,6 @@ export const NOIR: Couleur = [34, 24, 24];
 export const GRIS_FONCE: Couleur = [107, 92, 92];
 export const ROSE_ALT: Couleur = [245, 236, 236];
 export const BORDURE: Couleur = [224, 208, 208];
-export const ROSE_PASTILLE: Couleur = [251, 237, 236];
 export const BORD_PASTILLE: Couleur = [237, 216, 216];
 
 export interface OutilsPdf {

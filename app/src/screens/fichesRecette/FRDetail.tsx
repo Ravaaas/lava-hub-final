@@ -9,8 +9,6 @@ import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 import { useConfirmer } from '../../ui/Confirmation';
 import { Etiquettes } from '../../ui/Puces';
-import { ouvrirPdf } from '../../pdf/commun';
-import { pdfFicheRecette } from '../../pdf/ficheRecette';
 
 export function FRDetail({ fr, onFermer, onModifier }: { fr: FicheRecette; onFermer: () => void; onModifier: () => void }) {
   const { fiches, photo, chargerPhotoDe, recharger, journal, setSynchro } = useDonnees();
@@ -21,10 +19,8 @@ export function FRDetail({ fr, onFermer, onModifier }: { fr: FicheRecette; onFer
 
   useEffect(() => { if (image === undefined) void chargerPhotoDe(fr.id); }, [fr.id, image, chargerPhotoDe]);
 
-  const imprimer = async () => {
-    const p = image === undefined ? await chargerPhotoDe(fr.id) : image;
-    if (!await ouvrirPdf(o => pdfFicheRecette(o, fr, p, fiches))) notifier('Erreur à la génération du PDF', 'err');
-  };
+  // Impression : la fiche telle qu'à l'écran (styles @media print). La photo est chargée dès l'ouverture.
+  const imprimer = () => { window.print(); };
   const supprimer = async () => {
     if (!await confirmer('Supprimer cette fiche recette ?')) return;
     onFermer();
@@ -41,7 +37,7 @@ export function FRDetail({ fr, onFermer, onModifier }: { fr: FicheRecette; onFer
   return (
     <PleinEcran titre={fr.nom} onRetour={onFermer} actions={admin && (
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        <button type="button" className="btn btn-g btn-sm" onClick={() => void imprimer()}><Icone nom="printer" />Imprimer</button>
+        <button type="button" className="btn btn-g btn-sm" onClick={imprimer}><Icone nom="printer" />Imprimer</button>
         <button type="button" className="btn btn-g btn-sm" onClick={onModifier}>Modifier</button>
         <button type="button" className="btn btn-d btn-sm" onClick={() => void supprimer()}>Supprimer</button>
       </div>

@@ -444,3 +444,18 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .eff-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
 .eff-row .fl{margin:0}
 .eff-row .fi2{width:88px;text-align:center}
+
+/* Impression (bouton « Imprimer » d'une fiche ouverte) : seule la fiche, telle qu'à l'écran, sur une page A4.
+   Marges à 0 : le navigateur n'ajoute ni date ni adresse ; les marges sont celles de la fiche. */
+@media print{
+  @page{size:A4;margin:0}
+  html,body{background:#fff}
+  body:has(.fd.open) *:not(:has(.fd.open)):not(.fd.open):not(.fd.open *){display:none}
+  body:has(.fd.open) *:has(.fd.open){margin:0;padding:0;max-width:none;position:static}
+  .fd.open{position:static;overflow:visible;animation:none;background:#fff}
+  .fd.open .fd-nav{display:none}
+  .fd.open .fd-content{max-width:none;padding:0}
+  .fdoc{min-height:0;border-radius:0;box-shadow:none}
+  .fdoc-step,.fr-allerg-sub,.fdoc-table tr,.fr-sr-card{break-inside:avoid}
+  .fdoc-ptitle{break-after:avoid}
+}

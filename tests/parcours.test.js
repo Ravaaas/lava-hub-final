@@ -168,6 +168,15 @@ function actions(page, base) {
       }
       return false;
     },
+    /** Clique « Imprimer » (impression du navigateur, interceptée) et renvoie ce qui serait imprimé. */
+    async imprime(bouton) {
+      await page.evaluate(() => { window.__impressions = 0; window.print = () => { window.__impressions++; }; });
+      await a.clic(bouton);
+      await page.emulateMediaType('print');
+      const r = await page.evaluate(() => ({ n: window.__impressions, texte: __t.norm(document.body.innerText) }));
+      await page.emulateMediaType(null);
+      return r;
+    },
     async onglet(nom) { await a.clic(nom); await sleep(300); },
     async connexion(equipe, profil, mdp = MOT_DE_PASSE) {
       await a.clic(equipe); await a.clic(profil);
@@ -256,7 +265,9 @@ scenario('Fiches techniques', {}, async (a, page) => {
   check('détail : ingrédients, quantités, process, conditionnement', await a.attend('CRÈME') && await a.voit('500 g') && await a.voit('Chauffer la crème') && await a.voit('Sac sous vide'));
   await a.remplir('Nombre de portions', '2');
   check('portions ×2 : quantités doublées', await a.attend('1000 g'));
-  check('fiche technique : PDF', await a.ouvrePDF('Imprimer'));
+  const impFT = await a.imprime('Imprimer');
+  check('fiche technique : impression de la fiche seule, portions comprises', impFT.n === 1 && impFT.texte.includes('fiche technique') && impFT.texte.includes('1000 g')
+    && !impFT.texte.includes('retour') && !impFT.texte.includes('croustillant sarrasin'), impFT.texte.slice(0, 200));
   await a.clic('Retour');
   // création
   await a.clic('Nouvelle fiche');
@@ -353,7 +364,9 @@ scenario('Fiches recette', {}, async (a, page) => {
   await a.clic('Retour');
   // impression puis suppression
   await a.clic('Carte du soir'); await a.clic('TARTE AU CITRON');
-  check('fiche recette : PDF', await a.ouvrePDF('Imprimer'));
+  const impFR = await a.imprime('Imprimer');
+  check('fiche recette : impression de la fiche seule', impFR.n === 1 && impFR.texte.includes('fiche recette') && impFR.texte.includes('tarte au citron')
+    && !impFR.texte.includes('retour') && !impFR.texte.includes('cassolette'), impFR.texte.slice(0, 200));
   await a.clic('Supprimer'); await a.clic('Supprimer');
   const sup = await a.attendEcriture('fiches_recette', 'DELETE');
   check('suppression', sup && sup.filtre.id === 'eq.r2');
@@ -421,7 +434,10 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   await a.clic('Anniversaire Leroy');
   check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques[\s\S]*gluten/.test(await a.texte()));
   check('fiche groupe : pas de « modifié par »', !(await a.voit('modifié par')));
-  check('groupe : PDF', await a.ouvrePDF('Imprimer'));
+  // Impression : la fiche telle qu'à l'écran, sans les boutons ni le reste de l'app
+  const imprime = await a.imprime('Imprimer');
+  check('groupe : impression de la fiche seule', imprime.n === 1 && imprime.texte.includes('fiche groupe') && imprime.texte.includes('anniversaire leroy')
+    && !imprime.texte.includes('retour') && !imprime.texte.includes('séminaire dupont'), imprime.texte.slice(0, 200));
   await a.clic('Modifier'); await a.remplir('Nombre de personnes', '10'); await a.clic('Enregistrer');
   const modif = await a.attendEcriture('groupes', 'PATCH');
   check('groupe modifié', modif && modif.corps.pax === 10);
