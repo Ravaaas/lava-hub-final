@@ -52,12 +52,11 @@ export function Groupes() {
             <div key={g.id} className="fc" role="button" tabIndex={0} onClick={() => { setOuvert(g.id); }}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOuvert(g.id); } }}>
               <div className="fc-top"><div className="fc-name">{g.nom}</div><div className="fc-cat">{infos}</div></div>
-              {(conflit || g.allergenes.length > 0) && (
-                <div className="fc-tags">
-                  {conflit && <span className="tag tag-danger"><Icone nom="alert" taille={14} />Conflit avec le menu</span>}
-                  <Etiquettes liste={g.allergenes} effectifs={g.effectifs} />
-                </div>
-              )}
+              {/* toujours une ligne d'étiquettes : toutes les cartes ont la même hauteur, avec ou sans allergie */}
+              <div className="fc-tags">
+                {conflit && <span className="tag tag-danger"><Icone nom="alert" taille={14} />Conflit avec le menu</span>}
+                {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span className="tag">Aucune allergie</span>}
+              </div>
             </div>
           );
         })}
