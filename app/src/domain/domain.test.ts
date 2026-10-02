@@ -8,6 +8,7 @@ import { alertesGroupe, menuDuGroupe, platsDuMenu, servicesAffiches, servicesAEn
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
 import { erreurGroupe, groupesEnConflit, groupesFiltres } from './groupes';
 import { normNom } from './texte';
+import { scriptPrincipal } from './version';
 import type { Fiche, FicheRecette, Groupe, Membre, Menu, ProfilConnexion } from './types';
 
 const fiche = (id: string, nom: string, allergenes: string[] = [], extra: Partial<Fiche> = {}): Fiche =>
@@ -204,5 +205,13 @@ describe('groupes', () => {
     expect(groupesEnConflit({ date: '2026-10-01', heure: '14:00', salle: 'Terrasse' }, [o])).toHaveLength(0);
     expect(groupesEnConflit({ date: '2026-10-01', heure: '12:30', salle: 'Salon Basalte' }, [o])).toHaveLength(0);
     expect(groupesEnConflit({ id: 'o', date: '2026-10-01', heure: '12:30', salle: 'Terrasse' }, [o])).toHaveLength(0);
+  });
+});
+
+describe('version publiée', () => {
+  it('lit le fichier de code principal de la page compilée', () => {
+    const html = '<link rel="modulepreload" href="./assets/react-1.js">\n  <script type="module" crossorigin src="./assets/index-ktgIBNVO.js"></script>';
+    expect(scriptPrincipal(html)).toBe('./assets/index-ktgIBNVO.js');
+    expect(scriptPrincipal('<html>page d\'erreur</html>')).toBeNull();
   });
 });

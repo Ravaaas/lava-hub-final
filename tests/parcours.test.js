@@ -516,6 +516,18 @@ scenario('Journal', {}, async (a) => {
   check('filtre Modifications', await a.attendPlus('Onglet Partages') && await a.voit('VELOUTÉ CURRY'));
 });
 
+scenario('Nouvelle version', {}, async (a, page, base) => {
+  const relire = () => page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await relire(); await sleep(800);
+  check('pas de bandeau sans nouvelle publication', !(await a.voit('Nouvelle version disponible')));
+  base.etat.nouvelleVersion = true;
+  await relire();
+  check('nouvelle publication : bandeau affiché', await a.attend('Nouvelle version disponible'));
+  base.etat.nouvelleVersion = false;
+  await a.clic('Recharger');
+  check('« Recharger » recharge la page', await a.attendClic('Cuisine') && !(await a.voit('Nouvelle version disponible')));
+});
+
 scenario('Téléphone', { mobile: true }, async (a, page) => {
   check('connexion sur téléphone', await a.connexion('Cuisine', 'Alexandre RAVASIO'));
   const debords = [];
@@ -549,7 +561,13 @@ scenario('Téléphone', { mobile: true }, async (a, page) => {
     page.on('pageerror', e => erreurs.push(`[${s.nom}] PAGEERROR ${e.message}`));
     page.on('dialog', d => d.accept());
     await page.setRequestInterception(true);
-    page.on('request', req => { if (req.url().includes(HOST) && !req.url().includes('/realtime/')) base.gerer(req); else req.continue(); });
+    page.on('request', req => {
+      if (req.url().includes(HOST) && !req.url().includes('/realtime/')) return base.gerer(req);
+      // « Nouvelle version » : l'app relit la page publiée ; on simule une publication en changeant le nom du fichier de code
+      if (base.etat.nouvelleVersion && req.resourceType() === 'fetch' && req.url().startsWith(APP_URL) && new URL(req.url()).pathname.endsWith('/'))
+        return req.respond({ status: 200, contentType: 'text/html', body: '<script type="module" crossorigin src="./assets/index-NOUVELLE.js"></script>' });
+      req.continue();
+    });
     await page.evaluateOnNewDocument(OUTILS);
     await page.goto(APP_URL, { waitUntil: 'networkidle2', timeout: 40000 });
     const a = actions(page, base);

@@ -352,6 +352,9 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .toast.show{opacity:1;transform:translate(-50%,0)}
 .toast.ok{background:color-mix(in srgb,var(--ok-solid) 94%,transparent);color:#fff}
 .toast.err{background:color-mix(in srgb,var(--danger-solid) 94%,transparent);color:#fff}
+/* bandeau « Nouvelle version disponible » : en haut (la barre d'onglets du téléphone est en bas), reste jusqu'au rechargement */
+.maj{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:600;display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:8px 8px 8px 20px;background:color-mix(in srgb,var(--ink) 92%,transparent);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-radius:999px;box-shadow:var(--sh3);font-size:14px;font-weight:600;color:var(--bg);white-space:nowrap}
+.maj-btn{height:34px;padding:0 16px;border:0;border-radius:999px;background:var(--accent);color:var(--accent-ink);font:inherit;cursor:pointer}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 .spinner{width:26px;height:26px;margin:0 auto;border:3px solid var(--fill2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
@@ -458,6 +461,7 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   body:has(.fd.open) *:has(.fd.open){margin:0;padding:0;max-width:none;position:static}
   .fd.open{position:static;overflow:visible;animation:none;background:#fff}
   .fd.open .fd-nav{display:none}
+  .maj{display:none}
   .fd.open .fd-content{max-width:none;padding:0}
   .fdoc{min-height:0;border-radius:0;box-shadow:none}
   .fdoc-hdr,.fdoc-body{padding:0}

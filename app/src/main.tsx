@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { NouvelleVersion } from './ui/NouvelleVersion';
 import './styles.css';
 
 // Thème clair par défaut ; sombre seulement si la personne l'a choisi (menu du profil).
@@ -13,4 +14,4 @@ if (import.meta.env.MODE === 'live') await (await import('./apercuReel')).prepar
 
 const root = document.getElementById('root');
 if (!root) throw new Error('#root absent de index.html');
-createRoot(root).render(<StrictMode><App /></StrictMode>);
+createRoot(root).render(<StrictMode><App /><NouvelleVersion /></StrictMode>);

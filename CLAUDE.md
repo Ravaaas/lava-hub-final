@@ -21,7 +21,7 @@ publié sur GitHub Pages (https://ravaaas.github.io/lava-hub-final/) par `.githu
 - `db/` : un module par table. Toute lecture passe par `lecture.ts` (valeur inattendue → valeur vide, jamais d'erreur) ; toute écriture fait
   `.select()` et renvoie un `Resultat` vérifié par `denied` (la RLS ne renvoie pas d'erreur, seulement 0 ligne). `database.types.ts` est écrit à la main d'après la base.
 - `etat/` : `Session` (connexion, rôle, déconnexion après 30 min) et `Donnees` (listes, rechargement en direct, photos à la demande, `journal()`).
-- `ui/` : `Fenetre` (modale role=dialog ; Échap ferme le calque du dessus), `PleinEcran`, `Notifications` (role=status), `Confirmation`, `Puces`, `Icone`, `useReordonner`.
+- `ui/` : `Fenetre` (modale role=dialog ; Échap ferme le calque du dessus), `PleinEcran`, `Notifications` (role=status), `Confirmation`, `Puces`, `Icone`, `useReordonner`, `NouvelleVersion` (bandeau « Nouvelle version disponible » : le site publié est relu chaque minute et au retour sur l'onglet, version compilée seulement).
 - `screens/` : un dossier par onglet. Fiches technique, recette et groupe : « Imprimer » = impression du navigateur de la fiche affichée (`@media print` dans `styles.css`, l'écran et le papier sont identiques). `pdf/` : PDF du menu et export de fiches (Config), avec jsPDF chargé à la demande.
 - `styles.css` : feuille de style unique ; les écrans réutilisent ses classes. Charte : voir `DESIGN.md`.
 - React échappe le texte : jamais de `dangerouslySetInnerHTML`. CSP stricte dans `app/index.html` (aucun script en ligne ; connexions vers Supabase seulement).
