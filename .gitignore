@@ -2,3 +2,6 @@ node_modules/
 dist/
 # aperçu local des captures avant / après (images lourdes, pas dans le dépôt)
 apercu-design.html
+.env.local
+.env*
+tests/donnees-reelles.json

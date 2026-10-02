@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Groupe } from '../../domain/types';
-import { alertesGroupe, platsDuMenu } from '../../domain/menus';
+import { alertesGroupe, menuDuGroupe, platsDuMenu } from '../../domain/menus';
 import { dateCourte, groupesFiltres } from '../../domain/groupes';
 import { contient, heureFr, pluriel } from '../../domain/texte';
 import { supprimerGroupe } from '../../db/groupes';
@@ -47,7 +47,7 @@ export function Groupes() {
         {pret && !liste.length && <Vide icone="users" titre="Aucun groupe" texte="Rien à afficher ici" />}
         {liste.map(g => {
           const conflit = alertesGroupe(g, menus, fichesRecette, fiches).length > 0;
-          const infos = [dateCourte(g.date), heureFr(g.heure), `${g.pax} pers.`, g.salle, menus.find(m => m.id === g.menu_id)?.nom ?? g.menu_nom ?? ''].filter(Boolean).join(' · ');
+          const infos = [dateCourte(g.date), heureFr(g.heure), `${g.pax} pers.`, g.salle, menus.find(m => m.id === g.menu_id)?.nom ?? g.menu_nom ?? (g.plats.length ? 'Sur mesure' : '')].filter(Boolean).join(' · ');
           return (
             <div key={g.id} className="fc" role="button" tabIndex={0} onClick={() => { setOuvert(g.id); }}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOuvert(g.id); } }}>
@@ -73,9 +73,8 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
   const { peutGererGroupes } = useMoi();
   const notifier = useNotifier();
   const confirmer = useConfirmer();
-  const m = menus.find(x => x.id === g.menu_id);
+  const m = menuDuGroupe(g, menus);
   const plats = m ? platsDuMenu(m, fichesRecette, fiches) : [];
-  const alertes = alertesGroupe(g, menus, fichesRecette, fiches);
   const info = (l: string, v: string) => v ? <div><div className="fdoc-fl">{l}</div><div className="fdoc-fv" style={{ fontSize: '0.95rem' }}>{v}</div></div> : null;
 
   const supprimer = async () => {
@@ -105,21 +104,16 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '1rem' }}>
-            {info('Date', dateCourte(g.date))}{info('Arrivée des clients', heureFr(g.heure))}{info('Personnes', String(g.pax))}{info('Salle', g.salle)}{info('Reçu par', g.source)}
+            {info('Date', dateCourte(g.date))}{info('Arrivée des clients', heureFr(g.heure))}{info('Personnes', String(g.pax))}{info('Salle', g.salle)}
           </div>
           <div className="fdoc-ptitle">Menu choisi{m ? ` — ${m.nom}` : ''}</div>
           {plats.length
             ? <div className="fdoc-steps">{plats.map((p, i) => (
                 <div key={i} className="fdoc-step"><div className="fdoc-snum">{i + 1}</div>
-                  <div className="fdoc-stxt">{p.nom}{p.allergenes.length > 0 && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={p.allergenes} /></div>}</div>
+                  <div className="fdoc-stxt">{p.nom}{p.allergenes.some(a => g.allergenes.includes(a)) && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={p.allergenes.filter(a => g.allergenes.includes(a))} effectifs={g.effectifs} /></div>}</div>
                 </div>))}</div>
             : <div className="ci-label" style={{ color: 'var(--gt)' }}>{m ? "Ce menu n'a pas encore de plats." : 'Menu sur mesure — voir les notes.'}</div>}
           <div className="fdoc-ptitle">Restrictions</div>
-          {alertes.length > 0 && (
-            <div role="alert" style={{ background: '#FBEDEC', border: '1px solid #E2B5B1', borderRadius: 12, padding: '0.75rem 1rem', marginBottom: '0.75rem', color: '#8C302A', fontSize: '0.9375rem', fontWeight: 600 }}>
-              {alertes.map((a, i) => <div key={i}><Icone nom="alert" /> {a.plat} : {a.allergenes.join(', ')}</div>)}
-            </div>
-          )}
           <div className="fr-allerg-sub" style={{ marginTop: 0 }}><span className="fr-allerg-sub-lbl">Allergies</span>
             {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span style={{ fontSize: '0.875rem', color: 'var(--gt)' }}>Aucune déclarée</span>}</div>
           {g.regimes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Régimes</span><Etiquettes liste={g.regimes} effectifs={g.effectifs} /></div>}

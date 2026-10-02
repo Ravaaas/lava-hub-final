@@ -1,8 +1,9 @@
 import type { jsPDF as JsPDF } from 'jspdf';
 import type { Fiche, FicheRecette, Groupe, Menu } from '../domain/types';
-import { alertesGroupe, platAffiche, platsDuMenu, servicesAffiches } from '../domain/menus';
+import { menuDuGroupe, platAffiche, platsDuMenu, servicesAffiches } from '../domain/menus';
 import { dateLongue } from '../domain/groupes';
 import { heureFr } from '../domain/texte';
+import { libelleEffectif } from '../domain/allergenes';
 import { BORD_PASTILLE, BORDURE, GRIS_FONCE, NOIR, ROSE_ALT, ROSE_PASTILLE, ROUGE, dessinerPastilles, hauteurPastilles, type Couleur, type OutilsPdf } from './commun';
 
 /** Menu : chaque plat sur trois niveaux (titre, éléments, allergènes en pastilles), lignes roses alternées. */
@@ -60,11 +61,15 @@ export function pdfMenu(o: OutilsPdf, m: Menu, frs: readonly FicheRecette[], fic
 }
 
 
-const FOND_ALERTE: Couleur = [251, 237, 236];
+/** Un seul trait pour toute la fiche groupe : même épaisseur, même couleur (filets et cadres). */
+const EPAISSEUR = 0.4;
 const TEXTE_ALERTE: Couleur = [140, 48, 42];
+const BLANC: Couleur = [255, 255, 255];
+const RETRAIT = 4;      // texte à l'intérieur d'un cadre ou d'une ligne : toujours 4 mm du bord
+const LIGNE = 11;       // pas d'une ligne d'allergie, de régime ou d'état vide (cadre de 9 mm + 2 mm)
 
 /**
- * Fiche groupe, lisible d'un coup d'œil : date, arrivée et nombre en gros, puis menu choisi,
+ * Fiche groupe, lisible d'un coup d'œil : date, arrivée et nombre en gros, puis menu,
  * allergies et régimes (un par ligne, avec le nombre de personnes), notes.
  */
 export function pdfGroupe(o: OutilsPdf, g: Groupe, menus: readonly Menu[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): JsPDF {
@@ -72,38 +77,44 @@ export function pdfGroupe(o: OutilsPdf, g: Groupe, menus: readonly Menu[], frs: 
   const mX = 20, W = 170, BAS = 282;
   let y = 18;
   const place = (h: number) => { if (y + h > BAS) { doc.addPage(); y = 18; } };
+  const trait = (fond: Couleur) => { doc.setFillColor(...fond); doc.setDrawColor(...ROUGE); doc.setLineWidth(EPAISSEUR); };
   const texte = (txt: string, x: number, yy: number, taille: number, gras: boolean, couleur: Couleur, opts?: { align?: 'right' | 'center' }) => {
     doc.setFont('helvetica', gras ? 'bold' : 'normal'); doc.setFontSize(taille); doc.setTextColor(...couleur);
     doc.text(txt, x, yy, opts);
   };
+  const filet = (yy: number) => { trait(BLANC); doc.line(mX, yy, mX + W, yy); };
   const titre = (txt: string) => {
-    place(20);
-    y += 7;
+    place(24);
+    y += 9;
     texte(txt, mX, y, 11, true, ROUGE);
-    doc.setDrawColor(...ROUGE); doc.setLineWidth(0.4); doc.line(mX, y + 1.8, mX + W, y + 1.8);
+    filet(y + 2);
     y += 8;
   };
   /** Une ligne par élément : nom à gauche en gros, nombre de personnes à droite. */
   const lignes = (noms: readonly string[]) => {
     for (const n of noms) {
-      place(11);
-      doc.setFillColor(...ROSE_PASTILLE); doc.setDrawColor(...BORD_PASTILLE); doc.setLineWidth(0.2);
-      doc.roundedRect(mX, y, W, 9, 2, 2, 'FD');
-      texte(n, mX + 4, y + 6.3, 13, true, NOIR);
+      place(LIGNE);
+      trait(ROSE_PASTILLE); doc.roundedRect(mX, y, W, 9, 2, 2, 'FD');
+      texte(n, mX + RETRAIT, y + 6.3, 13, true, NOIR);
       const nb = g.effectifs[n];
-      if (nb) texte(`${nb} ${nb === 1 ? 'personne' : 'personnes'}`, mX + W - 4, y + 6.3, 13, true, ROUGE, { align: 'right' });
-      y += 11;
+      if (nb) texte(`${nb} ${nb === 1 ? 'personne' : 'personnes'}`, mX + W - RETRAIT, y + 6.3, 13, true, ROUGE, { align: 'right' });
+      y += LIGNE;
     }
   };
-  const vide = (txt: string) => { place(8); texte(txt, mX + 2, y + 3, 12, false, GRIS_FONCE); y += 9; };
+  /** État vide : même ligne que les autres, pour que la page garde le même rythme avec ou sans allergie. */
+  const vide = (txt: string) => {
+    place(LIGNE);
+    trait(BLANC); doc.roundedRect(mX, y, W, 9, 2, 2, 'FD');
+    texte(txt, mX + RETRAIT, y + 6.3, 12, false, GRIS_FONCE);
+    y += LIGNE;
+  };
 
   // En-tête
   texte('FICHE GROUPE', mX, y, 10, true, ROUGE);
   y += 9;
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(24);
   for (const l of doc.splitTextToSize(g.nom.toUpperCase(), W) as string[]) { texte(l, mX, y, 24, true, NOIR); y += 10; }
-  doc.setDrawColor(...ROUGE); doc.setLineWidth(0.8); doc.line(mX, y - 4, mX + W, y - 4);
-  y += 2;
+  filet(y - 4);
+  y += 4;
 
   // Trois cases : date, arrivée des clients, nombre de personnes
   const cases: { etiquette: string; valeur: string; taille: number; largeur: number }[] = [
@@ -113,39 +124,26 @@ export function pdfGroupe(o: OutilsPdf, g: Groupe, menus: readonly Menu[], frs: 
   ];
   let x = mX;
   for (const c of cases) {
-    doc.setFillColor(...ROSE_ALT); doc.setDrawColor(...BORDURE); doc.setLineWidth(0.2);
-    doc.roundedRect(x, y, c.largeur, 24, 2.5, 2.5, 'FD');
-    texte(c.etiquette, x + 4, y + 6.5, 7.5, true, GRIS_FONCE);
-    const v = doc.splitTextToSize(c.valeur, c.largeur - 8) as string[];
-    texte(v.join(' '), x + 4, y + 17.5, c.taille, true, NOIR);
+    trait(ROSE_ALT); doc.roundedRect(x, y, c.largeur, 24, 2.5, 2.5, 'FD');
+    texte(c.etiquette, x + RETRAIT, y + 6.5, 7.5, true, GRIS_FONCE);
+    texte((doc.splitTextToSize(c.valeur, c.largeur - 2 * RETRAIT) as string[]).join(' '), x + RETRAIT, y + 17.5, c.taille, true, NOIR);
     x += c.largeur + 3;
   }
-  y += 28;
+  y += 24;
 
-  // Plats du menu qui contiennent une allergie du groupe
-  const alertes = alertesGroupe(g, menus, frs, fiches);
-  if (alertes.length) {
-    const h = 10 + alertes.length * 7;
-    place(h + 4);
-    doc.setFillColor(...FOND_ALERTE); doc.setDrawColor(...TEXTE_ALERTE); doc.setLineWidth(0.5);
-    doc.roundedRect(mX, y, W, h, 2.5, 2.5, 'FD');
-    texte('ATTENTION — plats du menu en conflit avec les allergies', mX + 4, y + 7, 11, true, TEXTE_ALERTE);
-    alertes.forEach((a, i) => { texte(`${a.plat} : ${a.allergenes.join(', ')}`, mX + 4, y + 14.5 + i * 7, 11, false, TEXTE_ALERTE); });
-    y += h + 4;
-  }
-
-  // Menu choisi
-  const m = menus.find(x2 => x2.id === g.menu_id);
-  titre('MENU CHOISI' + (m ? ' — ' + m.nom.toUpperCase() : ''));
+  // Menu : un plat par ligne ; seules les allergies du groupe qui le concernent, avec le nombre de personnes (× 2)
+  const m = menuDuGroupe(g, menus);
+  titre('MENU' + (m?.id ? ' — ' + m.nom.toUpperCase() : ''));
   const plats = m ? platsDuMenu(m, frs, fiches) : [];
   if (!plats.length) vide(m ? "Ce menu n'a pas encore de plats." : 'Menu sur mesure — voir les notes.');
   plats.forEach((p, i) => {
-    place(14);
-    texte(`${i + 1}.`, mX + 2, y + 4, 13, true, ROUGE);
-    texte(p.nom, mX + 11, y + 4, 13, false, NOIR);
-    y += 7;
-    if (p.allergenes.length) { place(8); texte('Contient : ' + p.allergenes.join(', '), mX + 11, y + 1, 9.5, false, GRIS_FONCE); y += 6; }
-    y += 1.5;
+    const concernees = p.allergenes.filter(a => g.allergenes.includes(a));
+    place(concernees.length ? 17 : 10);
+    texte(`${i + 1}.`, mX + RETRAIT, y + 4, 13, true, ROUGE);
+    texte(p.nom, mX + 13, y + 4, 13, false, NOIR);
+    y += 8;
+    if (concernees.length) { texte(concernees.map(a => libelleEffectif(a, g.effectifs)).join('   ·   '), mX + 13, y + 0.5, 11, true, TEXTE_ALERTE); y += 7; }
+    y += 1;
   });
 
   // Allergies et régimes
@@ -156,16 +154,14 @@ export function pdfGroupe(o: OutilsPdf, g: Groupe, menus: readonly Menu[], frs: 
 
   // Notes : la case reste assez grande pour écrire à la main
   titre('NOTES');
-  const notes = g.notes ? doc.splitTextToSize(g.notes, W - 8) as string[] : [];
+  const notes = g.notes ? doc.splitTextToSize(g.notes, W - 2 * RETRAIT) as string[] : [];
   const h = Math.max(38, notes.length * 6 + 8);
   place(Math.min(h, 60));
-  doc.setDrawColor(...BORDURE); doc.setLineWidth(0.3);
-  doc.roundedRect(mX, y, W, h, 2.5, 2.5, 'D');
-  notes.forEach((l, i) => { texte(l, mX + 4, y + 8 + i * 6, 11.5, false, NOIR); });
-  y += h + 4;
+  trait(BLANC); doc.roundedRect(mX, y, W, h, 2.5, 2.5, 'FD');
+  notes.forEach((l, k) => { texte(l, mX + RETRAIT, y + 8 + k * 6, 11.5, false, NOIR); });
+  y += h + 5;
 
   // Pied discret
-  const pied = [g.salle && `Salle : ${g.salle}`, g.source && `Reçu par : ${g.source}`].filter(Boolean).join('   ·   ');
-  if (pied) { place(8); texte(pied, mX, y + 2, 9, false, GRIS_FONCE); }
+  if (g.salle) { place(8); texte(`Salle : ${g.salle}`, mX, y, 9, false, GRIS_FONCE); }
   return doc;
 }

@@ -2,7 +2,7 @@
   "name": "lava-hub",
   "private": true,
   "scripts": {
-    "apercu": "vite --open",
+    "apercu": "vite --mode live",
     "dev": "vite --mode demo",
     "build": "tsc && vite build",
     "test": "vitest run",

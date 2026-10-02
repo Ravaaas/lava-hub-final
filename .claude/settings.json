@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run check)",
+      "Bash(npm run lint)",
+      "Bash(npm run test)",
+      "Bash(npm run secrets)",
+      "Bash(npm run parcours)",
+      "Bash(npm run build)",
+      "Bash(npx tsc --noEmit -p .)",
+      "Bash(npx eslint app)",
+      "mcp__plugin_supabase_supabase__search_docs",
+      "mcp__claude_ai_Composio__COMPOSIO_SEARCH_TOOLS",
+      "mcp__claude_ai_Composio__COMPOSIO_GET_TOOL_SCHEMAS",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" run list *)",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" run view *)",
+      "Bash(\"C:/Program Files/GitHub CLI/gh.exe\" auth status)"
+    ]
+  }
+}

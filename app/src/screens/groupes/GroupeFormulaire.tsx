@@ -1,27 +1,29 @@
 import { useId, useState } from 'react';
-import type { Groupe } from '../../domain/types';
+import type { Groupe, Plat } from '../../domain/types';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
-import { SALLES, SOURCES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit } from '../../domain/groupes';
+import { SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit } from '../../domain/groupes';
+import { platAffiche, servicesAEnregistrer } from '../../domain/menus';
 import { creerGroupe, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
 import { useNotifier } from '../../ui/Notifications';
 import { heureFr } from '../../domain/texte';
+import { Icone } from '../../ui/Icone';
 import { Puces } from '../../ui/Puces';
 import { useConfirmer } from '../../ui/Confirmation';
 
 export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | null; onFermer: () => void }) {
-  const { menus, groupes, recharger, journal, setSynchro } = useDonnees();
+  const { menus, groupes, fichesRecette, recharger, journal, setSynchro } = useDonnees();
   const confirmer = useConfirmer();
   const notifier = useNotifier();
-  const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), salle: useId(), menu: useId(), source: useId(), notes: useId() };
+  const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), salle: useId(), menu: useId(), notes: useId() };
   const [nom, setNom] = useState(g?.nom ?? '');
   const [date, setDate] = useState(g?.date ?? aujourdhui());
   const [heure, setHeure] = useState(g?.heure ?? '');
   const [pax, setPax] = useState(g ? String(g.pax) : '');
   const [salle, setSalle] = useState(g?.salle || SALLES[0]);
-  const [source, setSource] = useState(g?.source || (g ? 'Autre' : SOURCES[0]));
   const [menuId, setMenuId] = useState(g?.menu_id ?? '');
+  const [plats, setPlats] = useState<Plat[]>(g?.plats ?? []);
   const [allergenes, setAllergenes] = useState<string[]>(g ? g.allergenes.filter(a => (ALLERGENES as readonly string[]).includes(a)) : []);
   const [regimes, setRegimes] = useState<string[]>(g ? g.regimes.filter(r => (REGIMES as readonly string[]).includes(r)) : []);
   const [effectifs, setEffectifs] = useState<Record<string, string>>(Object.fromEntries(Object.entries(g?.effectifs ?? {}).map(([k, v]) => [k, String(v)])));
@@ -31,8 +33,11 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
   const enregistrer = async () => {
     const menu = menus.find(m => m.id === menuId);
     const donnees: Omit<Groupe, 'id'> = {
-      nom: nom.trim(), date, heure, pax: pax.trim() ? Number(pax) : 0, salle, source,
-      menu_id: menu ? menu.id : null, menu_nom: menu ? menu.nom : null, allergenes, regimes, notes: notes.trim(),
+      nom: nom.trim(), date, heure, pax: pax.trim() ? Number(pax) : 0, salle,
+      menu_id: menu ? menu.id : null, menu_nom: menu ? menu.nom : null,
+      // plats sur mesure : seulement sans menu choisi ; fiches supprimées et plats libres vides écartés
+      plats: menu ? [] : (servicesAEnregistrer([{ nom: '', plats }], fichesRecette)[0]?.plats ?? []),
+      allergenes, regimes, notes: notes.trim(),
       // seuls les allergènes et régimes cochés gardent un nombre ; vide = non précisé
       effectifs: Object.fromEntries([...allergenes, ...regimes].filter(n => effectifs[n]?.trim()).map(n => [n, Number(effectifs[n])])),
     };
@@ -71,15 +76,12 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
         <div className="fg2"><label className="fl" htmlFor={id.salle}>Salle</label>
           <select className="fsel" id={id.salle} value={salle} onChange={e => { setSalle(e.target.value); }}>{liste(SALLES, salle).map(s => <option key={s}>{s}</option>)}</select></div>
       </div>
-      <div className="fr">
-        <div className="fg2"><label className="fl" htmlFor={id.menu}>Menu choisi</label>
+      <div className="fg2"><label className="fl" htmlFor={id.menu}>Menu choisi</label>
           <select className="fsel" id={id.menu} value={menuId} onChange={e => { setMenuId(e.target.value); }}>
             <option value="">Sur mesure</option>
             {menus.map(m => <option key={m.id} value={m.id}>{m.nom}</option>)}
           </select></div>
-        <div className="fg2"><label className="fl" htmlFor={id.source}>Reçu par</label>
-          <select className="fsel" id={id.source} value={source} onChange={e => { setSource(e.target.value); }}>{liste(SOURCES, source).map(s => <option key={s}>{s}</option>)}</select></div>
-      </div>
+      {!menuId && <PlatsSurMesure plats={plats} onChange={setPlats} />}
       <div className="fsect">Allergies déclarées</div>
       <Puces choix={ALLERGENES} selection={allergenes} onChange={setAllergenes} />
       <Nombres noms={allergenes} valeurs={effectifs} onChange={setEffectifs} />
@@ -102,4 +104,40 @@ function Nombres({ noms, valeurs, onChange }: { noms: readonly string[]; valeurs
         onChange={e => { onChange({ ...valeurs, [n]: e.target.value }); }} />
     </div>
   ));
+}
+
+/** Menu sur mesure : les plats se choisissent parmi les fiches recette, ou s'écrivent librement. */
+function PlatsSurMesure({ plats, onChange }: { plats: Plat[]; onChange: (p: Plat[]) => void }) {
+  const { fichesRecette, fiches } = useDonnees();
+  const [choix, setChoix] = useState('');
+  const [libre, setLibre] = useState('');
+  const recettes = fichesRecette.filter(f => f.statut !== 'archive').sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+  const selection = choix || recettes[0]?.id || '';
+  const ajouterLibre = () => { if (libre.trim()) { onChange([...plats, { texte: libre.trim() }]); setLibre(''); } };
+  const deplacer = (i: number, d: number) => { const c = [...plats]; const [x] = c.splice(i, 1); if (x) c.splice(i + d, 0, x); onChange(c); };
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '0.75rem', margin: '0.25rem 0 1rem' }}>
+      <div className="fsect" style={{ marginTop: 0 }}>Plats du menu sur mesure</div>
+      {plats.length === 0 && <div className="ci-label" style={{ color: 'var(--gt)', marginBottom: '0.5rem' }}>Aucun plat pour le moment.</div>}
+      {plats.map((p, i) => (
+        <div key={i} className="ci" style={{ marginBottom: '0.3rem' }}>
+          <span className="ci-label">{platAffiche(p, fichesRecette, fiches).nom}</span>
+          <button type="button" className="btn-rm" aria-label="Monter" disabled={i === 0} onClick={() => { deplacer(i, -1); }}>↑</button>
+          <button type="button" className="btn-rm" aria-label="Descendre" disabled={i === plats.length - 1} onClick={() => { deplacer(i, 1); }}>↓</button>
+          <button type="button" className="btn-rm" aria-label="Retirer ce plat" onClick={() => { onChange(plats.filter((_, k) => k !== i)); }}><Icone nom="x" /></button>
+        </div>
+      ))}
+      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
+        <select className="fsel" style={{ flex: 1 }} aria-label="Fiche recette à ajouter" value={selection} onChange={e => { setChoix(e.target.value); }}>
+          {recettes.length ? recettes.map(f => <option key={f.id} value={f.id}>{f.nom}</option>) : <option value="">Aucune fiche recette</option>}
+        </select>
+        <button type="button" className="btn btn-o btn-sm" onClick={() => { if (selection) onChange([...plats, { frId: selection }]); }}><Icone nom="plus" />Recette</button>
+      </div>
+      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
+        <input className="fi2" style={{ flex: 1 }} aria-label="Plat libre" placeholder="Ou un plat libre" value={libre} onChange={e => { setLibre(e.target.value); }}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouterLibre(); } }} />
+        <button type="button" className="btn btn-o btn-sm" onClick={ajouterLibre}><Icone nom="plus" />Libre</button>
+      </div>
+    </div>
+  );
 }

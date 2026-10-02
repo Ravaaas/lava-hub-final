@@ -1,7 +1,6 @@
 import type { Groupe } from './types';
 
-export const SALLES = ['Salle principale', 'Salon Basalte', 'Terrasse', 'Privatisation'] as const;
-export const SOURCES = ['Email', 'Téléphone', 'Zenchef', 'Autre'] as const;
+export const SALLES = ['Salle principale', 'Salon Basalte', 'Privatisation'] as const;
 
 /** Date du jour au format AAAA-MM-JJ (heure locale). */
 export const aujourdhui = (): string => new Date().toLocaleDateString('sv-SE');

@@ -53,9 +53,10 @@ export interface Groupe {
   heure: string;
   pax: number;
   salle: string;
-  source: string;
   menu_id: string | null;
   menu_nom: string | null;
+  /** Plats d'un menu sur mesure (sans menu_id) : fiches recette ou plats libres, dans l'ordre. */
+  plats: Plat[];
   allergenes: string[];
   regimes: string[];
   /** Nombre de personnes concernées par allergie ou régime (facultatif, par nom). */

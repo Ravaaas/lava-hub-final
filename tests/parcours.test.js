@@ -418,7 +418,7 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
     && cree.corps.allergenes === 'Gluten (2)' && cree.corps.regimes === 'Végétarien (3)' && cree.corps.notes === '2 enfants', JSON.stringify(cree && cree.corps));
   check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit avec le menu'));
   await a.clic('Anniversaire Leroy');
-  check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques\s*:\s*gluten/.test(await a.texte()));
+  check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques[\s\S]*gluten/.test(await a.texte()));
   check('fiche groupe : pas de « modifié par »', !(await a.voit('modifié par')));
   check('groupe : PDF', await a.ouvrePDF('Imprimer'));
   await a.clic('Modifier'); await a.remplir('Nombre de personnes', '10'); await a.clic('Enregistrer');
@@ -427,6 +427,16 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   await a.clic('Séminaire Dupont'); await a.clic('Supprimer'); await a.clic('Supprimer');
   const sup = await a.attendEcriture('groupes', 'DELETE');
   check('groupe supprimé', sup && sup.filtre.id === 'eq.g1' && await a.attendPlus('Séminaire Dupont'));
+  // Menu sur mesure : pas de menu choisi → on compose les plats (fiche recette ou plat libre)
+  await a.clic('Nouveau groupe');
+  await a.remplir('Nom du groupe', 'Cocktail Petit'); await a.remplir('Nombre de personnes', '15');
+  check('sur mesure : plats proposés', await a.voit('Plats du menu sur mesure'));
+  await a.remplir('Fiche recette à ajouter', 'CASSOLETTE DE SAINT-JACQUES'); await a.clic('Recette');
+  await a.remplir('Plat libre', 'Pain maison'); await a.clic('Libre');
+  await a.clic('Gluten'); await a.clic('Enregistrer');
+  const sm = await a.attendEcriture('groupes', 'POST');
+  check('menu sur mesure enregistré', sm && sm.corps.menu_id === null && JSON.stringify(sm.corps.plats_sur_mesure) === JSON.stringify([{ frId: 'r1' }, { text: 'Pain maison' }]), JSON.stringify(sm && sm.corps.plats_sur_mesure));
+  check("sur mesure : conflit avec l'allergie", await a.attend('Cocktail Petit') && await a.voit('Conflit avec le menu'));
 });
 
 scenario('Équipe', {}, async (a) => {

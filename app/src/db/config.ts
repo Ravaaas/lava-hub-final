@@ -20,7 +20,7 @@ export const enregistrerReglages = (r: Reglages): Promise<Resultat> =>
   prudent(async () => verifier(await supabase.from('lava_config').upsert({ id: 'main', data: versJson({ ...r.autres, cats: r.categories }) }).select('id')));
 
 // Anciens menus : liste plate de plats {plats:[...]} → un seul temps sans nom. Plats : {frId} ou {text}.
-function lirePlat(v: unknown): Plat | null {
+export function lirePlat(v: unknown): Plat | null {
   const o = objet(v);
   if (texte(o.frId)) return { frId: texte(o.frId) };
   return texte(o.text) ? { texte: texte(o.text) } : null;

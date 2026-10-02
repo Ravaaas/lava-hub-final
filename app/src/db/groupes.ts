@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase';
 import type { Groupe } from '../domain/types';
 import { avecEffectifs, joindre, listeAllergenes, separerEffectifs } from '../domain/allergenes';
+import { lirePlat } from './config';
+import { tableau } from './lecture';
 import { prudent, verifier, type Resultat } from './resultat';
 
 export async function chargerGroupes(): Promise<Groupe[]> {
@@ -16,9 +18,9 @@ export async function chargerGroupes(): Promise<Groupe[]> {
     heure: l.heure ?? '',
     pax: l.pax,
     salle: l.salle ?? '',
-    source: l.source ?? '',
     menu_id: l.menu_id,
     menu_nom: l.menu_nom,
+    plats: tableau(l.plats_sur_mesure).map(lirePlat).filter(p => p !== null),
     allergenes: al.noms,
     regimes: re.noms,
     effectifs: { ...al.effectifs, ...re.effectifs },
@@ -28,8 +30,8 @@ export async function chargerGroupes(): Promise<Groupe[]> {
 }
 
 // Les nombres de personnes sont rangés dans le texte des colonnes existantes : « Gluten (2), Lactose ».
-const versLigne = ({ effectifs, ...g }: Omit<Groupe, 'id'>) =>
-  ({ ...g, allergenes: joindre(avecEffectifs(g.allergenes, effectifs)), regimes: joindre(avecEffectifs(g.regimes, effectifs)) });
+const versLigne = ({ effectifs, plats, ...g }: Omit<Groupe, 'id'>) =>
+  ({ ...g, plats_sur_mesure: plats.map(p => ('frId' in p ? { frId: p.frId } : { text: p.texte })), allergenes: joindre(avecEffectifs(g.allergenes, effectifs)), regimes: joindre(avecEffectifs(g.regimes, effectifs)) });
 
 export const creerGroupe = (g: Omit<Groupe, 'id'>): Promise<Resultat> =>
   prudent(async () => verifier(await supabase.from('groupes').insert(versLigne(g)).select('id')));

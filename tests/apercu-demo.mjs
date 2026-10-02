@@ -11,11 +11,23 @@ try {
   localStorage.setItem('sb-' + HOST.split('.')[0] + '-auth-token', JSON.stringify(jeton));
 } catch { /* stockage indisponible : on passera par l'écran de connexion (mot de passe : bon-mot-de-passe) */ }
 
+// Copie des vraies données (facultative) : si tests/donnees-reelles.json existe (une sauvegarde téléchargée dans
+// Config > Sauvegarde, jamais poussée sur GitHub), ses tables remplacent celles de la base simulée.
+let reelles = false;
+const pret = import(/* @vite-ignore */ '/@fs' + new URL('./donnees-reelles.json', import.meta.url).pathname)
+  .then(({ default: d }) => {
+    for (const [table, lignes] of [['fiches', d.fiches], ['fiches_recette', d.fiches_recette], ['groupes', d.groupes], ['membres', d.membres], ['lava_config', d.config]]) {
+      if (Array.isArray(lignes)) { base.db[table] = lignes; reelles = true; }
+    }
+  })
+  .catch(() => { /* pas de fichier : données fictives */ });
+
 // Les appels vers Supabase sont traités par la base simulée, les autres passent normalement.
 const natif = window.fetch.bind(window);
 window.fetch = async (entree, init) => {
   const req = new Request(entree, init);
   if (!req.url.includes(HOST) || req.url.includes('/realtime/')) return natif(req);
+  await pret;
   const corps = await req.clone().text();
   return new Promise(resolve => base.gerer({
     url: () => req.url,

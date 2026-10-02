@@ -52,10 +52,17 @@ export function platAffiche(p: Plat, frs: readonly FicheRecette[], fiches: reado
 export const platsDuMenu = (m: Menu, frs: readonly FicheRecette[], fiches: readonly Fiche[]): PlatAffiche[] =>
   servicesAffiches(m).flatMap(s => s.plats).map(p => platAffiche(p, frs, fiches));
 
+/** Menu d'un groupe : le menu choisi, ou à défaut un menu « sur mesure » fait de ses plats. */
+export function menuDuGroupe(g: Groupe, menus: readonly Menu[]): Menu | undefined {
+  const m = menus.find(x => x.id === g.menu_id);
+  if (m || !g.plats.length) return m;
+  return { id: '', nom: 'Sur mesure', services: [{ nom: '', plats: g.plats }] };
+}
+
 /** Plats du menu d'un groupe qui contiennent une allergie déclarée par le groupe. */
 export function alertesGroupe(g: Groupe, menus: readonly Menu[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): { plat: string; allergenes: string[] }[] {
   const declarees = new Set(g.allergenes);
-  const m = menus.find(x => x.id === g.menu_id);
+  const m = menuDuGroupe(g, menus);
   if (!declarees.size || !m) return [];
   return platsDuMenu(m, frs, fiches)
     .map(p => ({ plat: p.nom, allergenes: p.allergenes.filter(a => declarees.has(a)) }))

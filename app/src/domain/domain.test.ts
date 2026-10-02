@@ -4,7 +4,7 @@ import { identifiantPour, profilsClasses, verifierMotDePasse, postesProposes, et
 import { diffFiche, lireConditionnement, quantiteAffichee, quantitePour } from './fiches';
 import { allergenesDesElements, diffFicheRecette, elementsResolus } from './fichesRecette';
 import { lignesJournal, libelleJour } from './journal';
-import { alertesGroupe, platsDuMenu, servicesAffiches, servicesAEnregistrer } from './menus';
+import { alertesGroupe, menuDuGroupe, platsDuMenu, servicesAffiches, servicesAEnregistrer } from './menus';
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
 import { erreurGroupe, groupesEnConflit, groupesFiltres } from './groupes';
 import { normNom } from './texte';
@@ -123,7 +123,7 @@ describe('menus', () => {
   });
   it('alerte un groupe allergique à un plat de son menu', () => {
     const menus: Menu[] = [{ id: 'm1', nom: 'Carte du soir', services: [{ nom: 'Plat', plats: [{ frId: 'r1' }, { frId: 'r2' }] }] }];
-    const g = { allergenes: ['Gluten', 'Soja'], menu_id: 'm1' } as Groupe;
+    const g = { allergenes: ['Gluten', 'Soja'], menu_id: 'm1', plats: [] } as unknown as Groupe;
     expect(alertesGroupe(g, menus, frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'] }]);
     expect(alertesGroupe({ ...g, menu_id: null }, menus, frs, [])).toEqual([]);
   });
@@ -186,6 +186,13 @@ describe('groupes', () => {
     expect(effectifs).toEqual({ Gluten: 2 });
     expect(avecEffectifs(noms, effectifs)).toEqual(['Gluten (2)', 'Lactose']);
     expect(erreurGroupe({ nom: 'X', date: '2026-10-01', pax: 4, effectifs: { Gluten: 5 } })).toMatch(/entre 1 et 4/);
+  });
+  it('menu sur mesure : les plats du groupe tiennent lieu de menu et alertent comme un menu', () => {
+    const frs = [{ id: 'r1', nom: 'CASSOLETTE', allergenes: ['Gluten'], elements: [] }] as unknown as FicheRecette[];
+    const g = { menu_id: null, plats: [{ frId: 'r1' }, { texte: 'Pain maison' }], allergenes: ['Gluten'] } as unknown as Groupe;
+    expect(menuDuGroupe(g, [])?.nom).toBe('Sur mesure');
+    expect(menuDuGroupe({ ...g, plats: [] }, [])).toBeUndefined();
+    expect(alertesGroupe(g, [], frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'] }]);
   });
   it('même jour : trié par heure', () => {
     const l = [{ ...g('b', '2026-10-01'), heure: '20:00' }, { ...g('a', '2026-10-01'), heure: '12:00' }];

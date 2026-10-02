@@ -25,16 +25,16 @@ const securite = (): Plugin => ({
 // Le code de l'app est dans app/ ; la version compilée va dans dist/, publiée sur GitHub Pages.
 // base './' : le site fonctionne aussi bien sur GitHub Pages (/lava-hub-final/) qu'en local.
 // Mode démo (npm run dev) : aperçu déjà connecté, sur la base simulée. Jamais dans la version compilée.
-const demo = (): Plugin => ({
-  name: 'lava-demo',
+const apercu = (script: string): Plugin => ({
+  name: 'lava-apercu',
   apply: 'serve',
-  transformIndexHtml: () => [{ tag: 'script', attrs: { type: 'module', src: `/@fs${new URL('./tests/apercu-demo.mjs', import.meta.url).pathname}` }, injectTo: 'head-prepend' }],
+  transformIndexHtml: () => [{ tag: 'script', attrs: { type: 'module', src: `/@fs${new URL(`./tests/${script}`, import.meta.url).pathname}` }, injectTo: 'head-prepend' }],
 });
 
 export default defineConfig(({ mode }) => ({
   root: 'app',
   base: './',
-  plugins: [react(), securite(), ...(mode === 'demo' ? [demo()] : [])],
+  plugins: [react(), securite(), ...(mode === 'demo' ? [apercu('apercu-demo.mjs')] : mode === 'live' ? [apercu('apercu-reel.mjs')] : [])],
   server: { fs: { allow: ['..'] } },   // le script de démo est hors de app/
   build: {
     outDir: '../dist',
