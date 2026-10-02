@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react';
 import type { Menu } from '../../domain/types';
 import { MENUS_DE_DEPART, platAffiche, servicesAffiches } from '../../domain/menus';
+import { pluriel } from '../../domain/texte';
 import { enregistrerMenus } from '../../db/config';
 import { useDonnees } from '../../etat/Donnees';
 import { useMoi } from '../../etat/Session';
@@ -8,8 +9,6 @@ import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 import { useConfirmer } from '../../ui/Confirmation';
 import { Etiquettes } from '../../ui/Puces';
-import { ouvrirPdf } from '../../pdf/commun';
-import { pdfMenu } from '../../pdf/menuGroupe';
 import { MenuFormulaire } from './MenuFormulaire';
 
 /** Enregistre la liste complète des menus (une seule ligne en base) et journalise. */
@@ -26,7 +25,7 @@ export function useEnregistrerMenus() {
 }
 
 export function Menus() {
-  const { menus, fichesRecette, fiches } = useDonnees();
+  const { menus } = useDonnees();
   const { admin } = useMoi();
   const notifier = useNotifier();
   const confirmer = useConfirmer();
@@ -61,44 +60,56 @@ export function Menus() {
               <button key={m.id} type="button" role="tab" aria-selected={m.id === menu.id} className={`log-filter${m.id === menu.id ? ' active' : ''}`} onClick={() => { setChoisi(m.id); }}>{m.nom}</button>
             ))}
           </div>
-          <div className="cs">
-            <div className="cs-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <span>{menu.nom}</span>
-              <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                <button type="button" className="btn btn-g btn-sm" onClick={() => void ouvrirPdf(o => pdfMenu(o, menu, fichesRecette, fiches)).then(ok => { if (!ok) notifier('Erreur à la génération du PDF', 'err'); })}><Icone nom="printer" />Imprimer</button>
-                {admin && <>
-                  <button type="button" className="btn btn-g btn-sm" onClick={() => { setEdition({ menu }); }}>Modifier</button>
-                  <button type="button" className="btn btn-d btn-sm" onClick={() => void (async () => {
-                    if (!await confirmer(`Supprimer le menu "${menu.nom}" ?`)) return;
-                    if (await enregistrer(menus.filter(m => m.id !== menu.id), 'suppression menu', menu.nom)) notifier('Menu supprimé');
-                  })()}>Supprimer</button>
-                </>}
-              </span>
-            </div>
-            <div className="cl">
-              {servicesAffiches(menu).every(s => !s.plats.length && !s.nom) && <div className="ci-label" style={{ color: 'var(--gt)' }}>Aucun plat pour le moment.</div>}
-              {servicesAffiches(menu).map((s, i) => (!s.plats.length && !s.nom) ? null : (
-                <Fragment key={i}>
-                  {s.nom && <div className="fsect">{s.nom}</div>}
-                  {!s.plats.length && <div className="ci-label" style={{ color: 'var(--gt)' }}>Aucun plat</div>}
-                  {s.plats.map((p, k) => {
-                    const d = platAffiche(p, fichesRecette, fiches);
-                    return (
-                      <div key={k} className="ci">
-                        <span className="ci-label">{d.nom}
-                          {d.elements.length > 0 && <div className="ph-sub" style={{ fontWeight: 400, marginTop: '0.15rem' }}>{d.elements.join(' · ')}</div>}
-                        </span>
-                        <span><Etiquettes liste={d.allergenes} /></span>
-                      </div>
-                    );
-                  })}
-                </Fragment>
-              ))}
-            </div>
+          <div className="menu-actions">
+            <button type="button" className="btn btn-g btn-sm" onClick={() => { window.print(); }}><Icone nom="printer" />Imprimer</button>
+            {admin && <>
+              <button type="button" className="btn btn-g btn-sm" onClick={() => { setEdition({ menu }); }}>Modifier</button>
+              <button type="button" className="btn btn-d btn-sm" onClick={() => void (async () => {
+                if (!await confirmer(`Supprimer le menu "${menu.nom}" ?`)) return;
+                if (await enregistrer(menus.filter(m => m.id !== menu.id), 'suppression menu', menu.nom)) notifier('Menu supprimé');
+              })()}>Supprimer</button>
+            </>}
           </div>
+          <FeuilleMenu menu={menu} />
         </>
       )}
       {edition && <MenuFormulaire menu={edition.menu} onFermer={(id?: string) => { setEdition(null); if (id) setChoisi(id); }} />}
     </>
+  );
+}
+
+/** Feuille du menu, même mise en page que les autres fiches (écran = impression) : temps, plats numérotés, éléments, allergènes. */
+function FeuilleMenu({ menu }: { menu: Menu }) {
+  const { fichesRecette, fiches } = useDonnees();
+  const services = servicesAffiches(menu).filter(s => s.plats.length || s.nom);
+  const total = services.reduce((n, s) => n + s.plats.length, 0);
+  // numéro du premier plat de chaque temps : la numérotation continue d'un temps à l'autre
+  const debuts = services.map((_, i) => services.slice(0, i).reduce((n, x) => n + x.plats.length, 0));
+  return (
+    <div className="fdoc">
+      <div className="fdoc-hdr"><div className="fdoc-sur">Menu</div><div className="fdoc-nom">{menu.nom}</div>
+        <div className="fdoc-cles"><span>{total ? pluriel(total, 'plat') : 'Aucun plat pour le moment'}</span></div>
+      </div>
+      <div className="fdoc-body">
+        <hr className="fdoc-sep" />
+        {services.map((s, i) => (
+          <Fragment key={i}>
+            <div className="fdoc-ptitle">{s.nom || 'Plats'}</div>
+            {!s.plats.length && <div className="ci-label">Aucun plat</div>}
+            {s.plats.length > 0 && <div className="fdoc-steps">{s.plats.map((p, k) => {
+              const d = platAffiche(p, fichesRecette, fiches);
+              return (
+                <div key={k} className="fdoc-step"><div className="fdoc-snum">{(debuts[i] ?? 0) + k + 1}</div>
+                  <div className="fdoc-stxt">{d.nom}
+                    {d.elements.length > 0 && <div className="fdoc-sous">{d.elements.join(' · ')}</div>}
+                    {d.allergenes.length > 0 && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={d.allergenes} /></div>}
+                  </div>
+                </div>
+              );
+            })}</div>}
+          </Fragment>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -252,7 +252,10 @@ Formes arrondies et continues : listes 16 px, fenêtres 22 px, carte de connexio
 - Carte 18 px flottante ancrée à l'avatar, lignes de 46 px (40 px souris), action Thème (soleil ou lune), action destructive en rouge.
 
 ### Feuille document
-- Page blanche imitant l'export PDF : titre en capitales 2 rem, filets et en-têtes de tableau rouge LAVA, zébrure rosée, numéros d'étape sur bande rouge.
+- Page blanche, **identique à l'impression A4** (`window.print()` + `@media print`) : c'est la mise en page de toute fiche, de tout onglet présent ou à venir (fiche technique, fiche recette, fiche groupe, menu…).
+- En-tête, toujours dans cet ordre : type en petites capitales rouges (`fdoc-sur`, ex. FICHE GROUPE) → nom en capitales 2 rem (`fdoc-nom`) → une ligne d'infos grises séparées par « · » (`fdoc-cles`) → ligne rouge 2 px (`fdoc-sep`).
+- Corps : titres de section en petites capitales rouges soulignées (`fdoc-ptitle`), tableaux à en-tête rouge et zébrure rosée (`fdoc-table`), lignes numérotées sur bande rouge (`fdoc-steps`), libellés en petites capitales, étiquettes d'allergènes en pastilles (blanches sur une ligne rosée).
+- Papier : marges A4 12/14/13 mm, numéro de page « 1 / 2 » en bas à droite ; fiche technique, groupe et menu sur 1 page, fiche recette sur 2 pages au plus (éléments en 2 colonnes).
 
 ## Do's and Don'ts
 

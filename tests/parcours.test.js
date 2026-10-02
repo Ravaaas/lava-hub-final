@@ -394,7 +394,9 @@ scenario('Menus', {}, async (a) => {
   await a.clic('Enregistrer');
   check('menu enregistré : plat, ses éléments, allergènes, plat libre', await a.attend('CASSOLETTE DE SAINT-JACQUES') && await a.voit('VELOUTÉ CURRY · CROUSTILLANT SARRASIN') && await a.voit('Céleri') && await a.voit('Mignardises maison'));
   check('plats rangés dans le bon temps', await a.enOrdre(['Partages', 'Plat', 'CASSOLETTE DE SAINT-JACQUES', 'Dessert', 'Mignardises maison']));
-  check('menu : PDF', await a.ouvrePDF('Imprimer'));
+  const impM = await a.imprime('Imprimer');
+  check('menu : impression de la feuille seule', impM.n === 1 && impM.texte.includes('carte du soir') && impM.texte.includes('mignardises maison')
+    && !impM.texte.includes('nouveau menu') && !impM.texte.includes('5 temps'), impM.texte.slice(0, 200));
 });
 
 scenario('Anciens menus', { anciensMenus: true }, async (a) => {
