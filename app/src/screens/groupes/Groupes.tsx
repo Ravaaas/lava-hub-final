@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import type { ContactGroupe, Groupe } from '../../domain/types';
-import { alertesGroupe, niveauxDuGroupe, platAffiche, totalNiveau } from '../../domain/menus';
+import { alertesGroupe, niveauxDuGroupe, platAffiche, resumeAlertes, totalNiveau } from '../../domain/menus';
+import { AlertesMenu } from './AlertesMenu';
 import { contactsUniques, csvContacts, dateCourte, dateLongue, euros, groupesFiltres, libelleReglement } from '../../domain/groupes';
 import { contient, heureFr, pluriel } from '../../domain/texte';
 import { chargerContacts, supprimerGroupe } from '../../db/groupes';
@@ -57,7 +58,7 @@ export function Groupes() {
       <div className="fg">
         {pret && !liste.length && <Vide icone="users" titre="Aucun groupe" texte="Rien à afficher ici" />}
         {liste.map(g => {
-          const conflit = alertesGroupe(g, menus, fichesRecette, fiches).length > 0;
+          const conflit = resumeAlertes(alertesGroupe(g, menus, fichesRecette, fiches));
           const infos = [dateCourte(g.date), heureFr(g.heure), `${g.pax} pers.`, g.salle, menus.find(m => m.id === g.menu_id)?.nom ?? g.menu_nom ?? (g.niveaux.some(n => n.plats.length) ? 'Sur mesure' : '')].filter(Boolean).join(' · ');
           return (
             <div key={g.id} className="fc" role="button" tabIndex={0} onClick={() => { setOuvert(g.id); }}
@@ -65,7 +66,7 @@ export function Groupes() {
               <div className="fc-top"><div className="fc-name">{g.nom}</div><div className="fc-cat">{infos}</div></div>
               {/* toujours une ligne d'étiquettes : toutes les cartes ont la même hauteur, avec ou sans allergie */}
               <div className="fc-tags">
-                {conflit && <span className="tag tag-danger"><Icone nom="alert" taille={14} />Conflit avec le menu</span>}
+                {conflit && <span className="tag tag-danger"><Icone nom="alert" taille={14} />{conflit}</span>}
                 {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span className="tag">Aucune allergie</span>}
               </div>
             </div>
@@ -113,12 +114,13 @@ function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Gr
         </>}
       </div>
     }>
-      <div className="fdoc">
+      <div className="fdoc fdoc-groupe">
         <div className="fdoc-hdr"><div className="fdoc-sur">Fiche groupe</div><div className="fdoc-nom">{g.nom}</div>
           <div className="fdoc-cles">{[dateLongue(g.date), heureFr(g.heure), pluriel(g.pax, 'personne'), g.salle, nomMenu ? `Menu ${nomMenu}` : niveaux.length ? 'Menu sur mesure' : ''].filter(Boolean).map(t => <span key={t}>{t}</span>)}</div>
         </div>
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
+          <AlertesMenu alertes={alertesGroupe(g, menus, fichesRecette, fiches)} />
           {!niveaux.length && <><div className="fdoc-ptitle">Menu</div>
             <div className="ci-label" style={{ color: 'var(--gt)' }}>{m ? "Ce menu n'a pas encore de plats." : 'Menu sur mesure — voir les notes.'}</div></>}
           {niveaux.map((n, i) => {
@@ -144,9 +146,12 @@ function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Gr
           })}
           {g.boissons && <><div className="fdoc-ptitle">Boissons précommandées</div><div className="fdoc-notes">{g.boissons}</div></>}
           <div className="fdoc-ptitle">Restrictions</div>
-          <div className="fr-allerg-sub" style={{ marginTop: 0 }}><span className="fr-allerg-sub-lbl">Allergies</span>
-            {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span style={{ fontSize: '0.875rem', color: 'var(--gt)' }}>Aucune déclarée</span>}</div>
-          {g.regimes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Régimes</span><Etiquettes liste={g.regimes} effectifs={g.effectifs} /></div>}
+          {/* une ligne par personne (ou personnes identiques) : allergies en rouge, régimes en gris */}
+          {!g.profils.length && <span style={{ fontSize: '0.875rem', color: 'var(--gt)' }}>Aucune allergie ni régime déclaré</span>}
+          {g.profils.map((p, i) => (
+            <div key={i} className="fr-allerg-sub" style={i ? undefined : { marginTop: 0 }}><span className="fr-allerg-sub-lbl">{p.nb} pers.</span>
+              <Etiquettes liste={p.allergenes} />{p.regimes.map(r => <span key={r} className="fr-allerg-tag fr-regime-tag">{r}</span>)}</div>
+          ))}
           {/* référent et règlement sur une même ligne : la fiche tient sur une page A4 */}
           <div className="fdoc-ptitle">{g.referent ? 'Référent et règlement' : 'Règlement'}</div>
           <div className="fdoc-duo">

@@ -61,9 +61,11 @@ export interface Groupe {
   menu_nom: string | null;
   /** Niveaux du menu du groupe, avec le nombre de chaque plat. Vide = pas encore composé (on reprend alors le menu choisi). */
   niveaux: Niveau[];
+  /** Personnes avec allergies ou régimes : une ligne par personne (ou par personnes qui ont exactement les mêmes). */
+  profils: Profil[];
+  /** Résumé des profils (calculé) : allergies et régimes du groupe, et nombre de personnes concernées par chacun. */
   allergenes: string[];
   regimes: string[];
-  /** Nombre de personnes concernées par allergie ou régime (facultatif, par nom). */
   effectifs: Record<string, number>;
   notes: string;
   /** Boissons précommandées (texte libre). */
@@ -74,6 +76,9 @@ export interface Groupe {
   /** Nom de la personne référente du groupe (imprimé sur la fiche). */
   referent: string;
 }
+
+/** nb personnes qui ont toutes ces allergies et ces régimes (ex. 1 personne Œuf + Moutarde). */
+export interface Profil { nb: number; allergenes: string[]; regimes: string[] }
 
 /** Coordonnées du référent d'un groupe (table groupes_contacts : admin et salle seulement). groupe_id null = groupe supprimé. */
 export interface ContactGroupe {

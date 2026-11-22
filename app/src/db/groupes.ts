@@ -1,9 +1,9 @@
 import { supabase } from '../lib/supabase';
-import type { ContactGroupe, Groupe, Niveau, PlatCompte } from '../domain/types';
+import type { ContactGroupe, Groupe, Niveau, PlatCompte, Profil } from '../domain/types';
 import { avecEffectifs, joindre, listeAllergenes, separerEffectifs } from '../domain/allergenes';
 import { lirePlat } from './config';
-import { lireMontant, lireReglement } from '../domain/groupes';
-import { objet, tableau, texte } from './lecture';
+import { lireMontant, lireReglement, profilsDepuisAnciens, resumeProfils } from '../domain/groupes';
+import { objet, tableau, texte, textes } from './lecture';
 import { prudent, verifier, type Resultat } from './resultat';
 
 // Plat d'un niveau : {frId, qte} ou {text, qte} ; qte absente ou illisible = pas encore connue.
@@ -22,12 +22,23 @@ function lireNiveaux(niveaux: unknown, platsSurMesure: unknown): Niveau[] {
   return plats.length ? [{ nom: '', plats }] : [];
 }
 
+// Profil : {nb, allergenes, regimes} ; nombre illisible = 1 personne ; ligne sans allergie ni régime ignorée.
+function lireProfil(v: unknown): Profil | null {
+  const o = objet(v);
+  const nb = typeof o.nb === 'number' && Number.isInteger(o.nb) && o.nb > 0 ? o.nb : 1;
+  const p = { nb, allergenes: textes(o.allergenes), regimes: textes(o.regimes) };
+  return p.allergenes.length || p.regimes.length ? p : null;
+}
+
 export async function chargerGroupes(): Promise<Groupe[]> {
   const { data, error } = await supabase.from('groupes').select('*').order('date');
   if (error) throw new Error(error.message);
   return data.map(l => {
+    // profils enregistrés ; à défaut (anciens groupes), une ligne par allergie et par régime des colonnes texte
+    const lus = tableau(l.profils).map(lireProfil).filter(p => p !== null);
     const al = separerEffectifs(listeAllergenes(l.allergenes));
     const re = separerEffectifs(listeAllergenes(l.regimes));
+    const profils = lus.length ? lus : profilsDepuisAnciens(al.noms, re.noms, { ...al.effectifs, ...re.effectifs });
     return {
     id: l.id,
     nom: l.nom,
@@ -38,9 +49,8 @@ export async function chargerGroupes(): Promise<Groupe[]> {
     menu_id: l.menu_id,
     menu_nom: l.menu_nom,
     niveaux: lireNiveaux(l.niveaux, l.plats_sur_mesure),
-    allergenes: al.noms,
-    regimes: re.noms,
-    effectifs: { ...al.effectifs, ...re.effectifs },
+    profils,
+    ...resumeProfils(profils),
     notes: l.notes ?? '',
     boissons: texte(l.boissons),
     reglement: lireReglement(l.reglement),
@@ -50,11 +60,12 @@ export async function chargerGroupes(): Promise<Groupe[]> {
   });
 }
 
-// Les nombres de personnes sont rangés dans le texte des colonnes existantes : « Gluten (2), Lactose ».
+// Les colonnes texte gardent le résumé des profils, nombres compris (« Gluten (2), Lactose (1) ») : lisible par les versions d'avant.
 const versPlat = (p: PlatCompte) => ('frId' in p ? { frId: p.frId, qte: p.qte } : { text: p.texte, qte: p.qte });
 // plats_sur_mesure (liste plate, sans quantités) reste écrit pour un groupe sans menu choisi : lisible par les versions d'avant.
-const versLigne = ({ effectifs, niveaux, ...g }: Omit<Groupe, 'id'>) => ({
+const versLigne = ({ effectifs, niveaux, profils, ...g }: Omit<Groupe, 'id'>) => ({
   ...g,
+  profils: profils.map(p => ({ nb: p.nb, allergenes: p.allergenes, regimes: p.regimes })),
   niveaux: niveaux.map(n => ({ nom: n.nom, plats: n.plats.map(versPlat) })),
   plats_sur_mesure: g.menu_id ? [] : niveaux.flatMap(n => n.plats).map(p => ('frId' in p ? { frId: p.frId } : { text: p.texte })),
   allergenes: joindre(avecEffectifs(g.allergenes, effectifs)), regimes: joindre(avecEffectifs(g.regimes, effectifs)),

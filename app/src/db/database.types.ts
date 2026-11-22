@@ -51,6 +51,7 @@ export interface Database {
         menu_nom: string | null;
         plats_sur_mesure: Json | null;
         niveaux: Json;
+        profils: Json;
         reglement: string;
         boissons: string;
         montant: number | null;

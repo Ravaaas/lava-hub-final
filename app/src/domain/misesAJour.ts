@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-22",
+    titre: "Fiche groupe : allergies par personne et plats à adapter",
+    desc: "Les allergies et régimes d'un groupe se saisissent par personne : une ligne pour 1 personne allergique à l'œuf et à la moutarde, une autre pour 1 personne allergique à l'œuf seulement. La fiche liste chaque ligne, et un encadré « Plats à adapter » indique quel plat pose problème, pour quelle allergie et combien de personnes. La carte du groupe nomme le plat en conflit."
+  },
+  {
+    date: "2026-11-22",
     titre: "Fiche groupe : montant, référent et contacts",
     desc: "Le montant de l'empreinte bancaire, de l'acompte ou du règlement se note sur la fiche groupe. On y inscrit aussi le référent du groupe : son nom figure sur la fiche imprimée, son email et son téléphone ne sont visibles que par l'admin et la salle. Le bouton « Contacts » de l'onglet Groupes réunit les référents de tous les groupes, un par personne, et les télécharge en fichier CSV pour Excel ou un outil d'emailing."
   },

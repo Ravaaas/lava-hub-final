@@ -503,6 +503,14 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .fdoc-reglement{font-size:0.9375rem;font-weight:600;color:#221818}
 .fdoc-reglement-aucun{color:#B5433C}
 .fdoc-reglement-aucun .fdoc-ecran{color:#221818}
+.alerte-menu{margin:0 0 1rem;padding:0.7rem 0.9rem;border:1.5px solid #B5433C;border-radius:12px;background:#FBEFEE;color:#221818;font-size:0.9375rem;line-height:1.45}
+.alerte-menu-titre{display:flex;align-items:center;gap:0.4rem;margin-bottom:0.25rem;color:#B5433C;font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
+.alerte-menu-plat{font-weight:600}
+.fr-allerg-tag.fr-regime-tag{background:#EFEDEC;color:#4a4040}
+.prof-pers{font-size:14px;color:var(--ink2)}
+.prof .niv-tete{align-items:center}
+.prof-resume{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:40px;padding:6px 10px;border:0;border-radius:10px;background:var(--bg2);color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer}
+.prof-sous{margin:10px 0 6px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
 .fdoc-duo{display:flex;flex-wrap:wrap;gap:0.4rem 2.5rem}
 .fdoc-duo .fr-allerg-sub{margin-top:0}
 .fdoc-contact{display:flex;flex-wrap:wrap;gap:0.2rem 1rem;font-size:0.9375rem}
@@ -603,6 +611,13 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fdoc-notes{font-size:9.5pt;line-height:1.45}
   .fdoc-reglement{font-size:9.5pt}
   .fdoc .fdoc-ecran{display:none}
+  /* fiche groupe : resserrée pour tenir sur une page A4, même avec beaucoup de plats et de personnes allergiques */
+  .fdoc-groupe .fdoc-ptitle{margin:3mm 0 1.2mm}
+  .fdoc-groupe .fdoc-stxt{padding:0.5mm 2.5mm}
+  .fdoc-groupe .fr-allerg-sub{margin-top:1.2mm}
+  .fdoc-groupe .fdoc-sep{margin:2.5mm 0 3mm}
+  .alerte-menu{margin:0 0 3mm;padding:2mm 3mm;border-radius:2mm;font-size:9pt;break-inside:avoid}
+  .alerte-menu-titre{font-size:7.5pt;margin-bottom:0.8mm}
   .fdoc-sous{font-size:8.5pt}
   .fr-sr-title{font-size:8pt;margin-bottom:2.5mm}
   .fr-sr-list{display:block;columns:2;column-gap:5mm}

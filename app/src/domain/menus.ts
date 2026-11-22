@@ -1,4 +1,4 @@
-import type { Fiche, FicheRecette, Groupe, Menu, Niveau, Plat, Service } from './types';
+import type { Fiche, FicheRecette, Groupe, Menu, Niveau, Plat, Profil, Service } from './types';
 import { elementsResolus } from './fichesRecette';
 
 /** Menus à temps fixes : leurs temps sont imposés et ne se modifient pas. */
@@ -68,14 +68,29 @@ export function totalNiveau(n: Niveau, pax: number): { total: number; ecart: num
   return { total, ecart: total - pax };
 }
 
-/** Plats du menu d'un groupe qui contiennent une allergie déclarée par le groupe. */
-export function alertesGroupe(g: Groupe, menus: readonly Menu[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): { plat: string; allergenes: string[] }[] {
-  const declarees = new Set(g.allergenes);
-  if (!declarees.size) return [];
-  return niveauxDuGroupe(g, menus).flatMap(n => n.plats).map(p => platAffiche(p, frs, fiches))
-    .map(p => ({ plat: p.nom, allergenes: p.allergenes.filter(a => declarees.has(a)) }))
-    .filter(x => x.allergenes.length > 0);
+/** Plat à adapter : allergies déclarées qu'il contient et nombre de personnes concernées (au moins une de leurs allergies). */
+export interface Alerte { plat: string; allergenes: string[]; personnes: number }
+
+/** Plats qui contiennent une allergie déclarée, chacun une fois, avec les personnes concernées. */
+export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): Alerte[] {
+  if (!profils.some(p => p.allergenes.length)) return [];
+  const vus = new Set<string>();
+  return niveaux.flatMap(n => n.plats).map(p => platAffiche(p, frs, fiches)).flatMap(d => {
+    if (vus.has(d.nom)) return [];
+    vus.add(d.nom);
+    const touches = profils.filter(p => p.allergenes.some(a => d.allergenes.includes(a)));
+    const allergenes = d.allergenes.filter(a => touches.some(p => p.allergenes.includes(a)));
+    return touches.length ? [{ plat: d.nom, allergenes, personnes: touches.reduce((t, p) => t + p.nb, 0) }] : [];
+  });
 }
+
+/** Plats du menu d'un groupe qui contiennent une allergie déclarée par le groupe. */
+export const alertesGroupe = (g: Groupe, menus: readonly Menu[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): Alerte[] =>
+  alertesMenu(niveauxDuGroupe(g, menus), g.profils, frs, fiches);
+
+/** « Conflit : CASSOLETTE (Moutarde) +1 » pour la carte d'un groupe. */
+export const resumeAlertes = (a: readonly Alerte[]): string =>
+  a[0] ? `Conflit : ${a[0].plat} (${a[0].allergenes.join(', ')})${a.length > 1 ? ` +${a.length - 1}` : ''}` : '';
 
 /** Niveaux nettoyés avant enregistrement : plats vers des fiches supprimées et plats libres vides retirés, puis niveaux sans plat retirés. */
 export function niveauxAEnregistrer(niveaux: readonly Niveau[], frs: readonly FicheRecette[]): Niveau[] {

@@ -4,9 +4,9 @@ import { identifiantPour, profilsClasses, verifierMotDePasse, postesProposes, et
 import { diffFiche, lireConditionnement, quantiteAffichee, quantitePour } from './fiches';
 import { allergenesDesElements, diffFicheRecette, elementsResolus } from './fichesRecette';
 import { lignesJournal, libelleJour } from './journal';
-import { alertesGroupe, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
+import { alertesGroupe, alertesMenu, resumeAlertes, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
-import { contactsUniques, csvContacts, erreurGroupe, euros, groupesEnConflit, groupesFiltres, libelleMontant, libelleReglement, lireMontant, lireReglement, montantSaisi } from './groupes';
+import { contactsUniques, csvContacts, erreurGroupe, profilsAEnregistrer, profilsDepuisAnciens, resumeProfils, euros, groupesEnConflit, groupesFiltres, libelleMontant, libelleReglement, lireMontant, lireReglement, montantSaisi } from './groupes';
 import { normNom } from './texte';
 import { cleProduit, erreurPerte, joursSemaine, lireQuantite, lundi, parCategorie, peutSupprimerPerte, quantiteFr, recapSemaine, type Perte, type ProduitPerso } from './pertesPerso';
 import { scriptPrincipal } from './version';
@@ -125,8 +125,8 @@ describe('menus', () => {
   });
   it('alerte un groupe allergique à un plat de son menu', () => {
     const menus: Menu[] = [{ id: 'm1', nom: 'Carte du soir', services: [{ nom: 'Plat', plats: [{ frId: 'r1' }, { frId: 'r2' }] }] }];
-    const g = { allergenes: ['Gluten', 'Soja'], menu_id: 'm1', niveaux: [] } as unknown as Groupe;
-    expect(alertesGroupe(g, menus, frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'] }]);
+    const g = { profils: [{ nb: 2, allergenes: ['Gluten', 'Soja'], regimes: [] }], menu_id: 'm1', niveaux: [] } as unknown as Groupe;
+    expect(alertesGroupe(g, menus, frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'], personnes: 2 }]);
     expect(alertesGroupe({ ...g, menu_id: null }, menus, frs, [])).toEqual([]);
   });
   it('nettoie avant enregistrement', () => {
@@ -192,11 +192,28 @@ describe('groupes', () => {
   it('niveaux du groupe : les siens, sinon ceux du menu choisi ; ils alertent comme un menu', () => {
     const frs = [{ id: 'r1', nom: 'CASSOLETTE', allergenes: ['Gluten'], elements: [] }] as unknown as FicheRecette[];
     const menus: Menu[] = [{ id: 'm1', nom: 'Lunch', services: [{ nom: 'Entrée', plats: [{ frId: 'r1' }] }] }];
-    const g = { menu_id: null, niveaux: [{ nom: 'Entrée', plats: [{ frId: 'r1', qte: 10 }, { texte: 'Pain maison', qte: null }] }], allergenes: ['Gluten'] } as unknown as Groupe;
+    const g = { menu_id: null, niveaux: [{ nom: 'Entrée', plats: [{ frId: 'r1', qte: 10 }, { texte: 'Pain maison', qte: null }] }], profils: [{ nb: 1, allergenes: ['Gluten'], regimes: [] }] } as unknown as Groupe;
     expect(niveauxDuGroupe(g, menus)).toBe(g.niveaux);
     expect(niveauxDuGroupe({ ...g, niveaux: [], menu_id: 'm1' }, menus)).toEqual([{ nom: 'Entrée', plats: [{ frId: 'r1', qte: null }] }]);
     expect(niveauxDuGroupe({ ...g, niveaux: [] }, menus)).toEqual([]);
-    expect(alertesGroupe(g, [], frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'] }]);
+    expect(alertesGroupe(g, [], frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'], personnes: 1 }]);
+  });
+  it('personnes à plusieurs allergies : lignes séparées, résumé, conflits expliqués', () => {
+    const profils = [{ nb: 1, allergenes: ['Œuf', 'Moutarde'], regimes: [] }, { nb: 1, allergenes: ['Œuf'], regimes: ['Végétarien'] }, { nb: 2, allergenes: [], regimes: ['Halal'] }];
+    expect(resumeProfils(profils)).toEqual({ allergenes: ['Œuf', 'Moutarde'], regimes: ['Végétarien', 'Halal'], effectifs: { Œuf: 2, Moutarde: 1, Végétarien: 1, Halal: 2 } });
+    expect(profilsDepuisAnciens(['Gluten', 'Lactose'], ['Végétarien'], { Gluten: 2 })).toEqual([
+      { nb: 2, allergenes: ['Gluten'], regimes: [] }, { nb: 1, allergenes: ['Lactose'], regimes: [] }, { nb: 1, allergenes: [], regimes: ['Végétarien'] }]);
+    expect(profilsAEnregistrer([{ nb: 1, allergenes: [], regimes: [] }, ...profils])).toEqual(profils);
+    const frs = [{ id: 'm', nom: 'MAYONNAISE', allergenes: ['Moutarde', 'Œuf'], elements: [] }, { id: 'o', nom: 'OMELETTE', allergenes: ['Œuf'], elements: [] }, { id: 'p', nom: 'PAIN', allergenes: ['Gluten'], elements: [] }] as unknown as FicheRecette[];
+    const niveaux = [{ nom: 'Entrée', plats: [{ frId: 'm', qte: 4 }, { frId: 'o', qte: null }, { frId: 'p', qte: null }] }, { nom: 'Plat', plats: [{ frId: 'm', qte: null }] }];
+    const a = alertesMenu(niveaux, profils, frs, []);
+    expect(a).toEqual([{ plat: 'MAYONNAISE', allergenes: ['Moutarde', 'Œuf'], personnes: 2 }, { plat: 'OMELETTE', allergenes: ['Œuf'], personnes: 2 }]);
+    expect(resumeAlertes(a)).toBe('Conflit : MAYONNAISE (Moutarde, Œuf) +1');
+    expect(alertesMenu(niveaux, [{ nb: 3, allergenes: [], regimes: ['Halal'] }], frs, [])).toEqual([]);
+    const base = { nom: 'X', date: '2026-10-01', pax: 3 };
+    expect(erreurGroupe({ ...base, profils })).toMatch(/4 personnes déclarées pour 3/);
+    expect(erreurGroupe({ ...base, profils: [{ nb: 1.5, allergenes: ['Œuf'], regimes: [] }] })).toMatch(/chaque ligne/);
+    expect(erreurGroupe({ ...base, profils: profils.slice(0, 2) })).toBeNull();
   });
   it('règlement : valeur inconnue ou absente = rien reçu', () => {
     expect(lireReglement('acompte')).toBe('acompte');

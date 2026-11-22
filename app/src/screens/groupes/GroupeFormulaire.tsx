@@ -1,8 +1,9 @@
 import { useId, useState } from 'react';
 import type { ContactGroupe, Groupe, Niveau } from '../../domain/types';
+import type { Alerte } from '../../domain/menus';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
-import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit, libelleMontant, montantSaisi } from '../../domain/groupes';
-import { niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
+import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit, libelleMontant, montantSaisi, profilsAEnregistrer, resumeProfils } from '../../domain/groupes';
+import { alertesMenu, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
 import { creerGroupe, enregistrerContact, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
@@ -10,13 +11,14 @@ import { useNotifier } from '../../ui/Notifications';
 import { heureFr } from '../../domain/texte';
 import { Icone } from '../../ui/Icone';
 import { Puces } from '../../ui/Puces';
+import { AlertesMenu } from './AlertesMenu';
 import { Choix } from '../../ui/Choix';
 import { Selecteur } from '../../ui/Selecteur';
 import { useConfirmer } from '../../ui/Confirmation';
 
 /** contact : coordonnées déjà enregistrées du référent (admin et salle) ; onContact : relire la base de contacts après un enregistrement. */
 export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { groupe: Groupe | null; contact?: ContactGroupe | undefined; onFermer: () => void; onContact: () => void }) {
-  const { menus, groupes, fichesRecette, recharger, journal, setSynchro } = useDonnees();
+  const { menus, groupes, fichesRecette, fiches, recharger, journal, setSynchro } = useDonnees();
   const confirmer = useConfirmer();
   const notifier = useNotifier();
   const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), menu: useId(), boissons: useId(), notes: useId(), referent: useId(), email: useId(), tel: useId(), montant: useId() };
@@ -27,9 +29,7 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
   const [salle, setSalle] = useState(g?.salle || SALLES[0]);
   const [menuId, setMenuId] = useState(g?.menu_id ?? '');
   const [niveaux, setNiveaux] = useState<Niveau[]>(() => (g ? niveauxDuGroupe(g, menus) : NIVEAUX_DE_DEPART.map(nom => ({ nom, plats: [] }))));
-  const [allergenes, setAllergenes] = useState<string[]>(g ? g.allergenes.filter(a => (ALLERGENES as readonly string[]).includes(a)) : []);
-  const [regimes, setRegimes] = useState<string[]>(g ? g.regimes.filter(r => (REGIMES as readonly string[]).includes(r)) : []);
-  const [effectifs, setEffectifs] = useState<Record<string, string>>(Object.fromEntries(Object.entries(g?.effectifs ?? {}).map(([k, v]) => [k, String(v)])));
+  const [profils, setProfils] = useState<ProfilSaisi[]>(() => (g?.profils ?? []).map(p => ({ ...p, nb: String(p.nb) })));
   const [notes, setNotes] = useState(g?.notes ?? '');
   const [boissons, setBoissons] = useState(g?.boissons ?? '');
   const [reglement, setReglement] = useState(g?.reglement ?? 'aucun');
@@ -41,16 +41,17 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
 
   const enregistrer = async () => {
     const menu = menus.find(m => m.id === menuId);
+    // une ligne par personne (ou personnes identiques) ; lignes sans rien de coché écartées ; nombre vide = 1
+    const lignes = profilsAEnregistrer(profils.map(p => ({ ...p, nb: p.nb.trim() ? Number(p.nb) : 1 })));
+    const personnes = { profils: lignes, ...resumeProfils(lignes) };
     const donnees: Omit<Groupe, 'id'> = {
       nom: nom.trim(), date, heure, pax: pax.trim() ? Number(pax) : 0, salle,
       menu_id: menu ? menu.id : null, menu_nom: menu ? menu.nom : null,
       // niveaux du groupe (copiés du menu ou composés) ; fiches supprimées et plats libres vides écartés
       niveaux: niveauxAEnregistrer(niveaux, fichesRecette),
-      allergenes, regimes, notes: notes.trim(), boissons: boissons.trim(), reglement,
+      ...personnes, notes: notes.trim(), boissons: boissons.trim(), reglement,
       // pas de montant tant que rien n'est reçu
       montant: reglement === 'aucun' ? null : montantSaisi(montant), referent: referent.trim(),
-      // seuls les allergènes et régimes cochés gardent un nombre ; vide = non précisé
-      effectifs: Object.fromEntries([...allergenes, ...regimes].filter(n => effectifs[n]?.trim()).map(n => [n, Number(effectifs[n])])),
     };
     const coord = { email: email.trim(), telephone: telephone.trim() };
     const erreur = erreurGroupe({ ...donnees, email: coord.email });
@@ -118,12 +119,8 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
       <Niveaux niveaux={niveaux} pax={Number(pax) || 0} onChange={setNiveaux} />
       <div className="fg2"><label className="fl" htmlFor={id.boissons}>Boissons précommandées</label>
         <textarea className="fta" id={id.boissons} placeholder="ex: 3 magnums de Chablis, 2 bouteilles de Saint-Joseph, eaux et cafés" value={boissons} onChange={e => { setBoissons(e.target.value); }} /></div>
-      <div className="fsect">Allergies déclarées</div>
-      <Puces choix={ALLERGENES} selection={allergenes} onChange={setAllergenes} />
-      <Nombres noms={allergenes} valeurs={effectifs} onChange={setEffectifs} />
-      <div className="fsect" style={{ marginTop: '1.25rem' }}>Régimes</div>
-      <Puces choix={REGIMES} selection={regimes} onChange={setRegimes} />
-      <Nombres noms={regimes} valeurs={effectifs} onChange={setEffectifs} />
+      <Profils profils={profils} onChange={setProfils}
+        alertes={alertesMenu(niveaux, profils.map(p => ({ ...p, nb: Number(p.nb) || 1 })), fichesRecette, fiches)} />
       <div className="fg2" style={{ marginTop: '1.25rem' }}><span className="fl">Règlement</span>
         <Choix libelle="Règlement" options={REGLEMENTS} valeur={reglement} onChange={setReglement} /></div>
       {reglement !== 'aucun' && <div className="fg2"><label className="fl" htmlFor={id.montant}>{libelleMontant(reglement)}</label>
@@ -134,16 +131,47 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
   );
 }
 
-/** Nombre de personnes pour chaque allergie ou régime coché (facultatif). */
-function Nombres({ noms, valeurs, onChange }: { noms: readonly string[]; valeurs: Record<string, string>; onChange: (v: Record<string, string>) => void }) {
-  const base = useId();
-  return noms.map((n, i) => (
-    <div key={n} className="eff-row">
-      <label className="fl" htmlFor={`${base}-${i}`}>{n} — nombre de personnes</label>
-      <input className="fi2" id={`${base}-${i}`} type="number" min="1" step="1" placeholder="—" value={valeurs[n] ?? ''}
-        onChange={e => { onChange({ ...valeurs, [n]: e.target.value }); }} />
-    </div>
-  ));
+type ProfilSaisi = { nb: string; allergenes: string[]; regimes: string[] };
+
+/**
+ * Allergies et régimes : une ligne par personne, ou par personnes qui ont exactement les mêmes
+ * (ex. 1 personne Œuf + Moutarde, 1 personne Œuf seul). Une seule ligne ouverte à la fois ; les autres sont résumées.
+ */
+function Profils({ profils, alertes, onChange }: { profils: ProfilSaisi[]; alertes: Alerte[]; onChange: (p: ProfilSaisi[]) => void }) {
+  const [ouvert, setOuvert] = useState<number | null>(null);
+  const modifier = (i: number, f: (p: ProfilSaisi) => ProfilSaisi) => { onChange(profils.map((p, k) => (k === i ? f(p) : p))); };
+  return (
+    <>
+      <div className="fsect">Allergies et régimes</div>
+      <p className="niv-aide">Une ligne par personne, ou par personnes qui ont exactement les mêmes allergies et régimes.</p>
+      {profils.length === 0 && <div className="ci-label" style={{ color: 'var(--gt)', marginBottom: '0.6rem' }}>Aucune allergie ni régime déclaré.</div>}
+      {profils.map((p, i) => {
+        const coches = [...p.allergenes, ...p.regimes];
+        return (
+          <div key={i} className="niv prof">
+            <div className="niv-tete">
+              <input className="fi2 niv-qte" type="number" min="1" step="1" placeholder="1" aria-label={`Nombre de personnes — ligne ${i + 1}`} value={p.nb}
+                onChange={e => { modifier(i, x => ({ ...x, nb: e.target.value })); }} />
+              <span className="prof-pers">pers.</span>
+              <button type="button" className="prof-resume" aria-expanded={ouvert === i} onClick={() => { setOuvert(ouvert === i ? null : i); }}>
+                {coches.length ? coches.join(' · ') : 'Choisir les allergies et régimes'}<Icone nom={ouvert === i ? 'chevron-up' : 'chevron-down'} taille={16} />
+              </button>
+              <button type="button" className="btn-rm" aria-label="Retirer cette ligne" onClick={() => { onChange(profils.filter((_, k) => k !== i)); setOuvert(null); }}><Icone nom="x" /></button>
+            </div>
+            {ouvert === i && <>
+              <div className="prof-sous">Allergies</div>
+              <Puces choix={ALLERGENES} selection={p.allergenes} onChange={v => { modifier(i, x => ({ ...x, allergenes: v })); }} />
+              <div className="prof-sous">Régimes</div>
+              <Puces choix={REGIMES} selection={p.regimes} onChange={v => { modifier(i, x => ({ ...x, regimes: v })); }} />
+            </>}
+          </div>
+        );
+      })}
+      <button type="button" className="btn-ar" style={{ marginBottom: '1rem' }} onClick={() => { onChange([...profils, { nb: '1', allergenes: [], regimes: [] }]); setOuvert(profils.length); }}>
+        <Icone nom="plus" />Ajouter une personne</button>
+      <AlertesMenu alertes={alertes} />
+    </>
+  );
 }
 
 const NIVEAUX_DE_DEPART = ['Entrée', 'Plat', 'Dessert'];

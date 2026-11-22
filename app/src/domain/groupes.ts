@@ -1,4 +1,4 @@
-import type { ContactGroupe, Groupe, Niveau, Reglement } from './types';
+import type { ContactGroupe, Groupe, Niveau, Profil, Reglement } from './types';
 
 /** États du paiement, du moins au plus avancé. */
 export const REGLEMENTS: readonly { valeur: Reglement; libelle: string }[] = [
@@ -33,6 +33,26 @@ export const MONTANT_MAX = 1_000_000;
 /** Adresse email plausible (un @, un point dans le domaine, pas d'espace). */
 export const emailValide = (e: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
+/** Anciens groupes (sans profils) : une ligne par allergie et par régime, avec son nombre de personnes (1 par défaut). */
+export const profilsDepuisAnciens = (allergenes: readonly string[], regimes: readonly string[], effectifs: Readonly<Record<string, number>>): Profil[] => [
+  ...allergenes.map(a => ({ nb: effectifs[a] ?? 1, allergenes: [a], regimes: [] })),
+  ...regimes.map(r => ({ nb: effectifs[r] ?? 1, allergenes: [], regimes: [r] })),
+];
+
+/** Résumé : allergies et régimes du groupe (ordre d'apparition) et nombre total de personnes concernées par chacun. */
+export function resumeProfils(profils: readonly Profil[]): { allergenes: string[]; regimes: string[]; effectifs: Record<string, number> } {
+  const effectifs: Record<string, number> = {};
+  const allergenes: string[] = [], regimes: string[] = [];
+  for (const p of profils) {
+    for (const a of p.allergenes) { if (!(a in effectifs)) allergenes.push(a); effectifs[a] = (effectifs[a] ?? 0) + p.nb; }
+    for (const r of p.regimes) { if (!(r in effectifs)) regimes.push(r); effectifs[r] = (effectifs[r] ?? 0) + p.nb; }
+  }
+  return { allergenes, regimes, effectifs };
+}
+
+/** Lignes sans allergie ni régime écartées avant enregistrement. */
+export const profilsAEnregistrer = (profils: readonly Profil[]): Profil[] => profils.filter(p => p.allergenes.length || p.regimes.length);
+
 export const SALLES = ['Salle principale', 'Salon Basalte', 'Privatisation'] as const;
 
 /** Date du jour au format AAAA-MM-JJ (heure locale). */
@@ -59,9 +79,13 @@ export function dateLongue(d: string): string {
 export const PAX_MAX = 500;
 
 /** Contrôle de la saisie ; null si tout est bon. */
-export function erreurGroupe(g: { nom: string; date: string; pax: number; effectifs?: Record<string, number>; niveaux?: readonly Niveau[]; montant?: number | null; email?: string }): string | null {
+export function erreurGroupe(g: { nom: string; date: string; pax: number; effectifs?: Record<string, number>; profils?: readonly Profil[]; niveaux?: readonly Niveau[]; montant?: number | null; email?: string }): string | null {
   if (!g.nom.trim() || !g.date || !(g.pax > 0)) return 'Nom, date et nombre de personnes obligatoires';
   if (!Number.isInteger(g.pax) || g.pax > PAX_MAX) return `Nombre de personnes : un entier entre 1 et ${PAX_MAX}`;
+  const profils = g.profils ?? [];
+  if (profils.some(p => !Number.isInteger(p.nb) || p.nb < 1)) return 'Allergies et régimes : un nombre entier de personnes sur chaque ligne';
+  const declares = profils.reduce((t, p) => t + p.nb, 0);
+  if (declares > g.pax) return `Allergies et régimes : ${declares} personnes déclarées pour ${g.pax}`;
   if (Object.values(g.effectifs ?? {}).some(n => !Number.isInteger(n) || n < 1 || n > g.pax)) return `Allergies et régimes : un nombre entier de personnes entre 1 et ${g.pax}`;
   // nombre de chaque plat : facultatif ; s'il est donné, entier, au moins 1 et pas plus que le groupe
   const qtes = (g.niveaux ?? []).flatMap(n => n.plats).map(p => p.qte).filter(q => q !== null);
