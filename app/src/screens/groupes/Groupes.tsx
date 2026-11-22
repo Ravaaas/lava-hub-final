@@ -1,9 +1,11 @@
-import { Fragment, useState } from 'react';
-import type { Groupe } from '../../domain/types';
+import { Fragment, useCallback, useEffect, useState } from 'react';
+import type { ContactGroupe, Groupe } from '../../domain/types';
 import { alertesGroupe, niveauxDuGroupe, platAffiche, totalNiveau } from '../../domain/menus';
-import { dateCourte, dateLongue, groupesFiltres, libelleReglement } from '../../domain/groupes';
+import { contactsUniques, csvContacts, dateCourte, dateLongue, euros, groupesFiltres, libelleReglement } from '../../domain/groupes';
 import { contient, heureFr, pluriel } from '../../domain/texte';
-import { supprimerGroupe } from '../../db/groupes';
+import { chargerContacts, supprimerGroupe } from '../../db/groupes';
+import { telecharger } from '../../lib/image';
+import { Fenetre } from '../../ui/Fenetre';
 import { useDonnees } from '../../etat/Donnees';
 import { useMoi } from '../../etat/Session';
 import { PleinEcran } from '../../ui/Fenetre';
@@ -20,6 +22,16 @@ export function Groupes() {
   const [q, setQ] = useState('');
   const [ouvert, setOuvert] = useState<string | null>(null);
   const [edition, setEdition] = useState<{ groupe: Groupe | null } | null>(null);
+  const [voirContacts, setVoirContacts] = useState(false);
+  // coordonnées des référents : admin et salle seulement (la base n'en donne aucune à la cuisine)
+  const [contacts, setContacts] = useState<ContactGroupe[]>([]);
+  const notifier = useNotifier();
+  const relireContacts = useCallback(() => {
+    if (!peutGererGroupes) return;
+    chargerContacts().then(setContacts, (e: unknown) => { notifier('Contacts illisibles : ' + (e instanceof Error ? e.message : String(e)), 'err'); });
+  }, [peutGererGroupes, notifier]);
+  useEffect(relireContacts, [relireContacts]);
+  const contactDe = (g: Groupe) => contacts.find(c => c.groupe_id === g.id);
 
   const tous = groupesFiltres(groupes, quand);
   const liste = tous.filter(g => !q || contient(g.nom, q));
@@ -31,6 +43,7 @@ export function Groupes() {
         <div><div className="ph-title">Groupes</div>
           <div className="ph-sub">{!pret ? 'Chargement…' : `${pluriel(tous.length, 'groupe')} ${quand === 'avenir' ? 'à venir' : tous.length === 1 ? 'passé' : 'passés'}`}</div></div>
         <div className="ph-actions">
+          {peutGererGroupes && <button type="button" className="btn btn-g" onClick={() => { relireContacts(); setVoirContacts(true); }}><Icone nom="users" />Contacts</button>}
           {peutGererGroupes && <button type="button" className="btn btn-p" onClick={() => { setEdition({ groupe: null }); }}><Icone nom="plus" />Nouveau groupe</button>}
         </div>
       </div>
@@ -59,13 +72,14 @@ export function Groupes() {
           );
         })}
       </div>
-      {detail && <GroupeDetail groupe={detail} onFermer={() => { setOuvert(null); }} onModifier={() => { setOuvert(null); setEdition({ groupe: detail }); }} />}
-      {edition && <GroupeFormulaire groupe={edition.groupe} onFermer={() => { setEdition(null); }} />}
+      {detail && <GroupeDetail groupe={detail} contact={contactDe(detail)} onFermer={() => { setOuvert(null); }} onModifier={() => { setOuvert(null); setEdition({ groupe: detail }); }} />}
+      {edition && <GroupeFormulaire groupe={edition.groupe} contact={edition.groupe ? contactDe(edition.groupe) : undefined} onFermer={() => { setEdition(null); }} onContact={relireContacts} />}
+      {voirContacts && <Contacts contacts={contacts} onFermer={() => { setVoirContacts(false); }} />}
     </>
   );
 }
 
-function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onFermer: () => void; onModifier: () => void }) {
+function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Groupe; contact: ContactGroupe | undefined; onFermer: () => void; onModifier: () => void }) {
   const { menus, fichesRecette, fiches, recharger, journal, setSynchro } = useDonnees();
   const { peutGererGroupes } = useMoi();
   const notifier = useNotifier();
@@ -133,11 +147,52 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
           <div className="fr-allerg-sub" style={{ marginTop: 0 }}><span className="fr-allerg-sub-lbl">Allergies</span>
             {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span style={{ fontSize: '0.875rem', color: 'var(--gt)' }}>Aucune déclarée</span>}</div>
           {g.regimes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Régimes</span><Etiquettes liste={g.regimes} effectifs={g.effectifs} /></div>}
-          <div className="fdoc-ptitle">Règlement</div>
-          <div className={`fdoc-reglement fdoc-reglement-${g.reglement}`}>{libelleReglement(g.reglement)}</div>
+          {/* référent et règlement sur une même ligne : la fiche tient sur une page A4 */}
+          <div className="fdoc-ptitle">{g.referent ? 'Référent et règlement' : 'Règlement'}</div>
+          <div className="fdoc-duo">
+            {g.referent && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Référent</span><span className="fdoc-reglement">{g.referent}</span></div>}
+            <div className="fr-allerg-sub">{g.referent && <span className="fr-allerg-sub-lbl">Règlement</span>}
+              <span className={`fdoc-reglement fdoc-reglement-${g.reglement}`}>{libelleReglement(g.reglement)}
+                {peutGererGroupes && g.montant !== null && g.reglement !== 'aucun' && <span className="fdoc-ecran"> · {euros(g.montant)}</span>}</span></div>
+          </div>
+          {/* email et téléphone du référent : à l'écran pour l'admin et la salle, jamais imprimés (le nom est en tête de fiche) */}
+          {peutGererGroupes && (contact?.email || contact?.telephone) && <div className="fdoc-ecran">
+            <div className="fdoc-ptitle">Coordonnées du référent</div>
+            <div className="fdoc-contact">
+              {contact.email && <a href={`mailto:${contact.email}`}>{contact.email}</a>}
+              {contact.telephone && <a href={`tel:${contact.telephone.replace(/[^\d+]/g, '')}`}>{contact.telephone}</a>}
+            </div>
+          </div>}
           {g.notes && <><div className="fdoc-ptitle">Notes</div><div className="fdoc-notes">{g.notes}</div></>}
         </div>
       </div>
     </PleinEcran>
+  );
+}
+
+/** Base de contacts des groupes : un référent par email (ou téléphone), le plus récent d'abord, et l'export CSV. */
+function Contacts({ contacts, onFermer }: { contacts: readonly ContactGroupe[]; onFermer: () => void }) {
+  const [q, setQ] = useState('');
+  const tous = contactsUniques(contacts);
+  const liste = tous.filter(c => !q || [c.nom, c.email, c.telephone, c.groupe].some(t => contient(t, q)));
+  const exporter = () => { telecharger(`contacts-groupes-${new Date().toLocaleDateString('sv-SE')}.csv`, csvContacts(tous), 'text/csv;charset=utf-8'); };
+  return (
+    <Fenetre titre="Contacts des groupes" onFermer={onFermer}
+      pied={<>
+        <button type="button" className="btn btn-g" onClick={onFermer}>Fermer</button>
+        <button type="button" className="btn btn-p" disabled={!tous.length} onClick={exporter}><Icone nom="download" />Télécharger (CSV)</button>
+      </>}>
+      <p className="niv-aide">{pluriel(tous.length, 'contact')} — un par email ou téléphone. Le fichier CSV s'ouvre dans Excel ou s'importe dans un outil d'emailing.</p>
+      {tous.length > 5 && <div className="si-wrap" style={{ marginBottom: '0.75rem' }}><Icone nom="search" />
+        <input className="si" type="text" aria-label="Rechercher un contact" placeholder="Rechercher un contact…" value={q} onChange={e => { setQ(e.target.value); }} /></div>}
+      {!tous.length && <Vide icone="users" titre="Aucun contact" texte="Les coordonnées saisies dans les fiches groupe apparaîtront ici" />}
+      <div className="ct-liste">{liste.map(c => (
+        <div key={c.email || c.telephone} className="ct">
+          <div className="ct-nom">{c.nom || c.email || c.telephone}</div>
+          <div className="ct-coord">{[c.email, c.telephone].filter(Boolean).join(' · ')}</div>
+          <div className="ct-groupe">{[c.groupe, c.date && dateCourte(c.date), c.groupes > 1 ? `${c.groupes} groupes` : ''].filter(Boolean).join(' · ')}</div>
+        </div>
+      ))}</div>
+    </Fenetre>
   );
 }

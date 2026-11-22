@@ -45,10 +45,10 @@ export function photoCadree(img: HTMLImageElement, cadrage: Cadrage): string {
   return c.toDataURL('image/jpeg', 0.8);
 }
 
-/** Fichier téléchargé par le navigateur (sauvegardes JSON). */
-export function telecharger(nom: string, contenu: unknown): void {
+/** Fichier téléchargé par le navigateur : un objet devient du JSON (sauvegardes), un texte est écrit tel quel (CSV). */
+export function telecharger(nom: string, contenu: unknown, type = 'application/json'): void {
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(contenu)], { type: 'application/json' }));
+  a.href = URL.createObjectURL(new Blob([typeof contenu === 'string' ? contenu : JSON.stringify(contenu)], { type }));
   a.download = nom;
   a.click();
   window.setTimeout(() => { URL.revokeObjectURL(a.href); }, 1000);

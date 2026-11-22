@@ -53,12 +53,25 @@ export interface Database {
         niveaux: Json;
         reglement: string;
         boissons: string;
+        montant: number | null;
+        referent: string;
         allergenes: string | null;
         regimes: string | null;
         notes: string | null;
         modifie_par: string | null;
         modifie_le: string | null;
       }, 'nom' | 'date' | 'pax'>;
+      // Coordonnées des référents (supabase/sql/groupes-contacts.sql) : admin et salle seulement.
+      groupes_contacts: Table<{
+        id: string;
+        groupe_id: string | null;
+        nom: string;
+        email: string;
+        telephone: string;
+        groupe: string;
+        date_groupe: string | null;
+        modifie_le: string;
+      }>;
       lava_config: Table<{ id: string; data: Json }, 'id' | 'data'>;
       membres: Table<{
         email: string;

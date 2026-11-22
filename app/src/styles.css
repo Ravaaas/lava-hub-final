@@ -502,6 +502,17 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .fdoc-snum.fdoc-qte{width:44px;font-size:0.9375rem}
 .fdoc-reglement{font-size:0.9375rem;font-weight:600;color:#221818}
 .fdoc-reglement-aucun{color:#B5433C}
+.fdoc-reglement-aucun .fdoc-ecran{color:#221818}
+.fdoc-duo{display:flex;flex-wrap:wrap;gap:0.4rem 2.5rem}
+.fdoc-duo .fr-allerg-sub{margin-top:0}
+.fdoc-contact{display:flex;flex-wrap:wrap;gap:0.2rem 1rem;font-size:0.9375rem}
+.fdoc-contact a{color:#B5433C;text-decoration:none}
+/* base de contacts des groupes */
+.ct-liste{display:flex;flex-direction:column;gap:2px}
+.ct{padding:10px 14px;border-radius:12px;background:var(--bg2)}
+.ct-nom{font-size:15px;font-weight:600;color:var(--ink)}
+.ct-coord{font-size:14px;color:var(--ink);overflow-wrap:anywhere}
+.ct-groupe{font-size:13px;color:var(--ink2)}
 @media (max-width:640px){
   .niv{padding:10px}
   .ci.niv-plat{gap:5px}
@@ -591,6 +602,7 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fr-photo{max-height:60mm;margin-top:3mm;border-radius:2.5mm}
   .fdoc-notes{font-size:9.5pt;line-height:1.45}
   .fdoc-reglement{font-size:9.5pt}
+  .fdoc .fdoc-ecran{display:none}
   .fdoc-sous{font-size:8.5pt}
   .fr-sr-title{font-size:8pt;margin-bottom:2.5mm}
   .fr-sr-list{display:block;columns:2;column-gap:5mm}

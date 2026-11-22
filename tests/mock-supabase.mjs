@@ -1,7 +1,7 @@
 // Base Supabase SIMULÉE pour les tests (aucun accès à la vraie base).
 // Reproduit ce dont l'app dépend : connexion par compte, profils de connexion, fonction « equipe »,
 // lecture/écriture des tables avec les mêmes droits que la RLS de la vraie base
-// (écriture = admin ; groupes = admin ou salle ; journal = tout membre connecté ;
+// (écriture = admin ; groupes = admin ou salle ; coordonnées des référents = admin ou salle, lecture comprise ; journal = tout membre connecté ;
 //  Pertes & Perso = cuisine + admin, journée validée verrouillée, chacun ses commentaires et ses pertes).
 export const HOST = 'qmvxmxzsmpigvseuidcd.supabase.co';
 export const MOT_DE_PASSE = 'bon-mot-de-passe';
@@ -30,8 +30,13 @@ function donneesDeDepart() {
       { id: 'r4', nom: 'ANCIEN PLAT', statut: 'archive', allergenes: '', sous_recettes: [], photo: null },
     ],
     groupes: [
-      { id: 'g1', nom: 'Séminaire Dupont', date: jour(5), heure: '19:30', pax: 12, salle: 'Salon Basalte', source: 'Email', menu_id: null, menu_nom: null, allergenes: 'Gluten', regimes: 'Végétarien', notes: 'Un enfant' },
+      { id: 'g1', nom: 'Séminaire Dupont', date: jour(5), heure: '19:30', pax: 12, salle: 'Salon Basalte', source: 'Email', menu_id: null, menu_nom: null, allergenes: 'Gluten', regimes: 'Végétarien', notes: 'Un enfant', referent: 'Claire Dupont' },
       { id: 'g2', nom: 'Mariage Garnier', date: jour(-20), heure: '20:00', pax: 40, salle: 'Privatisation', source: 'Téléphone', menu_id: null, menu_nom: null, allergenes: '', regimes: '', notes: '' },
+    ],
+    // coordonnées des référents (admin et salle) ; groupe_id null = groupe supprimé, le contact reste
+    groupes_contacts: [
+      { id: 'c1', groupe_id: 'g1', nom: 'Claire Dupont', email: 'claire.dupont@exemple.fr', telephone: '06 12 34 56 78', groupe: 'Séminaire Dupont', date_groupe: jour(5) },
+      { id: 'c2', groupe_id: null, nom: 'Marc Ancien', email: 'marc@exemple.fr', telephone: '', groupe: 'Pot de départ', date_groupe: '2025-06-01' },
     ],
     lava_config: [{ id: 'main', data: { cats: ['Base', 'Sauce', 'Garniture', 'Dessert', 'Autre'] } }],
     audit_log: [{ ts: Date.now() - 3600e3, action: 'modification', fiche_nom: 'VELOUTÉ CURRY', profil: 'Alexandre', detail: ['CRÈME : 400 g → 500 g'] }],
@@ -57,7 +62,7 @@ const ANCIENS_MENUS = { id: 'menus', data: { items: [
 ] } };
 
 // Clé de chaque table (insertion = remplacement si la clé existe déjà, comme un upsert PostgREST).
-const CLES = { membres: ['email'], perso_produits: ['cle'], perso_saisies: ['date', 'produit_cle'], perso_commentaires: ['date', 'email'], perso_validations: ['date'], perso_recaps: ['semaine'] };
+const CLES = { groupes_contacts: ['groupe_id'], membres: ['email'], perso_produits: ['cle'], perso_saisies: ['date', 'produit_cle'], perso_commentaires: ['date', 'email'], perso_validations: ['date'], perso_recaps: ['semaine'] };
 const PERSO = ['perso_produits', 'perso_saisies', 'perso_commentaires', 'perso_validations', 'pertes', 'perso_recaps'];
 
 const b64 = o => btoa(JSON.stringify(o)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
@@ -77,7 +82,7 @@ export function creerBase(options = {}) {
     const r = role();
     if (!r) return false;
     if (table === 'audit_log') return true;
-    if (table === 'groupes') return r === 'admin' || r === 'salle';
+    if (table === 'groupes' || table === 'groupes_contacts') return r === 'admin' || r === 'salle';
     if (table === 'perso_saisies') return r === 'admin' || (r === 'cuisine' && !valide(ligne.date));
     if (table === 'perso_commentaires') return r === 'admin' || (r === 'cuisine' && ligne.email === etat.session && !valide(ligne.date));
     if (table === 'pertes') return r === 'admin' || (r === 'cuisine' && (!ligne.saisi_email || ligne.saisi_email === etat.session));
@@ -162,6 +167,7 @@ export function creerBase(options = {}) {
         if (!role()) return repondre(req, 200, []);   // RLS : rien pour un inconnu
         if (PERSO.includes(t) && role() === 'salle') return repondre(req, 200, []);   // Pertes & Perso : cuisine + admin
         if (t === 'perso_recaps' && role() !== 'admin') return repondre(req, 200, []);
+        if (t === 'groupes_contacts' && role() === 'cuisine') return repondre(req, 200, []);   // coordonnées : admin et salle
         const rows = filtre(db[t].slice());
         if (/vnd\.pgrst\.object/.test(req.headers()['accept'] || '')) return rows.length ? repondre(req, 200, rows[0]) : repondre(req, 406, { code: 'PGRST116', message: 'no rows' });
         return repondre(req, 200, rows);

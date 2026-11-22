@@ -69,6 +69,20 @@ export interface Groupe {
   /** Boissons précommandées (texte libre). */
   boissons: string;
   reglement: Reglement;
+  /** Montant de l'empreinte, de l'acompte ou du règlement, en euros ; null = non précisé (toujours null si rien reçu). */
+  montant: number | null;
+  /** Nom de la personne référente du groupe (imprimé sur la fiche). */
+  referent: string;
+}
+
+/** Coordonnées du référent d'un groupe (table groupes_contacts : admin et salle seulement). groupe_id null = groupe supprimé. */
+export interface ContactGroupe {
+  groupe_id: string | null;
+  nom: string;
+  email: string;
+  telephone: string;
+  groupe: string;
+  date_groupe: string | null;
 }
 
 /** Où en est le paiement du groupe. */

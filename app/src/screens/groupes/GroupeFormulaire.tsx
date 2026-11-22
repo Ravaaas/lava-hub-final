@@ -1,9 +1,9 @@
 import { useId, useState } from 'react';
-import type { Groupe, Niveau } from '../../domain/types';
+import type { ContactGroupe, Groupe, Niveau } from '../../domain/types';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
-import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit } from '../../domain/groupes';
+import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit, libelleMontant, montantSaisi } from '../../domain/groupes';
 import { niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
-import { creerGroupe, modifierGroupe } from '../../db/groupes';
+import { creerGroupe, enregistrerContact, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
 import { useNotifier } from '../../ui/Notifications';
@@ -14,11 +14,12 @@ import { Choix } from '../../ui/Choix';
 import { Selecteur } from '../../ui/Selecteur';
 import { useConfirmer } from '../../ui/Confirmation';
 
-export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | null; onFermer: () => void }) {
+/** contact : coordonnées déjà enregistrées du référent (admin et salle) ; onContact : relire la base de contacts après un enregistrement. */
+export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { groupe: Groupe | null; contact?: ContactGroupe | undefined; onFermer: () => void; onContact: () => void }) {
   const { menus, groupes, fichesRecette, recharger, journal, setSynchro } = useDonnees();
   const confirmer = useConfirmer();
   const notifier = useNotifier();
-  const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), menu: useId(), boissons: useId(), notes: useId() };
+  const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), menu: useId(), boissons: useId(), notes: useId(), referent: useId(), email: useId(), tel: useId(), montant: useId() };
   const [nom, setNom] = useState(g?.nom ?? '');
   const [date, setDate] = useState(g?.date ?? aujourdhui());
   const [heure, setHeure] = useState(g?.heure ?? '');
@@ -32,6 +33,10 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
   const [notes, setNotes] = useState(g?.notes ?? '');
   const [boissons, setBoissons] = useState(g?.boissons ?? '');
   const [reglement, setReglement] = useState(g?.reglement ?? 'aucun');
+  const [montant, setMontant] = useState(g?.montant != null ? String(g.montant).replace('.', ',') : '');
+  const [referent, setReferent] = useState(g?.referent ?? '');
+  const [email, setEmail] = useState(contact?.email ?? '');
+  const [telephone, setTelephone] = useState(contact?.telephone ?? '');
   const [occupe, setOccupe] = useState(false);
 
   const enregistrer = async () => {
@@ -42,18 +47,28 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
       // niveaux du groupe (copiés du menu ou composés) ; fiches supprimées et plats libres vides écartés
       niveaux: niveauxAEnregistrer(niveaux, fichesRecette),
       allergenes, regimes, notes: notes.trim(), boissons: boissons.trim(), reglement,
+      // pas de montant tant que rien n'est reçu
+      montant: reglement === 'aucun' ? null : montantSaisi(montant), referent: referent.trim(),
       // seuls les allergènes et régimes cochés gardent un nombre ; vide = non précisé
       effectifs: Object.fromEntries([...allergenes, ...regimes].filter(n => effectifs[n]?.trim()).map(n => [n, Number(effectifs[n])])),
     };
-    const erreur = erreurGroupe(donnees);
+    const coord = { email: email.trim(), telephone: telephone.trim() };
+    const erreur = erreurGroupe({ ...donnees, email: coord.email });
     if (erreur) { notifier(erreur, 'err'); return; }
     if (date < aujourdhui() && date !== g?.date && !await confirmer(`Cette date est passée (${dateCourte(date)}). Enregistrer quand même ?`, 'Enregistrer')) return;
     const conflit = groupesEnConflit({ id: g?.id, date, heure, salle }, groupes)[0];
     if (conflit && !await confirmer(`« ${conflit.nom} » est déjà prévu dans cette salle à ${heureFr(conflit.heure)} le même jour. Enregistrer quand même ?`, 'Enregistrer')) return;
     setOccupe(true); setSynchro(true);
     try {
-      const r = g ? await modifierGroupe(g.id, donnees) : await creerGroupe(donnees);
+      const groupeId = g?.id ?? crypto.randomUUID();
+      const r = g ? await modifierGroupe(groupeId, donnees) : await creerGroupe(groupeId, donnees);
       if (!r.ok) { notifier('Erreur : ' + r.message, 'err'); return; }
+      // coordonnées du référent : table à part (base de contacts), écrite dès qu'il y a quelque chose à garder ou à effacer
+      if (coord.email || coord.telephone || donnees.referent || contact) {
+        const c = await enregistrerContact({ groupe_id: groupeId, nom: donnees.referent, ...coord, groupe: donnees.nom, date_groupe: date });
+        if (!c.ok) notifier('Groupe enregistré, mais pas les coordonnées du référent : ' + c.message, 'err');
+        onContact();
+      }
       await journal(g ? 'modification groupe' : 'création groupe', donnees.nom);
       notifier(g ? 'Groupe modifié' : 'Groupe enregistré', 'ok');
       onFermer();
@@ -88,6 +103,16 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
         <div className="fg2"><span className="fl">Salle</span>
           <Choix libelle="Salle" options={liste(SALLES, salle).map(s => ({ valeur: s, libelle: s }))} valeur={salle} onChange={setSalle} /></div>
       </div>
+      <div className="fsect">Référent du groupe</div>
+      <div className="fg2"><label className="fl" htmlFor={id.referent}>Nom du référent</label>
+        <input className="fi2" id={id.referent} type="text" autoComplete="off" placeholder="ex: Claire Dupont" value={referent} onChange={e => { setReferent(e.target.value); }} /></div>
+      <div className="fr">
+        <div className="fg2"><label className="fl" htmlFor={id.email}>Email du référent</label>
+          <input className="fi2" id={id.email} type="email" autoComplete="off" placeholder="ex: claire.dupont@exemple.fr" value={email} onChange={e => { setEmail(e.target.value); }} /></div>
+        <div className="fg2"><label className="fl" htmlFor={id.tel}>Téléphone du référent</label>
+          <input className="fi2" id={id.tel} type="tel" autoComplete="off" placeholder="ex: 06 12 34 56 78" value={telephone} onChange={e => { setTelephone(e.target.value); }} /></div>
+      </div>
+      <p className="niv-aide" style={{ marginTop: '-0.25rem' }}>Email et téléphone ne sont visibles que par l'admin et la salle, et rejoignent la liste des contacts des groupes.</p>
       <div className="fg2"><label className="fl" htmlFor={id.menu}>Menu choisi</label>
           <Selecteur id={id.menu} options={[{ valeur: '', libelle: 'Sur mesure' }, ...menus.map(m => ({ valeur: m.id, libelle: m.nom }))]} valeur={menuId} onChange={v => void choisirMenu(v)} /></div>
       <Niveaux niveaux={niveaux} pax={Number(pax) || 0} onChange={setNiveaux} />
@@ -101,6 +126,8 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
       <Nombres noms={regimes} valeurs={effectifs} onChange={setEffectifs} />
       <div className="fg2" style={{ marginTop: '1.25rem' }}><span className="fl">Règlement</span>
         <Choix libelle="Règlement" options={REGLEMENTS} valeur={reglement} onChange={setReglement} /></div>
+      {reglement !== 'aucun' && <div className="fg2"><label className="fl" htmlFor={id.montant}>{libelleMontant(reglement)}</label>
+        <input className="fi2" id={id.montant} type="text" inputMode="decimal" autoComplete="off" placeholder="ex: 300" value={montant} onChange={e => { setMontant(e.target.value); }} /></div>}
       <div className="fg2"><label className="fl" htmlFor={id.notes}>Notes</label>
         <textarea className="fta" id={id.notes} placeholder="Précisions : nombre d'enfants, contraintes, heure de service…" value={notes} onChange={e => { setNotes(e.target.value); }} /></div>
     </Fenetre>

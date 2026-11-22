@@ -6,7 +6,7 @@ import { allergenesDesElements, diffFicheRecette, elementsResolus } from './fich
 import { lignesJournal, libelleJour } from './journal';
 import { alertesGroupe, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
-import { erreurGroupe, groupesEnConflit, groupesFiltres, libelleReglement, lireReglement } from './groupes';
+import { contactsUniques, csvContacts, erreurGroupe, euros, groupesEnConflit, groupesFiltres, libelleMontant, libelleReglement, lireMontant, lireReglement, montantSaisi } from './groupes';
 import { normNom } from './texte';
 import { cleProduit, erreurPerte, joursSemaine, lireQuantite, lundi, parCategorie, peutSupprimerPerte, quantiteFr, recapSemaine, type Perte, type ProduitPerso } from './pertesPerso';
 import { scriptPrincipal } from './version';
@@ -203,6 +203,41 @@ describe('groupes', () => {
     expect(lireReglement('payé')).toBe('aucun');
     expect(lireReglement(null)).toBe('aucun');
     expect(libelleReglement('empreinte')).toBe('Empreinte bancaire');
+  });
+  it('montant : saisie souple, lecture prudente, contrôle', () => {
+    expect(montantSaisi('1 250,50 €')).toBe(1250.5);
+    expect(montantSaisi('300')).toBe(300);
+    expect(montantSaisi(' ')).toBeNull();
+    expect(montantSaisi('trois cents')).toBeNaN();
+    expect(montantSaisi('12,345')).toBeNaN();
+    expect(lireMontant('450.00')).toBe(450);
+    expect(lireMontant(-3)).toBeNull();
+    expect(lireMontant(null)).toBeNull();
+    expect(euros(1250).replace(/\s/g, ' ')).toBe('1 250 €');
+    expect(euros(300.5).replace(/\s/g, ' ')).toBe('300,50 €');
+    expect(libelleMontant('acompte')).toBe("Montant de l'acompte (€)");
+    const base = { nom: 'X', date: '2026-10-01', pax: 4 };
+    expect(erreurGroupe({ ...base, montant: NaN })).toMatch(/Montant/);
+    expect(erreurGroupe({ ...base, montant: 300 })).toBeNull();
+    expect(erreurGroupe({ ...base, email: 'claire@' })).toMatch(/Email du référent/);
+    expect(erreurGroupe({ ...base, email: 'claire@exemple.fr' })).toBeNull();
+  });
+  it('contacts : un par email (sinon téléphone), le plus récent, et CSV pour Excel', () => {
+    const c = (nom: string, email: string, telephone: string, groupe: string, date: string) => ({ groupe_id: groupe, nom, email, telephone, groupe, date_groupe: date });
+    const u = contactsUniques([
+      c('Claire', 'Claire@Exemple.fr', '', 'Dîner 2025', '2025-12-01'),
+      c('Claire Dupont', 'claire@exemple.fr', '06 12 34 56 78', 'Séminaire', '2026-10-01'),
+      c('Marc', '', '07 00 00 00 00', 'Anniversaire', '2026-05-01'),
+      c('Sans coordonnées', '', '', 'Vide', '2026-06-01'),
+    ]);
+    expect(u).toEqual([
+      { nom: 'Claire Dupont', email: 'claire@exemple.fr', telephone: '06 12 34 56 78', groupe: 'Séminaire', date: '2026-10-01', groupes: 2 },
+      { nom: 'Marc', email: '', telephone: '07 00 00 00 00', groupe: 'Anniversaire', date: '2026-05-01', groupes: 1 },
+    ]);
+    const csv = csvContacts([...u, { nom: '=HYPERLINK("x")', email: 'a;b@c.fr', telephone: '+33 6 12', groupe: 'G', date: '', groupes: 1 }]);
+    expect(csv.startsWith('\ufeffNom;Email;Téléphone;')).toBe(true);
+    expect(csv).toContain('\r\nClaire Dupont;claire@exemple.fr;06 12 34 56 78;Séminaire;2026-10-01;2\r\n');
+    expect(csv).toContain(`"'=HYPERLINK(""x"")";"a;b@c.fr";+33 6 12;G;;1`);
   });
   it('niveaux : copiés du menu (temps fixes compris), totaux et nettoyage', () => {
     const frs = [fr('r1', 'CASSOLETTE')];

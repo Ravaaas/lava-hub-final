@@ -245,7 +245,10 @@ scenario('Première connexion', {}, async (a) => {
   await a.onglet('Fiche Recette');
   check('rôle cuisine : ni Best of ni Archive', !(await a.existe('Archive')) && !(await a.existe('Best of')) && await a.existe('Partages'));
   await a.onglet('Groupes');
-  check('rôle cuisine : pas de Nouveau groupe', !(await a.existe('Nouveau groupe')));
+  check('rôle cuisine : pas de Nouveau groupe ni de Contacts', !(await a.existe('Nouveau groupe')) && !(await a.existe('Contacts')));
+  await a.clic('Séminaire Dupont');
+  check('rôle cuisine : nom du référent, sans email ni téléphone', await a.attend('Claire Dupont') && await a.enOrdre(['Référent et règlement', 'Référent', 'Claire Dupont', 'Règlement', 'Rien reçu']) && !(await a.voit('Coordonnées du référent')) && !(await a.voit('claire.dupont@exemple.fr')) && !(await a.voit('06 12 34 56 78')));
+  await a.clic('Retour');
   await a.deconnexion(); await a.clic('Cuisine');
   check('après activation : plus de « Première connexion »', !/julie martin.{0,40}première connexion/.test(await a.texte()));
 });
@@ -419,7 +422,7 @@ scenario('Anciens menus', { anciensMenus: true }, async (a) => {
   check('3 temps d\'avant : affiché en Temps 1, 2, 3', await a.enOrdre(['Temps 1', 'Temps 2', 'CASSOLETTE DE SAINT-JACQUES', 'Temps 3']) && !(await a.voit('Entrée')));
 });
 
-scenario('Groupes', { anciensMenus: true }, async (a) => {
+scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.connexion('Cuisine', 'Alexandre RAVASIO');
   await a.onglet('Groupes');
   check('à venir seulement', await a.attend('Séminaire Dupont') && !(await a.voit('Mariage Garnier')));
@@ -459,8 +462,21 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   await a.remplir('Nom du niveau', 'Mignardises', 3);
   await a.remplir('Plat libre (Mignardises)', 'Café gourmand'); await a.clic('Libre', 3);
   await a.remplir('Nombre — Café gourmand', '2');
+  // montant de l'acompte (champ affiché dès que quelque chose est reçu) et référent du groupe
+  await a.remplir("Montant de l'acompte (€)", 'trois cents');
+  m = await a.marque(); await a.clic('Enregistrer');
+  check('montant illisible refusé', await a.notif(m, /Montant/) && a.ecritures('groupes', 'POST').length === 0);
+  await a.remplir("Montant de l'acompte (€)", '250,50');
+  await a.remplir('Nom du référent', 'Sophie Leroy'); await a.remplir('Email du référent', 'sophie@'); await a.remplir('Téléphone du référent', '06 11 22 33 44');
+  m = await a.marque(); await a.clic('Enregistrer');
+  check('email du référent invalide refusé', await a.notif(m, /Email du référent/) && a.ecritures('groupes', 'POST').length === 0);
+  await a.remplir('Email du référent', 'sophie.leroy@exemple.fr');
   await a.clic('Enregistrer');
   const cree = await a.attendEcriture('groupes', 'POST');
+  const contact = await a.attendEcriture('groupes_contacts', 'POST');
+  check('montant et référent enregistrés', cree && cree.corps.montant === 250.5 && cree.corps.referent === 'Sophie Leroy' && !('email' in cree.corps), JSON.stringify(cree && cree.corps));
+  check('coordonnées du référent dans la base de contacts', contact && cree && contact.corps.groupe_id === cree.corps.id && contact.corps.nom === 'Sophie Leroy'
+    && contact.corps.email === 'sophie.leroy@exemple.fr' && contact.corps.telephone === '06 11 22 33 44' && contact.corps.groupe === 'Anniversaire Leroy', JSON.stringify(contact && contact.corps));
   check('groupe enregistré', cree && cree.corps.nom === 'Anniversaire Leroy' && cree.corps.pax === 8 && cree.corps.menu_id === 'm1' && cree.corps.menu_nom === 'Carte du soir'
     && cree.corps.allergenes === 'Gluten (2)' && cree.corps.regimes === 'Végétarien (3)' && cree.corps.notes === '2 enfants'
     && cree.corps.boissons === '3 magnums de Chablis\nEaux et cafés' && cree.corps.reglement === 'acompte', JSON.stringify(cree && cree.corps));
@@ -471,6 +487,7 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   await a.clic('Anniversaire Leroy');
   check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques[\s\S]*gluten/.test(await a.texte()));
   check('fiche groupe : boissons précommandées et règlement', await a.enOrdre(['Boissons précommandées', '3 magnums de Chablis', 'Eaux et cafés', 'Restrictions', 'Règlement', 'Acompte versé']));
+  check('fiche groupe : référent, coordonnées et montant à l\'écran', await a.enOrdre(['Référent et règlement', 'Référent', 'Sophie Leroy', 'Règlement', 'Acompte versé · 250,50 €', 'Coordonnées du référent', 'sophie.leroy@exemple.fr', '06 11 22 33 44', 'Notes']));
   check('fiche groupe : salle et menu en tête', await a.voit('Menu Carte du soir') && await a.voit('Salle principale'));
   check('fiche groupe : niveaux, quantités et totaux', await a.enOrdre(['Plat', '8 / 8 pers.', '8', 'CASSOLETTE DE SAINT-JACQUES', 'Dessert', '6 / 8 pers. · il manque 2', '6', 'TARTE AU CITRON', 'Mignardises', '2', 'Café gourmand']), (await a.texte()).slice(0, 600));
   check('fiche groupe : pas de « modifié par »', !(await a.voit('modifié par')));
@@ -478,7 +495,10 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   const imprime = await a.imprime('Imprimer');
   check('groupe : impression de la fiche seule', imprime.n === 1 && imprime.texte.includes('fiche groupe') && imprime.texte.includes('anniversaire leroy')
     && !imprime.texte.includes('retour') && !imprime.texte.includes('séminaire dupont'), imprime.texte.slice(0, 200));
-  await a.clic('Modifier'); await a.remplir('Nombre de personnes', '10');
+  check('impression : nom du référent, sans email, téléphone ni montant', imprime.texte.includes('référent et règlement') && imprime.texte.includes('sophie leroy') && !imprime.texte.includes('coordonnées') && !imprime.texte.includes('sophie.leroy@') && !imprime.texte.includes('06 11 22') && !imprime.texte.includes('250'), imprime.texte);
+  await a.clic('Modifier');
+  check('modification : coordonnées et montant repris', (await a.champ('Email du référent'))?.valeur === 'sophie.leroy@exemple.fr' && (await a.champ("Montant de l'acompte (€)"))?.valeur === '250,5');
+  await a.remplir('Nombre de personnes', '10');
   check('modification : niveaux et quantités repris', await a.attend('Total : 8 / 10 pers. — il manque 2') && await a.voit('Café gourmand'), (await a.texte()).replace(/^[\s\S]*niveaux du menu/, '').slice(0, 800));
   await a.remplir('Menu', '3 temps');
   check('changer de menu : confirmation avant de remplacer les niveaux', await a.voit('Remplacer les niveaux'));
@@ -487,9 +507,19 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   await a.clic('Enregistrer');
   const modif = await a.attendEcriture('groupes', 'PATCH');
   check('groupe modifié', modif && modif.corps.pax === 10 && modif.corps.menu_id === 'm1' && modif.corps.niveaux.length === 3, JSON.stringify(modif && modif.corps));
+  const modifContact = await (async () => { for (let i = 0; i < 50; i++) { const e = a.ecritures('groupes_contacts', 'POST'); if (e.length > 1) return e[e.length - 1]; await new Promise(r => setTimeout(r, 100)); } return null; })();
+  check('modification : coordonnées réenregistrées sur la même ligne', modifContact && modifContact.corps.groupe_id === cree.corps.id && modifContact.corps.email === 'sophie.leroy@exemple.fr', JSON.stringify(modifContact && modifContact.corps));
   await a.clic('Séminaire Dupont'); await a.clic('Supprimer'); await a.clic('Supprimer');
   const sup = await a.attendEcriture('groupes', 'DELETE');
   check('groupe supprimé', sup && sup.filtre.id === 'eq.g1' && await a.attendPlus('Séminaire Dupont'));
+  // Base de contacts : un par email, groupes supprimés compris, et export CSV
+  await page.evaluate(() => { URL.createObjectURL = b => { b.text().then(t => { window.__csv = t; }); return 'data:text/plain,'; }; });
+  await a.clic('Contacts');
+  check('contacts des groupes : référents par date de groupe, groupe supprimé compris', await a.attend('Contacts des groupes') && await a.enOrdre(['3 contacts', 'Claire Dupont', 'Sophie Leroy', 'sophie.leroy@exemple.fr · 06 11 22 33 44', 'Anniversaire Leroy', 'Marc Ancien', 'Pot de départ']), (await a.texte()).slice(0, 600));
+  await a.clic('Télécharger (CSV)');
+  const csv = await page.waitForFunction(() => window.__csv, { timeout: 3000 }).then(h => h.jsonValue()).catch(() => '');
+  check('contacts : fichier CSV pour Excel', csv.replace(/^\ufeff/, '').startsWith('Nom;Email;Téléphone;') && csv.includes('Sophie Leroy;sophie.leroy@exemple.fr;06 11 22 33 44;Anniversaire Leroy;') && csv.includes('Marc Ancien;marc@exemple.fr;;Pot de départ;2025-06-01;1'), csv);
+  await a.clic('Fermer');
   // Menu sur mesure : pas de menu choisi → on compose les plats (fiche recette ou plat libre)
   await a.clic('Nouveau groupe');
   await a.remplir('Nom du groupe', 'Cocktail Petit'); await a.remplir('Nombre de personnes', '15');

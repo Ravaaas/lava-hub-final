@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-22",
+    titre: "Fiche groupe : montant, référent et contacts",
+    desc: "Le montant de l'empreinte bancaire, de l'acompte ou du règlement se note sur la fiche groupe. On y inscrit aussi le référent du groupe : son nom figure sur la fiche imprimée, son email et son téléphone ne sont visibles que par l'admin et la salle. Le bouton « Contacts » de l'onglet Groupes réunit les référents de tous les groupes, un par personne, et les télécharge en fichier CSV pour Excel ou un outil d'emailing."
+  },
+  {
+    date: "2026-11-22",
     titre: "Fiche groupe : règlement et boissons",
     desc: "La fiche groupe indique où en est le paiement (rien reçu, empreinte bancaire, acompte versé ou réglé en totalité) et les boissons précommandées, écrites librement. Les deux apparaissent sur la fiche imprimée."
   },

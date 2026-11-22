@@ -1,4 +1,4 @@
-import type { Groupe, Niveau, Reglement } from './types';
+import type { ContactGroupe, Groupe, Niveau, Reglement } from './types';
 
 /** États du paiement, du moins au plus avancé. */
 export const REGLEMENTS: readonly { valeur: Reglement; libelle: string }[] = [
@@ -10,6 +10,28 @@ export const REGLEMENTS: readonly { valeur: Reglement; libelle: string }[] = [
 /** Valeur lue en base ; inconnue ou absente = rien reçu. */
 export const lireReglement = (v: unknown): Reglement => REGLEMENTS.find(r => r.valeur === v)?.valeur ?? 'aucun';
 export const libelleReglement = (r: Reglement): string => REGLEMENTS.find(x => x.valeur === r)?.libelle ?? '';
+
+/** Libellé du champ montant selon l'état du paiement (aucun montant quand rien n'est reçu). */
+export function libelleMontant(r: Reglement): string {
+  return r === 'empreinte' ? "Montant de l'empreinte (€)" : r === 'acompte' ? "Montant de l'acompte (€)" : r === 'regle' ? 'Montant réglé (€)' : '';
+}
+/** Montant lu en base (nombre, ou texte pour une colonne numeric) ; illisible ou négatif = non précisé. */
+export function lireMontant(v: unknown): number | null {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN;
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+/** Montant saisi : « 1 250,50 » ou « 1250.5 » ; vide = null ; illisible = NaN (refusé par erreurGroupe). */
+export function montantSaisi(t: string): number | null {
+  const v = t.replace(/[\s\u00a0€]/g, '').replace(',', '.');
+  return v ? (/^\d+(\.\d{1,2})?$/.test(v) ? Number(v) : NaN) : null;
+}
+/** « 1 250 € », « 300,50 € » */
+export const euros = (n: number): string =>
+  n.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
+
+export const MONTANT_MAX = 1_000_000;
+/** Adresse email plausible (un @, un point dans le domaine, pas d'espace). */
+export const emailValide = (e: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 export const SALLES = ['Salle principale', 'Salon Basalte', 'Privatisation'] as const;
 
@@ -37,13 +59,52 @@ export function dateLongue(d: string): string {
 export const PAX_MAX = 500;
 
 /** Contrôle de la saisie ; null si tout est bon. */
-export function erreurGroupe(g: { nom: string; date: string; pax: number; effectifs?: Record<string, number>; niveaux?: readonly Niveau[] }): string | null {
+export function erreurGroupe(g: { nom: string; date: string; pax: number; effectifs?: Record<string, number>; niveaux?: readonly Niveau[]; montant?: number | null; email?: string }): string | null {
   if (!g.nom.trim() || !g.date || !(g.pax > 0)) return 'Nom, date et nombre de personnes obligatoires';
   if (!Number.isInteger(g.pax) || g.pax > PAX_MAX) return `Nombre de personnes : un entier entre 1 et ${PAX_MAX}`;
   if (Object.values(g.effectifs ?? {}).some(n => !Number.isInteger(n) || n < 1 || n > g.pax)) return `Allergies et régimes : un nombre entier de personnes entre 1 et ${g.pax}`;
   // nombre de chaque plat : facultatif ; s'il est donné, entier, au moins 1 et pas plus que le groupe
   const qtes = (g.niveaux ?? []).flatMap(n => n.plats).map(p => p.qte).filter(q => q !== null);
-  return qtes.some(q => !Number.isInteger(q) || q < 1 || q > g.pax) ? `Nombre de plats : un entier entre 1 et ${g.pax}` : null;
+  if (qtes.some(q => !Number.isInteger(q) || q < 1 || q > g.pax)) return `Nombre de plats : un entier entre 1 et ${g.pax}`;
+  if (g.montant != null && !(Number.isFinite(g.montant) && g.montant >= 0 && g.montant <= MONTANT_MAX)) return 'Montant : un nombre en euros, par exemple 300 ou 1250,50';
+  if (g.email && !emailValide(g.email)) return 'Email du référent : adresse invalide (ex: nom@exemple.fr)';
+  return null;
+}
+
+/** Une personne de la base de contacts : coordonnées les plus récentes, dernier groupe et nombre de groupes. */
+export interface ContactUnique { nom: string; email: string; telephone: string; groupe: string; date: string; groupes: number }
+
+/**
+ * Base de contacts : un contact par email (sinon par téléphone), le plus récent d'abord.
+ * Les fiches sans email ni téléphone sont ignorées ; un champ vide est complété par une fiche plus ancienne.
+ */
+export function contactsUniques(contacts: readonly ContactGroupe[]): ContactUnique[] {
+  const cle = (c: ContactGroupe) => c.email.trim().toLowerCase() || c.telephone.replace(/[^\d+]/g, '');
+  const parCle = new Map<string, ContactUnique>();
+  const recents = [...contacts].sort((a, b) => (b.date_groupe ?? '').localeCompare(a.date_groupe ?? ''));
+  for (const c of recents) {
+    const k = cle(c);
+    if (!k) continue;
+    const u = parCle.get(k);
+    if (!u) { parCle.set(k, { nom: c.nom.trim(), email: c.email.trim(), telephone: c.telephone.trim(), groupe: c.groupe, date: c.date_groupe ?? '', groupes: 1 }); continue; }
+    u.groupes += 1;
+    u.nom ||= c.nom.trim(); u.email ||= c.email.trim(); u.telephone ||= c.telephone.trim();
+  }
+  return [...parCle.values()];
+}
+
+// Une cellule qui commence par = + - @ serait lue comme une formule par Excel : on la protège (sauf un numéro de téléphone).
+const cellule = (v: string | number): string => {
+  let t = String(v);
+  if (/^[=+\-@\t\r]/.test(t) && !/^\+?[\d\s.()-]+$/.test(t)) t = "'" + t;
+  return /[;"\n\r]/.test(t) ? `"${t.replaceAll('"', '""')}"` : t;
+};
+
+/** Fichier CSV (séparateur « ; », ouvert directement par Excel en français, importable dans un outil d'emailing). */
+export function csvContacts(liste: readonly ContactUnique[]): string {
+  const lignes = [['Nom', 'Email', 'Téléphone', 'Dernier groupe', 'Date du dernier groupe', 'Nombre de groupes'],
+    ...liste.map(c => [c.nom, c.email, c.telephone, c.groupe, c.date, c.groupes])];
+  return '\ufeff' + lignes.map(l => l.map(cellule).join(';')).join('\r\n') + '\r\n';
 }
 
 const minutes = (h: string): number => { const [a = 0, b = 0] = h.split(':').map(Number); return a * 60 + b; };

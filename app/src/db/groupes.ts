@@ -1,8 +1,8 @@
 import { supabase } from '../lib/supabase';
-import type { Groupe, Niveau, PlatCompte } from '../domain/types';
+import type { ContactGroupe, Groupe, Niveau, PlatCompte } from '../domain/types';
 import { avecEffectifs, joindre, listeAllergenes, separerEffectifs } from '../domain/allergenes';
 import { lirePlat } from './config';
-import { lireReglement } from '../domain/groupes';
+import { lireMontant, lireReglement } from '../domain/groupes';
 import { objet, tableau, texte } from './lecture';
 import { prudent, verifier, type Resultat } from './resultat';
 
@@ -44,6 +44,8 @@ export async function chargerGroupes(): Promise<Groupe[]> {
     notes: l.notes ?? '',
     boissons: texte(l.boissons),
     reglement: lireReglement(l.reglement),
+    montant: lireMontant(l.montant),
+    referent: texte(l.referent),
     };
   });
 }
@@ -58,11 +60,24 @@ const versLigne = ({ effectifs, niveaux, ...g }: Omit<Groupe, 'id'>) => ({
   allergenes: joindre(avecEffectifs(g.allergenes, effectifs)), regimes: joindre(avecEffectifs(g.regimes, effectifs)),
 });
 
-export const creerGroupe = (g: Omit<Groupe, 'id'>): Promise<Resultat> =>
-  prudent(async () => verifier(await supabase.from('groupes').insert(versLigne(g)).select('id')));
+/** id choisi par l'app : les coordonnées du référent s'enregistrent juste après avec le même id. */
+export const creerGroupe = (id: string, g: Omit<Groupe, 'id'>): Promise<Resultat> =>
+  prudent(async () => verifier(await supabase.from('groupes').insert({ id, ...versLigne(g) }).select('id')));
 
 export const modifierGroupe = (id: string, g: Omit<Groupe, 'id'>): Promise<Resultat> =>
   prudent(async () => verifier(await supabase.from('groupes').update(versLigne(g)).eq('id', id).select('id')));
 
 export const supprimerGroupe = (id: string): Promise<Resultat> =>
   prudent(async () => verifier(await supabase.from('groupes').delete().eq('id', id).select('id')));
+
+// ── Coordonnées des référents (table groupes_contacts : admin et salle ; la cuisine reçoit une liste vide) ──
+
+export async function chargerContacts(): Promise<ContactGroupe[]> {
+  const { data, error } = await supabase.from('groupes_contacts').select('groupe_id, nom, email, telephone, groupe, date_groupe');
+  if (error) throw new Error(error.message);
+  return data.map(l => ({ groupe_id: l.groupe_id ?? null, nom: texte(l.nom), email: texte(l.email), telephone: texte(l.telephone), groupe: texte(l.groupe), date_groupe: l.date_groupe ?? null }));
+}
+
+/** Une ligne par groupe (remplacée à chaque enregistrement) ; nom et date du groupe recopiés pour la base de contacts. */
+export const enregistrerContact = (c: ContactGroupe & { groupe_id: string }): Promise<Resultat> =>
+  prudent(async () => verifier(await supabase.from('groupes_contacts').upsert(c, { onConflict: 'groupe_id' }).select('groupe_id')));
