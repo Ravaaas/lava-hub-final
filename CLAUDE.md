@@ -44,13 +44,13 @@ La base est la source de vérité. Les fichiers `supabase/sql/*.sql` sont **déj
 ## Comptes et sécurité
 - Un compte Supabase Auth par personne, email `prenom.nom@lava-hub.local` **fabriqué par l'app (jamais saisi ni affiché)**. Écran de connexion : Cuisine/Salle → profil « Prénom NOM » → mot de passe. Classement par hiérarchie des postes (Admin, puis Chef → Apprenti en cuisine, Directeur → Apprenti en salle), puis par nom.
 - Première connexion : profil sans compte (`compte_cree=false`) → la personne crée son mot de passe via l'**Edge Function `equipe`** (`supabase/functions/equipe/index.ts`, actions `activer`/`reinitialiser`/`supprimer`, clé `service_role` côté serveur uniquement). **Elle se déploie à la main** dans Supabase > Edge Functions ; après modification du fichier, la recoller.
-- **Edge Function `recap-pertes`** (`supabase/functions/recap-pertes/index.ts`) : email du récap Pertes & Perso d'une semaine complète (7 jours validés), via Resend ; secrets `RESEND_API_KEY`, `RECAP_DESTINATAIRE`, `RECAP_EXPEDITEUR`. Appelée par l'app quand l'admin valide le 7e jour, ou par le bouton du Récap. Se déploie à la main comme `equipe`.
+- **Edge Function `recap-pertes`** (`supabase/functions/recap-pertes/index.ts` + `pdf.ts`) : email du récap Pertes & Perso, avec le récap en **PDF A4 joint** (pdf-lib). Envoi par **Gmail** (secrets `GMAIL_USER`, `GMAIL_APP_PASSWORD` = mot de passe d'application Google) vers `RECAP_DESTINATAIRE` ; Resend en secours (`RESEND_API_KEY`, `RECAP_EXPEDITEUR`, domaine non vérifié à ce jour). Déclenchée **chaque lundi à 7 h UTC par pg_cron** (`recap-pertes-lundi`, jeton de la table `perso_cron`, semaine écoulée, une seule fois, jours non validés signalés), par l'app quand l'admin valide le 7e jour, ou par le bouton du Récap (semaine complète exigée). Se déploie à la main comme `equipe`.
 - RLS : lecture = `mon_role() is not null` (membre actif connecté) ; écriture = `is_admin()` (groupes : admin ou salle). L'email du propriétaire est codé en dur comme admin de secours dans `mon_role()` et l'app. Inscriptions publiques désactivées. `profils_connexion()` est la seule fonction publique (liste des profils).
 - La clé `anon` (`app/src/lib/supabase.ts`) est publique par conception ; ne jamais y mettre `service_role`.
 
 ## Automatisations dans la base (ne pas les recoder côté app)
 - Déclencheurs : allergènes des fiches recette recalculés depuis les fiches techniques liées — **jamais en baisse si un lien est cassé** (des fiches recette ont des liens vers des fiches supprimées : leurs allergènes enregistrés sont la seule trace) ; retrait des liens quand une fiche est supprimée ; `modifie_par/modifie_le`.
-- `pg_cron` : sauvegarde à 3 h (14 gardées), purge du journal > 12 mois. Temps réel activé sur fiches, fiches recette, groupes, config.
+- `pg_cron` : sauvegarde à 3 h (14 gardées), purge du journal > 12 mois, récap Pertes & Perso le lundi à 7 h UTC (`pg_net`). Temps réel activé sur fiches, fiches recette, groupes, config.
 
 ## Conventions et pièges
 - Noms de fiches techniques en MAJUSCULES. Pas de prix dans les menus. Config = onglets Équipe / Catégories / Sauvegarde.

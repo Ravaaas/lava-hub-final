@@ -225,3 +225,29 @@ begin
   delete from public.sauvegardes where id not in (select id from public.sauvegardes order by cree_le desc limit 14);
 end $$;
 revoke execute on function public.faire_sauvegarde() from public, anon, authenticated;
+
+-- ════════════════════════════════════════════════════════════════════════════
+-- 8. ENVOI AUTOMATIQUE DU RÉCAP CHAQUE LUNDI (7 h UTC = 8 h l'hiver, 9 h l'été à Paris)
+--    pg_cron appelle la fonction « recap-pertes » avec un jeton connu de la base seulement (table perso_cron,
+--    illisible depuis l'app). La fonction envoie la semaine écoulée, une seule fois (rien si déjà envoyée).
+--    La clé « anon » ci-dessous est publique par conception (elle est aussi dans app/src/lib/supabase.ts).
+-- ════════════════════════════════════════════════════════════════════════════
+create extension if not exists pg_net;
+
+create table if not exists public.perso_cron (
+  id int primary key default 1 check (id = 1),
+  jeton text not null default (gen_random_uuid()::text || gen_random_uuid()::text)
+);
+alter table public.perso_cron enable row level security;   -- aucune règle : personne ne le lit depuis l'app
+insert into public.perso_cron (id) values (1) on conflict do nothing;
+
+select cron.unschedule(jobid) from cron.job where jobname = 'recap-pertes-lundi';
+select cron.schedule('recap-pertes-lundi', '0 7 * * 1', $cron$
+  select net.http_post(
+    url := 'https://qmvxmxzsmpigvseuidcd.supabase.co/functions/v1/recap-pertes',
+    headers := jsonb_build_object('Content-Type', 'application/json',
+      'Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtdnhteHpzbXBpZ3ZzZXVpZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTY1ODYsImV4cCI6MjA5NzI5MjU4Nn0._kDu_tyJbr9Hcckg_dC0OYsSqh23aPND96wMX_KLdAc', 'apikey', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtdnhteHpzbXBpZ3ZzZXVpZGNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MTY1ODYsImV4cCI6MjA5NzI5MjU4Nn0._kDu_tyJbr9Hcckg_dC0OYsSqh23aPND96wMX_KLdAc',
+      'x-cron-token', (select jeton from public.perso_cron where id = 1)),
+    body := '{"auto": true}'::jsonb,
+    timeout_milliseconds := 30000)
+$cron$);
