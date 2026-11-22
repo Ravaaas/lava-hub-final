@@ -38,11 +38,13 @@ publié sur GitHub Pages (https://ravaaas.github.io/lava-hub-final/) par `.githu
 | `groupes` | fiche groupe (date, pax, salle, menu, allergies, régimes). |
 | `membres` | équipe : `email` (clé), prenom, nom, poste, `equipe` (cuisine/salle), `role` (admin/salle/cuisine), `actif`, `compte_cree`, `doit_changer_mdp`. |
 | `audit_log`, `sauvegardes` | journal (une ligne par événement) et sauvegardes nocturnes (sans photos). |
+| `perso_produits`, `perso_saisies`, `perso_commentaires`, `perso_validations`, `pertes`, `perso_recaps` | onglet **Pertes & Perso** (cuisine + admin ; remplace l'app Google Apps Script). Saisie = clé `(date, produit_cle)`, une ligne par produit et par jour ; journée validée = verrouillée sauf admin ; auteur (`saisi_par`, `nom`, `valide_par`) **rempli par la base** ; pertes jamais verrouillées, supprimables par leur auteur ou l'admin. `supabase/sql/pertes-perso.sql`. |
 La base est la source de vérité. Les fichiers `supabase/sql/*.sql` sont **déjà appliqués** et rejouables ; ils documentent les migrations.
 
 ## Comptes et sécurité
 - Un compte Supabase Auth par personne, email `prenom.nom@lava-hub.local` **fabriqué par l'app (jamais saisi ni affiché)**. Écran de connexion : Cuisine/Salle → profil « Prénom NOM » → mot de passe. Classement par hiérarchie des postes (Admin, puis Chef → Apprenti en cuisine, Directeur → Apprenti en salle), puis par nom.
 - Première connexion : profil sans compte (`compte_cree=false`) → la personne crée son mot de passe via l'**Edge Function `equipe`** (`supabase/functions/equipe/index.ts`, actions `activer`/`reinitialiser`/`supprimer`, clé `service_role` côté serveur uniquement). **Elle se déploie à la main** dans Supabase > Edge Functions ; après modification du fichier, la recoller.
+- **Edge Function `recap-pertes`** (`supabase/functions/recap-pertes/index.ts`) : email du récap Pertes & Perso d'une semaine complète (7 jours validés), via Resend ; secrets `RESEND_API_KEY`, `RECAP_DESTINATAIRE`, `RECAP_EXPEDITEUR`. Appelée par l'app quand l'admin valide le 7e jour, ou par le bouton du Récap. Se déploie à la main comme `equipe`.
 - RLS : lecture = `mon_role() is not null` (membre actif connecté) ; écriture = `is_admin()` (groupes : admin ou salle). L'email du propriétaire est codé en dur comme admin de secours dans `mon_role()` et l'app. Inscriptions publiques désactivées. `profils_connexion()` est la seule fonction publique (liste des profils).
 - La clé `anon` (`app/src/lib/supabase.ts`) est publique par conception ; ne jamais y mettre `service_role`.
 

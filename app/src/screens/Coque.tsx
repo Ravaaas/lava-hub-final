@@ -12,8 +12,9 @@ import { FichesRecette } from './fichesRecette/FichesRecette';
 import { Menus } from './menus/Menus';
 import { Groupes } from './groupes/Groupes';
 import { Config } from './config/Config';
+import { PertesPerso } from './pertesPerso/PertesPerso';
 
-type Onglet = 'journal' | 'fiches' | 'recettes' | 'menus' | 'groupes' | 'config';
+type Onglet = 'journal' | 'fiches' | 'recettes' | 'menus' | 'groupes' | 'pertes' | 'config';
 
 function basculerTheme() {
   const sombre = document.documentElement.dataset.theme !== 'dark';
@@ -23,7 +24,7 @@ function basculerTheme() {
 
 /** Cadre de l'app : en-tête (synchro, menu du profil), onglets, contenu de l'onglet. */
 export function Coque() {
-  const { moi, admin } = useMoi();
+  const { moi, admin, role } = useMoi();
   const { deconnecter } = useSession();
   const { fiches, fichesRecette, groupes, synchro } = useDonnees();
   const notifier = useNotifier();
@@ -31,17 +32,18 @@ export function Coque() {
   const [menuOuvert, setMenuOuvert] = useState(false);
   const [mdp, setMdp] = useState(false);
 
-  const onglets: { id: Onglet; icone: NomIcone; long: string; court: string; badge?: number; admin?: true }[] = [
+  const onglets: { id: Onglet; icone: NomIcone; long: string; court: string; badge?: number; admin?: true; cuisine?: true }[] = [
     { id: 'journal', icone: 'clock', long: 'Journal', court: 'Journal', admin: true },
     { id: 'fiches', icone: 'file', long: 'Fiche Technique', court: 'Fiches', badge: fiches.length },
     { id: 'recettes', icone: 'book', long: 'Fiche Recette', court: 'Recettes', badge: fichesRecette.length },
     { id: 'menus', icone: 'utensils', long: 'Menus', court: 'Menus' },
     { id: 'groupes', icone: 'users', long: 'Groupes', court: 'Groupes', badge: groupesFiltres(groupes, 'avenir').length },
+    { id: 'pertes', icone: 'clipboard', long: 'Pertes & Perso', court: 'Pertes', cuisine: true },
     { id: 'config', icone: 'sliders', long: 'Config', court: 'Config', admin: true },
   ];
 
   const contenu: Record<Onglet, ReactNode> = {
-    journal: <Journal />, fiches: <FichesTechniques />, recettes: <FichesRecette />, menus: <Menus />, groupes: <Groupes />, config: <Config />,
+    journal: <Journal />, fiches: <FichesTechniques />, recettes: <FichesRecette />, menus: <Menus />, groupes: <Groupes />, pertes: <PertesPerso />, config: <Config />,
   };
 
   return (
@@ -55,7 +57,7 @@ export function Coque() {
         </div>
       </header>
       <nav className="tabs">
-        {onglets.filter(o => admin || !o.admin).map(o => (
+        {onglets.filter(o => (admin || !o.admin) && (!o.cuisine || admin || role === 'cuisine')).map(o => (
           <button key={o.id} type="button" className={`tb${onglet === o.id ? ' active' : ''}`} aria-current={onglet === o.id ? 'page' : undefined}
             onClick={e => { setOnglet(o.id); e.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }}>
             <Icone nom={o.icone} taille={22} className="tb-ic" />

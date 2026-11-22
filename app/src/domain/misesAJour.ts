@@ -2,6 +2,11 @@
 // Chaque ajout visible par l'équipe reçoit une entrée ici.
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
+    date: "2026-11-22",
+    titre: "Nouvel onglet Pertes & Perso",
+    desc: "Le formulaire des repas du personnel et des pertes arrive dans l'application, pour la cuisine. Chacun saisit les quantités utilisées et déclare les pertes à son nom, sans retaper son prénom. L'admin valide les journées, gère la liste des produits et imprime le récap de la semaine, qui part aussi par email quand les 7 jours sont validés."
+  },
+  {
     date: "2026-10-02",
     titre: "Menus déroulants plus simples",
     desc: "Les choix courts (statut d'une fiche recette, salle d'un groupe, équipe et droits d'un membre) se font d'un seul toucher sur des boutons côte à côte. Les listes plus longues (catégorie, unité, fiche liée, menu, poste…) s'ouvrent en liste claire avec une coche sur le choix en cours, une recherche quand elles sont longues, et sur téléphone une feuille qui monte du bas de l'écran."

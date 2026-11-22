@@ -492,6 +492,53 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
    afficher sa feuille .fdoc (en-tête fdoc-sur / fdoc-nom / fdoc-cles, ligne rouge, sections fdoc-ptitle) et appeler window.print().
    Objectif : fiche technique, fiche groupe et menu sur 1 page, fiche recette sur 2 pages au plus (éléments sur deux colonnes).
    Les cases de marge (@bottom-right) remplacent la date et l'adresse que Chrome ajouterait sinon. */
+
+/* ── Pertes & Perso ── */
+.pp-onglets{display:flex;flex-wrap:nowrap;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.pp-onglets .log-filter{flex:1 1 auto;padding:0 12px;white-space:nowrap}
+.pp-jour{display:flex;align-items:center;gap:10px;margin:14px 0 10px;padding:8px;background:var(--bg);border-radius:var(--r-lg);box-shadow:var(--sh1)}
+.pp-fleche{flex:0 0 44px;width:44px;padding:0;justify-content:center}
+.pp-jour-txt{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.pp-jour-txt strong{font-size:16px;font-weight:600;color:var(--ink)}
+.pp-jour-txt strong::first-letter{text-transform:uppercase}
+.pp-jour-txt input{border:0;background:transparent;font:inherit;font-size:14px;color:var(--ink2);text-align:center}
+.pp-statut{margin:0 0 10px;padding:12px 16px;border-radius:var(--r);background:var(--warn-bg);color:var(--warn-tx);font-size:15px;line-height:1.4}
+.pp-statut.pp-ok{background:var(--ok-soft);color:var(--ok)}
+.pp-statut.pp-err{background:var(--danger-soft);color:var(--danger-tx)}
+.pp-actions{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.pp-ligne,.pp-perte{align-items:center}
+.pp-nom{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.pp-nom small,.pp-cmt small{font-size:13px;color:var(--ink2)}
+.pp-qte{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.pp-qte .fi2{width:92px;text-align:right;font-size:17px;font-variant-numeric:tabular-nums}
+.pp-qte .fi2:disabled{opacity:1;color:var(--ink);-webkit-text-fill-color:var(--ink);background:var(--bg2)}
+.pp-faux{box-shadow:0 0 0 2px var(--danger) inset}
+.pp-unite{width:38px;font-size:14px;color:var(--ink2)}
+.pp-etat{display:inline-flex;width:16px;color:var(--ok)}
+.pp-etat .ic{display:block}
+.pp-faux~.pp-etat{color:var(--danger-tx)}
+.pp-cmt{align-items:flex-start;line-height:1.45}
+.pp-cmt-saisie{flex-direction:column;align-items:stretch}
+.pp-cmt-saisie .btn{align-self:flex-start}
+.pp-form{gap:4px;padding:16px 18px 18px}
+.pp-form .btn{align-self:flex-start;margin-top:6px}
+.pp-message{font-size:14px;color:var(--danger-tx)}
+.pp-precision{margin-left:8px;font-size:14px;color:var(--ink2)}
+.pp-semaine{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:0 0 12px}
+.pp-jourbtn{display:flex;flex-direction:column;align-items:center;gap:2px;min-height:52px;padding:6px 0;border:0;border-radius:var(--r);background:var(--fill);color:var(--ink2);font:inherit;font-size:13px;cursor:pointer}
+.pp-jourbtn strong{font-size:16px;color:var(--ink)}
+.pp-jourbtn.pp-valide{background:var(--ok-soft);color:var(--ok)}
+.pp-jourbtn.pp-valide strong{color:var(--ok)}
+.pp-jourbtn:disabled{opacity:.4;cursor:default}
+.pp-fdoc{margin-top:14px}
+.pp-tableau{overflow-x:auto}
+.pp-table th,.pp-table td{text-align:center;padding:0.5rem 0.35rem;white-space:nowrap}
+.pp-table th:first-child,.pp-table td:first-child{text-align:left;white-space:normal}
+.pp-table td:last-child{text-align:right;color:#B5433C;font-weight:600}
+.pp-table tr.pp-cat td,.pp-table tr.pp-cat td:last-child{text-align:left;padding-top:0.8rem;font-size:0.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#B5433C;background:#fff}
+.pp-u{font-size:0.8125rem;color:#6B5C5C;font-weight:400}
+.pp-note{margin-bottom:0.5rem;padding-left:0.6rem;border-left:2px solid #B5433C}
+
 @media print{
   @page{size:A4;margin:12mm 14mm 13mm;@bottom-right{content:counter(page) " / " counter(pages);font-family:system-ui,sans-serif;font-size:7.5pt;color:#8a7a7a}}
   html,body{background:#fff}
@@ -531,4 +578,6 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fr-sr-allerg{margin-top:0.5mm;gap:1.2mm}
   .fr-sr-card .fdoc-ptitle{margin:2.5mm 2.5mm 1mm}
   .fdoc-step,.fdoc-table tr,.fr-allerg-sub,.fr-sr-card,.fdoc-footer{break-inside:avoid}
+  .pp-tableau{overflow:visible}
+  .pp-table th,.pp-table td{padding:1.2mm 1mm;font-size:8.5pt}
 }

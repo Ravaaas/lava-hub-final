@@ -8,6 +8,7 @@ import { alertesGroupe, menuDuGroupe, platsDuMenu, servicesAffiches, servicesAEn
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
 import { erreurGroupe, groupesEnConflit, groupesFiltres } from './groupes';
 import { normNom } from './texte';
+import { cleProduit, erreurPerte, joursSemaine, lireQuantite, lundi, parCategorie, peutSupprimerPerte, quantiteFr, recapSemaine, type Perte, type ProduitPerso } from './pertesPerso';
 import { scriptPrincipal } from './version';
 import type { Fiche, FicheRecette, Groupe, Membre, Menu, ProfilConnexion } from './types';
 
@@ -213,5 +214,55 @@ describe('version publiée', () => {
     const html = '<link rel="modulepreload" href="./assets/react-1.js">\n  <script type="module" crossorigin src="./assets/index-ktgIBNVO.js"></script>';
     expect(scriptPrincipal(html)).toBe('./assets/index-ktgIBNVO.js');
     expect(scriptPrincipal('<html>page d\'erreur</html>')).toBeNull();
+  });
+});
+
+describe('pertes & perso', () => {
+  it('clé de produit identique à l\'ancien Google Sheet', () => {
+    expect(cleProduit('SAUTÉ DE DINDE')).toBe('saute_de_dinde');
+    expect(cleProduit('CHOU-FLEUR')).toBe('chou_fleur');
+    expect(cleProduit('  ')).toBe('produit');
+  });
+  it('lit les quantités à la française', () => {
+    expect(lireQuantite('1,5')).toBe(1.5);
+    expect(lireQuantite(' ')).toBeNull();
+    expect(lireQuantite('abc')).toBeNaN();
+    expect(lireQuantite('-2')).toBeNaN();
+    expect(lireQuantite('1000')).toBeNaN();
+    expect(quantiteFr(0.1 + 0.2)).toBe('0,3');
+  });
+  it('semaine du lundi au dimanche', () => {
+    expect(lundi('2026-11-22')).toBe('2026-11-16');   // dimanche
+    expect(lundi('2026-11-16')).toBe('2026-11-16');
+    expect(joursSemaine('2026-10-26')).toEqual(['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01']);
+  });
+  it('récap : totaux par produit dans l\'ordre de la liste, produits retirés compris', () => {
+    const produits: ProduitPerso[] = [
+      { cle: 'riz', nom: 'RIZ', unite: 'kg', categorie: 'Épicerie', actif: true },
+      { cle: 'lait', nom: 'LAIT', unite: 'L', categorie: 'Crèmerie', actif: true },
+    ];
+    const s = (date: string, cle: string, quantite: number) => ({ date, cle, quantite, par: 'Inès', email: 'i' });
+    const r = recapSemaine('2026-11-16', [s('2026-11-17', 'lait', 1), s('2026-11-16', 'riz', 2), s('2026-11-22', 'riz', 0.5), s('2026-11-23', 'riz', 9), s('2026-11-18', 'vieux', 3), s('2026-11-18', 'lait', 0)], produits);
+    expect(r.map(l => [l.cle, l.total])).toEqual([['riz', 2.5], ['lait', 1], ['vieux', 3]]);
+    expect(r[0]?.parJour).toEqual([2, 0, 0, 0, 0, 0, 0.5]);
+    expect(r[2]?.categorie).toBe('Produits retirés');
+  });
+  it('groupe par catégorie dans l\'ordre d\'apparition', () => {
+    expect(parCategorie([{ categorie: 'B' }, { categorie: 'A' }, { categorie: 'B' }]).map(([c, l]) => [c, l.length])).toEqual([['B', 2], ['A', 1]]);
+  });
+  it('perte complète avant envoi', () => {
+    const ok = { produit: 'SAUMON', quantite: 1, raison: 'DLC dépassée', precision: '' };
+    expect(erreurPerte(ok)).toBe('');
+    expect(erreurPerte({ ...ok, produit: ' ' })).toMatch(/produit/);
+    expect(erreurPerte({ ...ok, quantite: null })).toMatch(/quantité/);
+    expect(erreurPerte({ ...ok, quantite: 0 })).toMatch(/quantité/);
+    expect(erreurPerte({ ...ok, raison: '' })).toMatch(/raison/);
+    expect(erreurPerte({ ...ok, raison: 'Autre' })).toBe('Précise la raison.');
+  });
+  it('suppression d\'une perte : son auteur ou l\'admin', () => {
+    const p = { email: 'ines@lava-hub.local' } as Perte;
+    expect(peutSupprimerPerte(p, 'ines@lava-hub.local', false)).toBe(true);
+    expect(peutSupprimerPerte(p, 'hugo@lava-hub.local', false)).toBe(false);
+    expect(peutSupprimerPerte(p, 'hugo@lava-hub.local', true)).toBe(true);
   });
 });

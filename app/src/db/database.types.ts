@@ -76,6 +76,14 @@ export interface Database {
         detail: Json;
       }, 'ts' | 'action'>;
       sauvegardes: Table<{ id: number; cree_le: string; contenu: Json }>;
+      // Pertes & Perso (supabase/sql/pertes-perso.sql). Auteurs et dates de modification remplis par la base.
+      // quantite est un numeric : selon le client, il arrive en nombre ou en texte (« 0.2 »).
+      perso_produits: Table<{ cle: string; nom: string; unite: string; categorie: string; actif: boolean; cree_le: string }, 'cle' | 'nom'>;
+      perso_saisies: Table<{ date: string; produit_cle: string; quantite: number | string; saisi_par: string; saisi_email: string; modifie_le: string }, 'date' | 'produit_cle' | 'quantite'>;
+      perso_commentaires: Table<{ date: string; email: string; nom: string; texte: string; modifie_le: string }, 'date' | 'texte'>;
+      perso_validations: Table<{ date: string; valide_le: string; valide_par: string }, 'date'>;
+      pertes: Table<{ id: string; date: string; produit: string; quantite: number | string; unite: string; raison: string; precision: string; saisi_par: string; saisi_email: string; cree_le: string }, 'date' | 'produit' | 'quantite' | 'unite' | 'raison'>;
+      perso_recaps: Table<{ semaine: string; envoye_le: string; destinataire: string }, 'semaine'>;
     };
     Views: { [_ in never]: never };
     Functions: {

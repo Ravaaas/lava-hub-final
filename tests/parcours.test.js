@@ -256,6 +256,7 @@ scenario('Rôle salle', {}, async (a) => {
   await a.remplir('Nom du groupe', 'Déjeuner Martin'); await a.remplir('Nombre de personnes', '6');
   await a.clic('Enregistrer');
   check('salle : peut créer un groupe', !!(await a.attendEcriture('groupes', 'POST')) && await a.attend('Déjeuner Martin'));
+  check('salle : pas d\'onglet Pertes & Perso', !(await a.existe('Pertes & Perso')));
 });
 
 scenario('Fiches techniques', {}, async (a, page) => {
@@ -539,10 +540,104 @@ scenario('Nouvelle version', {}, async (a, page, base) => {
   check('« Recharger » recharge la page', await a.attendClic('Cuisine') && !(await a.voit('Nouvelle version disponible')));
 });
 
+// Pertes & Perso : dates au format AAAA-MM-JJ, heure locale (comme l'app)
+const jourLocal = (n = 0) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv-SE'); };
+const lundiPrecedent = () => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7) - 7); return d.toLocaleDateString('sv-SE'); };
+
+scenario('Pertes & Perso — cuisinier', {}, async (a, page, base) => {
+  base.db.pertes.push({ id: 'p-julie', date: jourLocal(), produit: 'SAUCE VIERGE', quantite: 1, unite: 'L', raison: 'DLC dépassée', precision: '', saisi_par: 'Julie', saisi_email: 'julie.martin@lava-hub.local', cree_le: new Date().toISOString() });
+  base.db.perso_validations.push({ date: jourLocal(-1), valide_le: new Date().toISOString(), valide_par: 'Alexandre' });
+  check('connexion cuisine', await a.connexion('Cuisine', 'Hugo PETIT'));
+  await a.onglet('Pertes & Perso');
+  check('cuisine : Repas perso, Pertes, Récap, sans Produits', await a.existe('Repas perso') && await a.existe('Récap') && !(await a.existe('Produits')));
+  check('produits actifs seulement, par catégorie', await a.voit('RIZ BASMATI') && await a.voit('Fromages & crèmerie') && !(await a.voit('VIEUX PRODUIT')));
+  // quantité enregistrée toute seule, signée par la base
+  await a.remplir('Quantité RIZ BASMATI', '1,5');
+  const e = await a.attendEcriture('perso_saisies', 'POST');
+  const ligne = base.db.perso_saisies.find(x => x.produit_cle === 'riz_basmati');
+  check('quantité enregistrée automatiquement (1,5 → 1.5)', !!e && ligne && ligne.quantite === 1.5 && ligne.date === jourLocal());
+  check('saisie signée au nom du cuisinier', ligne && ligne.saisi_par === 'Hugo');
+  check('« saisi par » affiché', await a.attend('saisi par Hugo'));
+  const n = a.ecritures('perso_saisies').length;
+  await a.remplir('Quantité PENNE', 'abc'); await sleep(2500);
+  check('quantité invalide : rien envoyé', a.ecritures('perso_saisies').length === n);
+  await a.remplir('Quantité PENNE', '');
+  // commentaire
+  await a.remplir('Ton commentaire', 'Reste de riz de la veille');
+  let m = await a.marque();
+  await a.clic('Enregistrer le commentaire');
+  check('commentaire enregistré à son nom', await a.notif(m, /commentaire enregistré/i) && base.db.perso_commentaires.some(c => c.nom === 'Hugo' && c.texte === 'Reste de riz de la veille'));
+  // journée validée : verrouillée pour la cuisine
+  await a.clic('Jour précédent');
+  check('journée validée : quantités verrouillées', await a.attend('Journée validée') && (await a.champ('Quantité PENNE'))?.desactive === true);
+  check('quantité de la veille affichée', (await a.champ('Quantité PENNE'))?.valeur === '2');
+  await a.clic('Jour suivant');
+  // pertes
+  await a.clic('Pertes');
+  await a.clic('Ajouter la perte');
+  check('perte vide refusée', await a.attend('Indique le produit ou la recette'));
+  await a.remplir('Produit ou recette', 'saumon'); await a.remplir('Quantité perdue', '0,8'); await a.remplir('Raison', 'Autre');
+  await a.clic('Ajouter la perte');
+  check('raison « Autre » sans précision refusée', await a.attend('Précise la raison') && !a.ecritures('pertes', 'POST').length);
+  await a.remplir('Précision', 'Odeur douteuse');
+  await a.clic('Ajouter la perte');
+  const perte = await a.attendEcriture('pertes', 'POST');
+  const p = base.db.pertes.find(x => x.produit === 'SAUMON');
+  check('perte enregistrée en majuscules, signée', !!perte && p && p.quantite === 0.8 && p.saisi_par === 'Hugo' && p.raison === 'Autre' && await a.attend('SAUMON'));
+  check('on supprime ses pertes, pas celles des autres', await a.existe('Supprimer la perte SAUMON') && !(await a.existe('Supprimer la perte SAUCE VIERGE')));
+  await a.clic('Supprimer la perte SAUMON'); await a.clic('Supprimer');
+  check('perte supprimée', !!(await a.attendEcriture('pertes', 'DELETE')) && await a.attendPlus('Odeur douteuse'));
+  // récap
+  await a.clic('Récap');
+  check('récap de la semaine : quantités et pertes', await a.attend('Semaine du') && await a.voit('RIZ BASMATI') && await a.voit('SAUCE VIERGE'));
+  check('cuisine : pas d\'envoi du récap par email', !(await a.existe('Envoyer le récap par email')));
+});
+
+scenario('Pertes & Perso — admin', {}, async (a, page, base) => {
+  check('connexion admin', await a.connexion('Cuisine', 'Alexandre RAVASIO'));
+  await a.onglet('Pertes & Perso');
+  // liste des produits
+  await a.clic('Produits');
+  await a.remplir('Nom du produit', 'blanc de poulet'); await a.remplir('Catégorie', 'Viandes');
+  await a.clic('Ajouter');
+  check('produit ajouté (nom en majuscules, clé stable)', !!(await a.attendEcriture('perso_produits', 'POST')) && base.db.perso_produits.some(x => x.cle === 'blanc_de_poulet' && x.nom === 'BLANC DE POULET' && x.categorie === 'Viandes'));
+  await a.clic('Retirer PENNE'); await a.clic('Retirer');
+  check('produit retiré sans effacer l\'historique', !!(await a.attendEcriture('perso_produits', 'PATCH')) && base.db.perso_produits.find(x => x.cle === 'penne').actif === false && base.db.perso_saisies.some(x => x.produit_cle === 'penne'));
+  check('produit retiré : peut être remis', await a.attendClic('Remettre PENNE'));
+  // validation
+  await a.clic('Repas perso');
+  check('produit retiré absent de la saisie, nouveau présent', await a.attend('BLANC DE POULET') && !(await a.voit('PENNE')));
+  await a.remplir('Quantité RIZ BASMATI', '3');
+  await a.attendEcriture('perso_saisies', 'POST');
+  await a.clic('Valider la journée'); await a.clic('Valider');
+  check('journée validée', !!(await a.attendEcriture('perso_validations', 'POST')) && await a.attend('Journée validée'));
+  check('admin : peut corriger une journée validée', await a.existe('Corriger') && (await a.champ('Quantité RIZ BASMATI'))?.desactive === true);
+  await a.clic('Rouvrir la saisie'); await a.clic('Rouvrir');
+  check('journée rouverte', !!(await a.attendEcriture('perso_validations', 'DELETE')) && await a.attend('En attente de validation'));
+  // semaine dernière : valider le dimanche (6 autres jours déjà validés) envoie le récap tout seul
+  const l = lundiPrecedent();
+  const jourDe = i => { const d = new Date(l + 'T12:00:00'); d.setDate(d.getDate() + i); return d.toLocaleDateString('sv-SE'); };
+  for (let i = 0; i < 6; i++) base.db.perso_validations.push({ date: jourDe(i), valide_le: new Date().toISOString(), valide_par: 'Alexandre' });
+  await a.remplir('Choisir une date', jourDe(6));
+  check('choix d\'une date passée', await a.attend('En attente de validation'));
+  let m = await a.marque();
+  await a.clic('Valider la journée'); await a.clic('Valider');
+  check('semaine complète : récap envoyé automatiquement', await a.notif(m, /récap envoyé à chef@exemple\.fr/i, 8000) && a.ecritures('fonction recap-pertes').some(x => x.corps.semaine === l));
+  await a.clic('Récap');
+  check('récap de la semaine du jour choisi : 7/7, déjà envoyé', await a.attend('7/7 jours validés') && await a.attend('Récap envoyé le'));
+  m = await a.marque();
+  await a.clic('Renvoyer le récap par email'); await a.clic('Renvoyer');
+  check('récap renvoyé à la demande', await a.notif(m, /récap envoyé à chef@exemple\.fr/i) && a.ecritures('fonction recap-pertes').length === 2);
+  const imp = await a.imprime('Imprimer');
+  check('impression : la feuille du récap seulement', imp.n === 1 && imp.texte.includes('récap pertes & perso') && !imp.texte.includes('envoyer le récap'));
+  await a.clic('Semaine suivante');
+  check('semaine en cours incomplète : envoi impossible', await a.attend("L'envoi par email est possible quand les 7 jours sont validés"));
+});
+
 scenario('Téléphone', { mobile: true }, async (a, page) => {
   check('connexion sur téléphone', await a.connexion('Cuisine', 'Alexandre RAVASIO'));
   const debords = [];
-  for (const nom of ['Fiches', 'Recettes', 'Menus', 'Groupes', 'Config', 'Journal']) {
+  for (const nom of ['Fiches', 'Recettes', 'Menus', 'Groupes', 'Pertes', 'Config', 'Journal']) {
     await a.onglet(nom);
     if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) debords.push(nom);
   }
