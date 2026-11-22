@@ -50,6 +50,7 @@ export interface Database {
         menu_id: string | null;
         menu_nom: string | null;
         plats_sur_mesure: Json | null;
+        niveaux: Json;
         allergenes: string | null;
         regimes: string | null;
         notes: string | null;

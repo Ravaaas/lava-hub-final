@@ -45,6 +45,10 @@ export interface FicheRecette {
 export type Plat = { frId: string } | { texte: string };
 export interface Service { nom: string; plats: Plat[] }
 export interface Menu { id: string; nom: string; services: Service[] }
+/** Plat d'un groupe : le nombre commandé à l'avance (null = pas encore connu). */
+export type PlatCompte = Plat & { qte: number | null };
+/** Niveau du menu d'un groupe (Entrée, Plat, Dessert…), copié du menu choisi ou composé pour le groupe. */
+export interface Niveau { nom: string; plats: PlatCompte[] }
 
 export interface Groupe {
   id: string;
@@ -55,8 +59,8 @@ export interface Groupe {
   salle: string;
   menu_id: string | null;
   menu_nom: string | null;
-  /** Plats d'un menu sur mesure (sans menu_id) : fiches recette ou plats libres, dans l'ordre. */
-  plats: Plat[];
+  /** Niveaux du menu du groupe, avec le nombre de chaque plat. Vide = pas encore composé (on reprend alors le menu choisi). */
+  niveaux: Niveau[];
   allergenes: string[];
   regimes: string[];
   /** Nombre de personnes concernées par allergie ou régime (facultatif, par nom). */

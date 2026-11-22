@@ -486,6 +486,26 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .eff-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
 .eff-row .fl{margin:0}
 .eff-row .fi2{width:88px;text-align:center}
+/* fiche groupe : niveaux du menu et nombre de chaque plat */
+.niv-aide{margin:-2px 0 10px;font-size:13px;color:var(--ink2)}
+.niv{margin-bottom:12px;padding:12px;border:1px solid var(--line);border-radius:var(--r)}
+.niv-tete{display:flex;gap:6px;margin-bottom:8px}
+.ci.niv-plat{justify-content:flex-start;gap:8px;min-height:44px;padding:4px 0}
+.niv-plat .ci-label{flex:1;min-width:0}
+.niv-qte.fi2{width:72px;flex-shrink:0;text-align:center}
+.niv-total{margin:6px 0 2px;font-size:13px;font-weight:600;color:var(--ok)}
+.niv-total.niv-ecart{color:var(--danger-tx)}
+.niv-ajout{display:flex;gap:6px;margin-top:6px}
+.fdoc-ptitle.fdoc-niv{display:flex;justify-content:space-between;align-items:baseline;gap:1rem}
+.fdoc-total{font-weight:600;letter-spacing:0.04em;color:#6B5C5C;white-space:nowrap}
+.fdoc-total.fdoc-ecart{color:#B5433C}
+.fdoc-snum.fdoc-qte{width:44px;font-size:0.9375rem}
+@media (max-width:640px){
+  .niv{padding:10px}
+  .ci.niv-plat{gap:5px}
+  .niv-qte.fi2{width:52px;padding:0 4px}
+  .niv-plat .btn-rm{width:36px;height:36px;min-height:36px}
+}
 
 /* Impression : RÈGLE POUR TOUT ONGLET. Toute feuille .fdoc affichée (fiche ouverte en plein écran ou feuille dans la page, comme Menus)
    est la seule chose imprimée, sur A4, même dessin qu'à l'écran mais resserré pour le papier. Un nouvel onglet imprimable n'a qu'à
@@ -554,6 +574,7 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fdoc-table thead th{font-size:8pt;padding:1.2mm 2.5mm}
   .fdoc-table tbody td{font-size:9.5pt;padding:1.1mm 2.5mm}
   .fdoc-snum{width:7mm;font-size:8pt}
+  .fdoc-snum.fdoc-qte{width:10mm;font-size:10pt}
   .fdoc-stxt{font-size:9.5pt;padding:1.1mm 2.5mm;line-height:1.35}
   /* fiche technique : quantité nette et conditionnement toujours en bas de la page A4 (hauteur utile 272 mm) */
   .fdoc:has(.fdoc-footer){display:flex;flex-direction:column;min-height:270mm}

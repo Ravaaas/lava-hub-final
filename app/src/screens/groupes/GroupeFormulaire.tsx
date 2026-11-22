@@ -1,8 +1,8 @@
 import { useId, useState } from 'react';
-import type { Groupe, Plat } from '../../domain/types';
+import type { Groupe, Niveau } from '../../domain/types';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
 import { SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit } from '../../domain/groupes';
-import { platAffiche, servicesAEnregistrer } from '../../domain/menus';
+import { niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
 import { creerGroupe, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
@@ -25,7 +25,7 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
   const [pax, setPax] = useState(g ? String(g.pax) : '');
   const [salle, setSalle] = useState(g?.salle || SALLES[0]);
   const [menuId, setMenuId] = useState(g?.menu_id ?? '');
-  const [plats, setPlats] = useState<Plat[]>(g?.plats ?? []);
+  const [niveaux, setNiveaux] = useState<Niveau[]>(() => (g ? niveauxDuGroupe(g, menus) : NIVEAUX_DE_DEPART.map(nom => ({ nom, plats: [] }))));
   const [allergenes, setAllergenes] = useState<string[]>(g ? g.allergenes.filter(a => (ALLERGENES as readonly string[]).includes(a)) : []);
   const [regimes, setRegimes] = useState<string[]>(g ? g.regimes.filter(r => (REGIMES as readonly string[]).includes(r)) : []);
   const [effectifs, setEffectifs] = useState<Record<string, string>>(Object.fromEntries(Object.entries(g?.effectifs ?? {}).map(([k, v]) => [k, String(v)])));
@@ -37,8 +37,8 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
     const donnees: Omit<Groupe, 'id'> = {
       nom: nom.trim(), date, heure, pax: pax.trim() ? Number(pax) : 0, salle,
       menu_id: menu ? menu.id : null, menu_nom: menu ? menu.nom : null,
-      // plats sur mesure : seulement sans menu choisi ; fiches supprimées et plats libres vides écartés
-      plats: menu ? [] : (servicesAEnregistrer([{ nom: '', plats }], fichesRecette)[0]?.plats ?? []),
+      // niveaux du groupe (copiés du menu ou composés) ; fiches supprimées et plats libres vides écartés
+      niveaux: niveauxAEnregistrer(niveaux, fichesRecette),
       allergenes, regimes, notes: notes.trim(),
       // seuls les allergènes et régimes cochés gardent un nombre ; vide = non précisé
       effectifs: Object.fromEntries([...allergenes, ...regimes].filter(n => effectifs[n]?.trim()).map(n => [n, Number(effectifs[n])])),
@@ -57,6 +57,14 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
       onFermer();
       await recharger();
     } finally { setOccupe(false); setSynchro(false); }
+  };
+
+  // Choisir un menu recopie ses niveaux et ses plats (quantités à saisir) ; « Sur mesure » garde les niveaux en cours.
+  const choisirMenu = async (v: string) => {
+    const menu = menus.find(m => m.id === v);
+    if (menu && niveaux.some(n => n.plats.length) && !await confirmer(`Remplacer les niveaux et les plats actuels par ceux du menu « ${menu.nom} » ?`, 'Remplacer')) return;
+    setMenuId(v);
+    if (menu) setNiveaux(niveauxDuMenu(menu));
   };
 
   const liste = (valeurs: readonly string[], actuelle: string) => (actuelle && !valeurs.includes(actuelle) ? [actuelle, ...valeurs] : valeurs);
@@ -79,8 +87,8 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
           <Choix libelle="Salle" options={liste(SALLES, salle).map(s => ({ valeur: s, libelle: s }))} valeur={salle} onChange={setSalle} /></div>
       </div>
       <div className="fg2"><label className="fl" htmlFor={id.menu}>Menu choisi</label>
-          <Selecteur id={id.menu} options={[{ valeur: '', libelle: 'Sur mesure' }, ...menus.map(m => ({ valeur: m.id, libelle: m.nom }))]} valeur={menuId} onChange={setMenuId} /></div>
-      {!menuId && <PlatsSurMesure plats={plats} onChange={setPlats} />}
+          <Selecteur id={id.menu} options={[{ valeur: '', libelle: 'Sur mesure' }, ...menus.map(m => ({ valeur: m.id, libelle: m.nom }))]} valeur={menuId} onChange={v => void choisirMenu(v)} /></div>
+      <Niveaux niveaux={niveaux} pax={Number(pax) || 0} onChange={setNiveaux} />
       <div className="fsect">Allergies déclarées</div>
       <Puces choix={ALLERGENES} selection={allergenes} onChange={setAllergenes} />
       <Nombres noms={allergenes} valeurs={effectifs} onChange={setEffectifs} />
@@ -105,37 +113,72 @@ function Nombres({ noms, valeurs, onChange }: { noms: readonly string[]; valeurs
   ));
 }
 
-/** Menu sur mesure : les plats se choisissent parmi les fiches recette, ou s'écrivent librement. */
-function PlatsSurMesure({ plats, onChange }: { plats: Plat[]; onChange: (p: Plat[]) => void }) {
+const NIVEAUX_DE_DEPART = ['Entrée', 'Plat', 'Dessert'];
+
+/**
+ * Niveaux du menu du groupe (Entrée, Plat, Dessert… autant que nécessaire) et, pour chaque plat, le nombre commandé à l'avance.
+ * Les plats se choisissent parmi les fiches recette ou s'écrivent librement ; le total de chaque niveau est comparé au nombre de personnes.
+ */
+function Niveaux({ niveaux, pax, onChange }: { niveaux: Niveau[]; pax: number; onChange: (n: Niveau[]) => void }) {
   const { fichesRecette, fiches } = useDonnees();
-  const [choix, setChoix] = useState('');
-  const [libre, setLibre] = useState('');
+  const [choix, setChoix] = useState<Record<number, string>>({});
+  const [libres, setLibres] = useState<Record<number, string>>({});
   const recettes = fichesRecette.filter(f => f.statut !== 'archive').sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
-  const selection = choix || recettes[0]?.id || '';
-  const ajouterLibre = () => { if (libre.trim()) { onChange([...plats, { texte: libre.trim() }]); setLibre(''); } };
-  const deplacer = (i: number, d: number) => { const c = [...plats]; const [x] = c.splice(i, 1); if (x) c.splice(i + d, 0, x); onChange(c); };
+  const modifier = (i: number, f: (n: Niveau) => Niveau) => { onChange(niveaux.map((n, k) => (k === i ? f(n) : n))); };
+  const echanger = <T,>(l: readonly T[], i: number, d: number): T[] => { const c = [...l]; const [x] = c.splice(i, 1); if (x !== undefined) c.splice(i + d, 0, x); return c; };
+  const ajouterRecette = (i: number) => { const id = choix[i] || recettes[0]?.id; if (id) modifier(i, n => ({ ...n, plats: [...n.plats, { frId: id, qte: null }] })); };
+  const ajouterLibre = (i: number) => {
+    const t = (libres[i] ?? '').trim();
+    if (!t) return;
+    modifier(i, n => ({ ...n, plats: [...n.plats, { texte: t, qte: null }] }));
+    setLibres(l => ({ ...l, [i]: '' }));
+  };
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '0.75rem', margin: '0.25rem 0 1rem' }}>
-      <div className="fsect" style={{ marginTop: 0 }}>Plats du menu sur mesure</div>
-      {plats.length === 0 && <div className="ci-label" style={{ color: 'var(--gt)', marginBottom: '0.5rem' }}>Aucun plat pour le moment.</div>}
-      {plats.map((p, i) => (
-        <div key={i} className="ci" style={{ marginBottom: '0.3rem' }}>
-          <span className="ci-label">{platAffiche(p, fichesRecette, fiches).nom}</span>
-          <button type="button" className="btn-rm" aria-label="Monter" disabled={i === 0} onClick={() => { deplacer(i, -1); }}>↑</button>
-          <button type="button" className="btn-rm" aria-label="Descendre" disabled={i === plats.length - 1} onClick={() => { deplacer(i, 1); }}>↓</button>
-          <button type="button" className="btn-rm" aria-label="Retirer ce plat" onClick={() => { onChange(plats.filter((_, k) => k !== i)); }}><Icone nom="x" /></button>
-        </div>
-      ))}
-      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
-        <Selecteur style={{ flex: 1 }} libelle="Fiche recette à ajouter" vide={recettes.length ? undefined : 'Aucune fiche recette'}
-          options={recettes.map(f => ({ valeur: f.id, libelle: f.nom }))} valeur={selection} onChange={setChoix} />
-        <button type="button" className="btn btn-o btn-sm" onClick={() => { if (selection) onChange([...plats, { frId: selection }]); }}><Icone nom="plus" />Recette</button>
-      </div>
-      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
-        <input className="fi2" style={{ flex: 1 }} aria-label="Plat libre" placeholder="Ou un plat libre" value={libre} onChange={e => { setLibre(e.target.value); }}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouterLibre(); } }} />
-        <button type="button" className="btn btn-o btn-sm" onClick={ajouterLibre}><Icone nom="plus" />Libre</button>
-      </div>
-    </div>
+    <>
+      <div className="fsect">Niveaux du menu</div>
+      <p className="niv-aide">Pour chaque plat, le nombre choisi à l'avance par les clients (facultatif).</p>
+      {niveaux.map((n, i) => {
+        const { total, ecart } = totalNiveau(n, pax);
+        const nom = n.nom || `niveau ${i + 1}`;
+        return (
+          <div key={i} className="niv">
+            <div className="niv-tete">
+              <input className="fi2" style={{ flex: 1 }} placeholder="Nom du niveau (ex: Entrée)" aria-label="Nom du niveau" value={n.nom}
+                onChange={e => { modifier(i, x => ({ ...x, nom: e.target.value })); }} />
+              <button type="button" className="btn-rm" aria-label="Monter ce niveau" disabled={i === 0} onClick={() => { onChange(echanger(niveaux, i, -1)); }}>↑</button>
+              <button type="button" className="btn-rm" aria-label="Descendre ce niveau" disabled={i === niveaux.length - 1} onClick={() => { onChange(echanger(niveaux, i, 1)); }}>↓</button>
+              <button type="button" className="btn-rm" aria-label="Retirer ce niveau" onClick={() => { onChange(niveaux.filter((_, k) => k !== i)); }}><Icone nom="x" /></button>
+            </div>
+            {n.plats.length === 0 && <div className="ci-label" style={{ color: 'var(--gt)', marginBottom: '0.4rem' }}>Aucun plat pour le moment.</div>}
+            {n.plats.map((p, j) => {
+              const libelle = platAffiche(p, fichesRecette, fiches).nom;
+              return (
+                <div key={j} className="ci niv-plat">
+                  <input className="fi2 niv-qte" type="number" min="1" step="1" placeholder="—" aria-label={`Nombre — ${libelle}`} value={p.qte ?? ''}
+                    onChange={e => { const v = e.target.value.trim(); modifier(i, x => ({ ...x, plats: x.plats.map((q, k) => (k === j ? { ...q, qte: v ? Number(v) : null } : q)) })); }} />
+                  <span className="ci-label">{libelle}</span>
+                  <button type="button" className="btn-rm" aria-label="Monter" disabled={j === 0} onClick={() => { modifier(i, x => ({ ...x, plats: echanger(x.plats, j, -1) })); }}>↑</button>
+                  <button type="button" className="btn-rm" aria-label="Descendre" disabled={j === n.plats.length - 1} onClick={() => { modifier(i, x => ({ ...x, plats: echanger(x.plats, j, 1) })); }}>↓</button>
+                  <button type="button" className="btn-rm" aria-label="Retirer ce plat" onClick={() => { modifier(i, x => ({ ...x, plats: x.plats.filter((_, k) => k !== j) })); }}><Icone nom="x" /></button>
+                </div>
+              );
+            })}
+            {total > 0 && <div className={`niv-total${ecart ? ' niv-ecart' : ''}`} role="note">
+              Total : {total} / {pax} pers.{ecart < 0 ? ` — il manque ${-ecart}` : ecart > 0 ? ` — ${ecart} de trop` : ''}</div>}
+            <div className="niv-ajout">
+              <Selecteur style={{ flex: 1 }} libelle={`Fiche recette à ajouter (${nom})`} vide={recettes.length ? undefined : 'Aucune fiche recette'}
+                options={recettes.map(f => ({ valeur: f.id, libelle: f.nom }))} valeur={choix[i] || recettes[0]?.id || ''} onChange={v => { setChoix(c => ({ ...c, [i]: v })); }} />
+              <button type="button" className="btn btn-o btn-sm" onClick={() => { ajouterRecette(i); }}><Icone nom="plus" />Recette</button>
+            </div>
+            <div className="niv-ajout">
+              <input className="fi2" style={{ flex: 1 }} aria-label={`Plat libre (${nom})`} placeholder="Ou un plat libre" value={libres[i] ?? ''} onChange={e => { setLibres(l => ({ ...l, [i]: e.target.value })); }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouterLibre(i); } }} />
+              <button type="button" className="btn btn-o btn-sm" onClick={() => { ajouterLibre(i); }}><Icone nom="plus" />Libre</button>
+            </div>
+          </div>
+        );
+      })}
+      <button type="button" className="btn-ar" style={{ marginBottom: '1rem' }} onClick={() => { onChange([...niveaux, { nom: '', plats: [] }]); }}><Icone nom="plus" />Ajouter un niveau</button>
+    </>
   );
 }

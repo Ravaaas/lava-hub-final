@@ -1,4 +1,4 @@
-import type { Fiche, FicheRecette, Groupe, Menu, Plat, Service } from './types';
+import type { Fiche, FicheRecette, Groupe, Menu, Niveau, Plat, Service } from './types';
 import { elementsResolus } from './fichesRecette';
 
 /** Menus à temps fixes : leurs temps sont imposés et ne se modifient pas. */
@@ -52,21 +52,36 @@ export function platAffiche(p: Plat, frs: readonly FicheRecette[], fiches: reado
 export const platsDuMenu = (m: Menu, frs: readonly FicheRecette[], fiches: readonly Fiche[]): PlatAffiche[] =>
   servicesAffiches(m).flatMap(s => s.plats).map(p => platAffiche(p, frs, fiches));
 
-/** Menu d'un groupe : le menu choisi, ou à défaut un menu « sur mesure » fait de ses plats. */
-export function menuDuGroupe(g: Groupe, menus: readonly Menu[]): Menu | undefined {
+/** Niveaux tirés d'un menu : ses temps et ses plats, sans quantités. */
+export const niveauxDuMenu = (m: Menu): Niveau[] => servicesAffiches(m).map(s => ({ nom: s.nom, plats: s.plats.map(p => ({ ...p, qte: null })) }));
+
+/** Niveaux d'un groupe : les siens, ou à défaut ceux du menu choisi (groupes enregistrés avant les niveaux). */
+export function niveauxDuGroupe(g: Groupe, menus: readonly Menu[]): Niveau[] {
+  if (g.niveaux.length) return g.niveaux;
   const m = menus.find(x => x.id === g.menu_id);
-  if (m || !g.plats.length) return m;
-  return { id: '', nom: 'Sur mesure', services: [{ nom: '', plats: g.plats }] };
+  return m ? niveauxDuMenu(m) : [];
+}
+
+/** Total commandé dans un niveau et écart avec le nombre de personnes (0 = juste ; positif = plats en trop). */
+export function totalNiveau(n: Niveau, pax: number): { total: number; ecart: number } {
+  const total = n.plats.reduce((t, p) => t + (p.qte ?? 0), 0);
+  return { total, ecart: total - pax };
 }
 
 /** Plats du menu d'un groupe qui contiennent une allergie déclarée par le groupe. */
 export function alertesGroupe(g: Groupe, menus: readonly Menu[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): { plat: string; allergenes: string[] }[] {
   const declarees = new Set(g.allergenes);
-  const m = menuDuGroupe(g, menus);
-  if (!declarees.size || !m) return [];
-  return platsDuMenu(m, frs, fiches)
+  if (!declarees.size) return [];
+  return niveauxDuGroupe(g, menus).flatMap(n => n.plats).map(p => platAffiche(p, frs, fiches))
     .map(p => ({ plat: p.nom, allergenes: p.allergenes.filter(a => declarees.has(a)) }))
     .filter(x => x.allergenes.length > 0);
+}
+
+/** Niveaux nettoyés avant enregistrement : plats vers des fiches supprimées et plats libres vides retirés, puis niveaux sans plat retirés. */
+export function niveauxAEnregistrer(niveaux: readonly Niveau[], frs: readonly FicheRecette[]): Niveau[] {
+  return niveaux
+    .map(n => ({ nom: n.nom.trim(), plats: n.plats.filter(p => ('frId' in p ? frs.some(f => f.id === p.frId) : p.texte.trim() !== '')).map(p => ('texte' in p ? { ...p, texte: p.texte.trim() } : p)) }))
+    .filter(n => n.plats.length);
 }
 
 /** Temps nettoyés avant enregistrement : noms rognés, plats vers des fiches supprimées retirés, temps vides sans nom retirés. */

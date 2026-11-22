@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-22",
+    titre: "Fiche groupe : niveaux et nombre de plats",
+    desc: "Le menu d'un groupe se range en niveaux (Entrée, Plat, Dessert… autant que nécessaire). Pour chaque plat, on indique combien les clients en ont choisi à l'avance, par exemple 10 betteraves, 2 veloutés et 4 tartares : la fiche imprimée montre ces nombres et signale un niveau qui ne fait pas le compte de personnes. Choisir un menu recopie ses plats, que l'on peut ensuite adapter pour le groupe. La salle et le menu apparaissent en tête de la fiche."
+  },
+  {
+    date: "2026-11-22",
     titre: "Nouvel onglet Pertes & Perso",
     desc: "Le formulaire des repas du personnel et des pertes arrive dans l'application, pour la cuisine. Chacun saisit les quantités utilisées et déclare les pertes à son nom, sans retaper son prénom. L'admin valide les journées, gère la liste des produits et imprime le récap de la semaine, qui part aussi par email quand les 7 jours sont validés."
   },

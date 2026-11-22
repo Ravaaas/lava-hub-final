@@ -438,36 +438,67 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   check('allergie : pas plus de personnes que le groupe', await (async () => { await a.remplir('Végétarien — nombre de personnes', '9'); m = await a.marque(); await a.clic('Enregistrer'); return a.notif(m, /entre 1 et 8/i); })());
   await a.remplir('Végétarien — nombre de personnes', '3');
   await a.remplir('Notes', '2 enfants');
+  // Niveaux recopiés du menu choisi ; nombre de chaque plat commandé à l'avance, total comparé au nombre de personnes
+  check('niveaux du menu recopiés', await a.enOrdre(['Niveaux du menu', 'Aucun plat', 'CASSOLETTE DE SAINT-JACQUES', 'TARTE AU CITRON', 'Ajouter un niveau']) && !!(await a.champ('Nombre — TARTE AU CITRON'))
+    && JSON.stringify(await Promise.all([0, 1, 2].map(async n => (await a.champ('Nom du niveau', n))?.valeur))) === JSON.stringify(['Partages', 'Plat', 'Dessert']));
+  await a.remplir('Nombre — CASSOLETTE DE SAINT-JACQUES', '5');
+  check('total d\'un niveau : écart signalé', await a.attend('Total : 5 / 8 pers. — il manque 3'));
+  await a.remplir('Nombre — CASSOLETTE DE SAINT-JACQUES', '9');
+  m = await a.marque(); await a.clic('Enregistrer');
+  check('nombre de plats : pas plus que le groupe', await a.notif(m, /plats : un entier entre 1 et 8/i) && a.ecritures('groupes', 'POST').length === 0);
+  await a.remplir('Nombre — CASSOLETTE DE SAINT-JACQUES', '8');
+  check('total d\'un niveau juste', await a.attend('Total : 8 / 8 pers.') && !(await a.voit('il manque')));
+  await a.remplir('Nombre — TARTE AU CITRON', '6');
+  // autant de niveaux que nécessaire
+  await a.clic('Ajouter un niveau');
+  await a.remplir('Nom du niveau', 'Mignardises', 3);
+  await a.remplir('Plat libre (Mignardises)', 'Café gourmand'); await a.clic('Libre', 3);
+  await a.remplir('Nombre — Café gourmand', '2');
   await a.clic('Enregistrer');
   const cree = await a.attendEcriture('groupes', 'POST');
   check('groupe enregistré', cree && cree.corps.nom === 'Anniversaire Leroy' && cree.corps.pax === 8 && cree.corps.menu_id === 'm1' && cree.corps.menu_nom === 'Carte du soir'
     && cree.corps.allergenes === 'Gluten (2)' && cree.corps.regimes === 'Végétarien (3)' && cree.corps.notes === '2 enfants', JSON.stringify(cree && cree.corps));
+  check('niveaux et quantités enregistrés', cree && JSON.stringify(cree.corps.niveaux) === JSON.stringify([
+    { nom: 'Plat', plats: [{ frId: 'r1', qte: 8 }] }, { nom: 'Dessert', plats: [{ frId: 'r2', qte: 6 }] }, { nom: 'Mignardises', plats: [{ text: 'Café gourmand', qte: 2 }] },
+  ]), JSON.stringify(cree && cree.corps.niveaux));
   check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit avec le menu'));
   await a.clic('Anniversaire Leroy');
   check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques[\s\S]*gluten/.test(await a.texte()));
+  check('fiche groupe : salle et menu en tête', await a.voit('Menu Carte du soir') && await a.voit('Salle principale'));
+  check('fiche groupe : niveaux, quantités et totaux', await a.enOrdre(['Plat', '8 / 8 pers.', '8', 'CASSOLETTE DE SAINT-JACQUES', 'Dessert', '6 / 8 pers. · il manque 2', '6', 'TARTE AU CITRON', 'Mignardises', '2', 'Café gourmand']), (await a.texte()).slice(0, 600));
   check('fiche groupe : pas de « modifié par »', !(await a.voit('modifié par')));
   // Impression : la fiche telle qu'à l'écran, sans les boutons ni le reste de l'app
   const imprime = await a.imprime('Imprimer');
   check('groupe : impression de la fiche seule', imprime.n === 1 && imprime.texte.includes('fiche groupe') && imprime.texte.includes('anniversaire leroy')
     && !imprime.texte.includes('retour') && !imprime.texte.includes('séminaire dupont'), imprime.texte.slice(0, 200));
-  await a.clic('Modifier'); await a.remplir('Nombre de personnes', '10'); await a.clic('Enregistrer');
+  await a.clic('Modifier'); await a.remplir('Nombre de personnes', '10');
+  check('modification : niveaux et quantités repris', await a.attend('Total : 8 / 10 pers. — il manque 2') && await a.voit('Café gourmand'), (await a.texte()).replace(/^[\s\S]*niveaux du menu/, '').slice(0, 800));
+  await a.remplir('Menu', '3 temps');
+  check('changer de menu : confirmation avant de remplacer les niveaux', await a.voit('Remplacer les niveaux'));
+  await a.clic('Annuler');
+  check('remplacement refusé : niveaux gardés', await a.attendPlus('Remplacer les niveaux') && await a.voit('Café gourmand'));
+  await a.clic('Enregistrer');
   const modif = await a.attendEcriture('groupes', 'PATCH');
-  check('groupe modifié', modif && modif.corps.pax === 10);
+  check('groupe modifié', modif && modif.corps.pax === 10 && modif.corps.menu_id === 'm1' && modif.corps.niveaux.length === 3, JSON.stringify(modif && modif.corps));
   await a.clic('Séminaire Dupont'); await a.clic('Supprimer'); await a.clic('Supprimer');
   const sup = await a.attendEcriture('groupes', 'DELETE');
   check('groupe supprimé', sup && sup.filtre.id === 'eq.g1' && await a.attendPlus('Séminaire Dupont'));
   // Menu sur mesure : pas de menu choisi → on compose les plats (fiche recette ou plat libre)
   await a.clic('Nouveau groupe');
   await a.remplir('Nom du groupe', 'Cocktail Petit'); await a.remplir('Nombre de personnes', '15');
-  check('sur mesure : plats proposés', await a.voit('Plats du menu sur mesure'));
-  await a.remplir('Fiche recette à ajouter', 'CASSOLETTE DE SAINT-JACQUES'); await a.clic('Recette');
-  await a.remplir('Plat libre', 'Pain maison'); await a.clic('Libre');
+  check('sur mesure : niveaux Entrée, Plat, Dessert proposés', await a.enOrdre(['Niveaux du menu', 'Aucun plat', 'Aucun plat', 'Aucun plat', 'Ajouter un niveau']));
+  await a.remplir('Fiche recette à ajouter (Entrée)', 'CASSOLETTE DE SAINT-JACQUES'); await a.clic('Recette');
+  await a.remplir('Plat libre (Plat)', 'Pain maison'); await a.clic('Libre', 1);
+  await a.clic('Retirer ce niveau', 2);
+  await a.remplir('Nombre — CASSOLETTE DE SAINT-JACQUES', '15');
   await a.clic('Gluten'); await a.clic('Enregistrer');
   const sm = await a.attendEcriture('groupes', 'POST');
-  check('menu sur mesure enregistré', sm && sm.corps.menu_id === null && JSON.stringify(sm.corps.plats_sur_mesure) === JSON.stringify([{ frId: 'r1' }, { text: 'Pain maison' }]), JSON.stringify(sm && sm.corps.plats_sur_mesure));
+  check('menu sur mesure enregistré', sm && sm.corps.menu_id === null && JSON.stringify(sm.corps.niveaux) === JSON.stringify([{ nom: 'Entrée', plats: [{ frId: 'r1', qte: 15 }] }, { nom: 'Plat', plats: [{ text: 'Pain maison', qte: null }] }])
+    && JSON.stringify(sm.corps.plats_sur_mesure) === JSON.stringify([{ frId: 'r1' }, { text: 'Pain maison' }]), JSON.stringify(sm && sm.corps));
   check("sur mesure : conflit avec l'allergie", await a.attend('Cocktail Petit') && await a.voit('Conflit avec le menu'));
   await a.clic('Cocktail Petit');
-  check('sur mesure : titre « Menu » seul', await a.attend('Pain maison') && !(await a.voit('Menu choisi')) && !(await a.voit('Menu — Sur mesure')));
+  check('sur mesure : niveaux sur la fiche, plat sans nombre marqué –', await a.attend('Pain maison') && await a.voit('Menu sur mesure') && !(await a.voit('Menu choisi'))
+    && await a.enOrdre(['Entrée', '15 / 15 pers.', '15', 'CASSOLETTE DE SAINT-JACQUES', 'Plat', '–', 'Pain maison']));
 });
 
 scenario('Équipe', {}, async (a) => {

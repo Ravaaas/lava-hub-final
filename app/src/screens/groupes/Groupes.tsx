@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import type { Groupe } from '../../domain/types';
-import { alertesGroupe, menuDuGroupe, platsDuMenu } from '../../domain/menus';
+import { alertesGroupe, niveauxDuGroupe, platAffiche, totalNiveau } from '../../domain/menus';
 import { dateCourte, dateLongue, groupesFiltres } from '../../domain/groupes';
 import { contient, heureFr, pluriel } from '../../domain/texte';
 import { supprimerGroupe } from '../../db/groupes';
@@ -45,7 +45,7 @@ export function Groupes() {
         {pret && !liste.length && <Vide icone="users" titre="Aucun groupe" texte="Rien à afficher ici" />}
         {liste.map(g => {
           const conflit = alertesGroupe(g, menus, fichesRecette, fiches).length > 0;
-          const infos = [dateCourte(g.date), heureFr(g.heure), `${g.pax} pers.`, g.salle, menus.find(m => m.id === g.menu_id)?.nom ?? g.menu_nom ?? (g.plats.length ? 'Sur mesure' : '')].filter(Boolean).join(' · ');
+          const infos = [dateCourte(g.date), heureFr(g.heure), `${g.pax} pers.`, g.salle, menus.find(m => m.id === g.menu_id)?.nom ?? g.menu_nom ?? (g.niveaux.some(n => n.plats.length) ? 'Sur mesure' : '')].filter(Boolean).join(' · ');
           return (
             <div key={g.id} className="fc" role="button" tabIndex={0} onClick={() => { setOuvert(g.id); }}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOuvert(g.id); } }}>
@@ -70,8 +70,12 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
   const { peutGererGroupes } = useMoi();
   const notifier = useNotifier();
   const confirmer = useConfirmer();
-  const m = menuDuGroupe(g, menus);
-  const plats = m ? platsDuMenu(m, fichesRecette, fiches) : [];
+  const m = menus.find(x => x.id === g.menu_id);
+  const nomMenu = m?.nom ?? g.menu_nom ?? '';
+  const niveaux = niveauxDuGroupe(g, menus).filter(n => n.plats.length);
+  // les quantités prennent la place des numéros dès qu'un plat en a une
+  const avecQte = niveaux.some(n => n.plats.some(p => p.qte !== null));
+  const debuts = niveaux.map((_, i) => niveaux.slice(0, i).reduce((t, n) => t + n.plats.length, 0));
 
   const supprimer = async () => {
     if (!await confirmer('Supprimer ce groupe ?')) return;
@@ -97,17 +101,33 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
     }>
       <div className="fdoc">
         <div className="fdoc-hdr"><div className="fdoc-sur">Fiche groupe</div><div className="fdoc-nom">{g.nom}</div>
-          <div className="fdoc-cles">{[dateLongue(g.date), heureFr(g.heure), pluriel(g.pax, 'personne')].filter(Boolean).map(t => <span key={t}>{t}</span>)}</div>
+          <div className="fdoc-cles">{[dateLongue(g.date), heureFr(g.heure), pluriel(g.pax, 'personne'), g.salle, nomMenu ? `Menu ${nomMenu}` : niveaux.length ? 'Menu sur mesure' : ''].filter(Boolean).map(t => <span key={t}>{t}</span>)}</div>
         </div>
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
-          <div className="fdoc-ptitle">Menu{m?.id ? ` — ${m.nom}` : ''}</div>
-          {plats.length
-            ? <div className="fdoc-steps">{plats.map((p, i) => (
-                <div key={i} className="fdoc-step"><div className="fdoc-snum">{i + 1}</div>
-                  <div className="fdoc-stxt">{p.nom}{p.allergenes.some(a => g.allergenes.includes(a)) && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={p.allergenes.filter(a => g.allergenes.includes(a))} effectifs={g.effectifs} /></div>}</div>
-                </div>))}</div>
-            : <div className="ci-label" style={{ color: 'var(--gt)' }}>{m ? "Ce menu n'a pas encore de plats." : 'Menu sur mesure — voir les notes.'}</div>}
+          {!niveaux.length && <><div className="fdoc-ptitle">Menu</div>
+            <div className="ci-label" style={{ color: 'var(--gt)' }}>{m ? "Ce menu n'a pas encore de plats." : 'Menu sur mesure — voir les notes.'}</div></>}
+          {niveaux.map((n, i) => {
+            const { total, ecart } = totalNiveau(n, g.pax);
+            return (
+              <Fragment key={i}>
+                <div className="fdoc-ptitle fdoc-niv"><span>{n.nom || 'Menu'}</span>
+                  {total > 0 && <span className={`fdoc-total${ecart ? ' fdoc-ecart' : ''}`}>{total} / {g.pax} pers.{ecart < 0 ? ` · il manque ${-ecart}` : ecart > 0 ? ` · ${ecart} de trop` : ''}</span>}</div>
+                <div className="fdoc-steps">{n.plats.map((p, k) => {
+                  const d = platAffiche(p, fichesRecette, fiches);
+                  const risques = d.allergenes.filter(a => g.allergenes.includes(a));
+                  return (
+                    <div key={k} className="fdoc-step">
+                      {avecQte
+                        ? <div className="fdoc-snum fdoc-qte" aria-label={p.qte === null ? 'Nombre non précisé' : `${p.qte} ×`}>{p.qte ?? '–'}</div>
+                        : <div className="fdoc-snum">{(debuts[i] ?? 0) + k + 1}</div>}
+                      <div className="fdoc-stxt">{d.nom}{risques.length > 0 && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={risques} effectifs={g.effectifs} /></div>}</div>
+                    </div>
+                  );
+                })}</div>
+              </Fragment>
+            );
+          })}
           <div className="fdoc-ptitle">Restrictions</div>
           <div className="fr-allerg-sub" style={{ marginTop: 0 }}><span className="fr-allerg-sub-lbl">Allergies</span>
             {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span style={{ fontSize: '0.875rem', color: 'var(--gt)' }}>Aucune déclarée</span>}</div>

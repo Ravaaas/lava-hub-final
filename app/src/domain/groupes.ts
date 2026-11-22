@@ -1,4 +1,4 @@
-import type { Groupe } from './types';
+import type { Groupe, Niveau } from './types';
 
 export const SALLES = ['Salle principale', 'Salon Basalte', 'Privatisation'] as const;
 
@@ -26,10 +26,13 @@ export function dateLongue(d: string): string {
 export const PAX_MAX = 500;
 
 /** Contrôle de la saisie ; null si tout est bon. */
-export function erreurGroupe(g: { nom: string; date: string; pax: number; effectifs?: Record<string, number> }): string | null {
+export function erreurGroupe(g: { nom: string; date: string; pax: number; effectifs?: Record<string, number>; niveaux?: readonly Niveau[] }): string | null {
   if (!g.nom.trim() || !g.date || !(g.pax > 0)) return 'Nom, date et nombre de personnes obligatoires';
+  if (!Number.isInteger(g.pax) || g.pax > PAX_MAX) return `Nombre de personnes : un entier entre 1 et ${PAX_MAX}`;
   if (Object.values(g.effectifs ?? {}).some(n => !Number.isInteger(n) || n < 1 || n > g.pax)) return `Allergies et régimes : un nombre entier de personnes entre 1 et ${g.pax}`;
-  return Number.isInteger(g.pax) && g.pax <= PAX_MAX ? null : `Nombre de personnes : un entier entre 1 et ${PAX_MAX}`;
+  // nombre de chaque plat : facultatif ; s'il est donné, entier, au moins 1 et pas plus que le groupe
+  const qtes = (g.niveaux ?? []).flatMap(n => n.plats).map(p => p.qte).filter(q => q !== null);
+  return qtes.some(q => !Number.isInteger(q) || q < 1 || q > g.pax) ? `Nombre de plats : un entier entre 1 et ${g.pax}` : null;
 }
 
 const minutes = (h: string): number => { const [a = 0, b = 0] = h.split(':').map(Number); return a * 60 + b; };
