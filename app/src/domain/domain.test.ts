@@ -6,7 +6,7 @@ import { allergenesDesElements, diffFicheRecette, elementsResolus } from './fich
 import { lignesJournal, libelleJour } from './journal';
 import { alertesGroupe, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
-import { erreurGroupe, groupesEnConflit, groupesFiltres } from './groupes';
+import { erreurGroupe, groupesEnConflit, groupesFiltres, libelleReglement, lireReglement } from './groupes';
 import { normNom } from './texte';
 import { cleProduit, erreurPerte, joursSemaine, lireQuantite, lundi, parCategorie, peutSupprimerPerte, quantiteFr, recapSemaine, type Perte, type ProduitPerso } from './pertesPerso';
 import { scriptPrincipal } from './version';
@@ -197,6 +197,12 @@ describe('groupes', () => {
     expect(niveauxDuGroupe({ ...g, niveaux: [], menu_id: 'm1' }, menus)).toEqual([{ nom: 'Entrée', plats: [{ frId: 'r1', qte: null }] }]);
     expect(niveauxDuGroupe({ ...g, niveaux: [] }, menus)).toEqual([]);
     expect(alertesGroupe(g, [], frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'] }]);
+  });
+  it('règlement : valeur inconnue ou absente = rien reçu', () => {
+    expect(lireReglement('acompte')).toBe('acompte');
+    expect(lireReglement('payé')).toBe('aucun');
+    expect(lireReglement(null)).toBe('aucun');
+    expect(libelleReglement('empreinte')).toBe('Empreinte bancaire');
   });
   it('niveaux : copiés du menu (temps fixes compris), totaux et nettoyage', () => {
     const frs = [fr('r1', 'CASSOLETTE')];

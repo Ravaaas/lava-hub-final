@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import type { Groupe, Niveau } from '../../domain/types';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
-import { SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit } from '../../domain/groupes';
+import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit } from '../../domain/groupes';
 import { niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
 import { creerGroupe, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
@@ -18,7 +18,7 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
   const { menus, groupes, fichesRecette, recharger, journal, setSynchro } = useDonnees();
   const confirmer = useConfirmer();
   const notifier = useNotifier();
-  const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), menu: useId(), notes: useId() };
+  const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), menu: useId(), boissons: useId(), notes: useId() };
   const [nom, setNom] = useState(g?.nom ?? '');
   const [date, setDate] = useState(g?.date ?? aujourdhui());
   const [heure, setHeure] = useState(g?.heure ?? '');
@@ -30,6 +30,8 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
   const [regimes, setRegimes] = useState<string[]>(g ? g.regimes.filter(r => (REGIMES as readonly string[]).includes(r)) : []);
   const [effectifs, setEffectifs] = useState<Record<string, string>>(Object.fromEntries(Object.entries(g?.effectifs ?? {}).map(([k, v]) => [k, String(v)])));
   const [notes, setNotes] = useState(g?.notes ?? '');
+  const [boissons, setBoissons] = useState(g?.boissons ?? '');
+  const [reglement, setReglement] = useState(g?.reglement ?? 'aucun');
   const [occupe, setOccupe] = useState(false);
 
   const enregistrer = async () => {
@@ -39,7 +41,7 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
       menu_id: menu ? menu.id : null, menu_nom: menu ? menu.nom : null,
       // niveaux du groupe (copiés du menu ou composés) ; fiches supprimées et plats libres vides écartés
       niveaux: niveauxAEnregistrer(niveaux, fichesRecette),
-      allergenes, regimes, notes: notes.trim(),
+      allergenes, regimes, notes: notes.trim(), boissons: boissons.trim(), reglement,
       // seuls les allergènes et régimes cochés gardent un nombre ; vide = non précisé
       effectifs: Object.fromEntries([...allergenes, ...regimes].filter(n => effectifs[n]?.trim()).map(n => [n, Number(effectifs[n])])),
     };
@@ -89,13 +91,17 @@ export function GroupeFormulaire({ groupe: g, onFermer }: { groupe: Groupe | nul
       <div className="fg2"><label className="fl" htmlFor={id.menu}>Menu choisi</label>
           <Selecteur id={id.menu} options={[{ valeur: '', libelle: 'Sur mesure' }, ...menus.map(m => ({ valeur: m.id, libelle: m.nom }))]} valeur={menuId} onChange={v => void choisirMenu(v)} /></div>
       <Niveaux niveaux={niveaux} pax={Number(pax) || 0} onChange={setNiveaux} />
+      <div className="fg2"><label className="fl" htmlFor={id.boissons}>Boissons précommandées</label>
+        <textarea className="fta" id={id.boissons} placeholder="ex: 3 magnums de Chablis, 2 bouteilles de Saint-Joseph, eaux et cafés" value={boissons} onChange={e => { setBoissons(e.target.value); }} /></div>
       <div className="fsect">Allergies déclarées</div>
       <Puces choix={ALLERGENES} selection={allergenes} onChange={setAllergenes} />
       <Nombres noms={allergenes} valeurs={effectifs} onChange={setEffectifs} />
       <div className="fsect" style={{ marginTop: '1.25rem' }}>Régimes</div>
       <Puces choix={REGIMES} selection={regimes} onChange={setRegimes} />
       <Nombres noms={regimes} valeurs={effectifs} onChange={setEffectifs} />
-      <div className="fg2" style={{ marginTop: '1.25rem' }}><label className="fl" htmlFor={id.notes}>Notes</label>
+      <div className="fg2" style={{ marginTop: '1.25rem' }}><span className="fl">Règlement</span>
+        <Choix libelle="Règlement" options={REGLEMENTS} valeur={reglement} onChange={setReglement} /></div>
+      <div className="fg2"><label className="fl" htmlFor={id.notes}>Notes</label>
         <textarea className="fta" id={id.notes} placeholder="Précisions : nombre d'enfants, contraintes, heure de service…" value={notes} onChange={e => { setNotes(e.target.value); }} /></div>
     </Fenetre>
   );

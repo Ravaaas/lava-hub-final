@@ -1,4 +1,15 @@
-import type { Groupe, Niveau } from './types';
+import type { Groupe, Niveau, Reglement } from './types';
+
+/** États du paiement, du moins au plus avancé. */
+export const REGLEMENTS: readonly { valeur: Reglement; libelle: string }[] = [
+  { valeur: 'aucun', libelle: 'Rien reçu' },
+  { valeur: 'empreinte', libelle: 'Empreinte bancaire' },
+  { valeur: 'acompte', libelle: 'Acompte versé' },
+  { valeur: 'regle', libelle: 'Réglé en totalité' },
+];
+/** Valeur lue en base ; inconnue ou absente = rien reçu. */
+export const lireReglement = (v: unknown): Reglement => REGLEMENTS.find(r => r.valeur === v)?.valeur ?? 'aucun';
+export const libelleReglement = (r: Reglement): string => REGLEMENTS.find(x => x.valeur === r)?.libelle ?? '';
 
 export const SALLES = ['Salle principale', 'Salon Basalte', 'Privatisation'] as const;
 

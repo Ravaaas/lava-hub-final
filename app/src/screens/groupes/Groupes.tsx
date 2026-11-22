@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react';
 import type { Groupe } from '../../domain/types';
 import { alertesGroupe, niveauxDuGroupe, platAffiche, totalNiveau } from '../../domain/menus';
-import { dateCourte, dateLongue, groupesFiltres } from '../../domain/groupes';
+import { dateCourte, dateLongue, groupesFiltres, libelleReglement } from '../../domain/groupes';
 import { contient, heureFr, pluriel } from '../../domain/texte';
 import { supprimerGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
@@ -128,10 +128,13 @@ function GroupeDetail({ groupe: g, onFermer, onModifier }: { groupe: Groupe; onF
               </Fragment>
             );
           })}
+          {g.boissons && <><div className="fdoc-ptitle">Boissons précommandées</div><div className="fdoc-notes">{g.boissons}</div></>}
           <div className="fdoc-ptitle">Restrictions</div>
           <div className="fr-allerg-sub" style={{ marginTop: 0 }}><span className="fr-allerg-sub-lbl">Allergies</span>
             {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span style={{ fontSize: '0.875rem', color: 'var(--gt)' }}>Aucune déclarée</span>}</div>
           {g.regimes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Régimes</span><Etiquettes liste={g.regimes} effectifs={g.effectifs} /></div>}
+          <div className="fdoc-ptitle">Règlement</div>
+          <div className={`fdoc-reglement fdoc-reglement-${g.reglement}`}>{libelleReglement(g.reglement)}</div>
           {g.notes && <><div className="fdoc-ptitle">Notes</div><div className="fdoc-notes">{g.notes}</div></>}
         </div>
       </div>

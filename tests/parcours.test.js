@@ -131,6 +131,8 @@ function actions(page, base) {
       await sleep(350);
     },
     existe: txt => page.evaluate(t => __t.tous(t).length > 0, txt),
+    // Bouton d'un choix (boutons côte à côte) actuellement retenu
+    estActif: txt => page.evaluate(t => __t.tous(t).some(e => e.getAttribute('aria-pressed') === 'true'), txt),
     async remplir(champ, v, n = 0) {
       const ok = await page.evaluate(async (c, v, n) => { const e = __t.champs(c)[n]; if (!e) return false; await __t.remplir(e, v); return true; }, champ, v, n);
       if (!ok) throw new Error(`champ « ${champ} » introuvable`);
@@ -438,6 +440,9 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   check('allergie : pas plus de personnes que le groupe', await (async () => { await a.remplir('Végétarien — nombre de personnes', '9'); m = await a.marque(); await a.clic('Enregistrer'); return a.notif(m, /entre 1 et 8/i); })());
   await a.remplir('Végétarien — nombre de personnes', '3');
   await a.remplir('Notes', '2 enfants');
+  await a.remplir('Boissons précommandées', '3 magnums de Chablis\nEaux et cafés');
+  check('règlement : rien reçu par défaut', await a.estActif('Rien reçu'));
+  await a.clic('Acompte versé');
   // Niveaux recopiés du menu choisi ; nombre de chaque plat commandé à l'avance, total comparé au nombre de personnes
   check('niveaux du menu recopiés', await a.enOrdre(['Niveaux du menu', 'Aucun plat', 'CASSOLETTE DE SAINT-JACQUES', 'TARTE AU CITRON', 'Ajouter un niveau']) && !!(await a.champ('Nombre — TARTE AU CITRON'))
     && JSON.stringify(await Promise.all([0, 1, 2].map(async n => (await a.champ('Nom du niveau', n))?.valeur))) === JSON.stringify(['Partages', 'Plat', 'Dessert']));
@@ -457,13 +462,15 @@ scenario('Groupes', { anciensMenus: true }, async (a) => {
   await a.clic('Enregistrer');
   const cree = await a.attendEcriture('groupes', 'POST');
   check('groupe enregistré', cree && cree.corps.nom === 'Anniversaire Leroy' && cree.corps.pax === 8 && cree.corps.menu_id === 'm1' && cree.corps.menu_nom === 'Carte du soir'
-    && cree.corps.allergenes === 'Gluten (2)' && cree.corps.regimes === 'Végétarien (3)' && cree.corps.notes === '2 enfants', JSON.stringify(cree && cree.corps));
+    && cree.corps.allergenes === 'Gluten (2)' && cree.corps.regimes === 'Végétarien (3)' && cree.corps.notes === '2 enfants'
+    && cree.corps.boissons === '3 magnums de Chablis\nEaux et cafés' && cree.corps.reglement === 'acompte', JSON.stringify(cree && cree.corps));
   check('niveaux et quantités enregistrés', cree && JSON.stringify(cree.corps.niveaux) === JSON.stringify([
     { nom: 'Plat', plats: [{ frId: 'r1', qte: 8 }] }, { nom: 'Dessert', plats: [{ frId: 'r2', qte: 6 }] }, { nom: 'Mignardises', plats: [{ text: 'Café gourmand', qte: 2 }] },
   ]), JSON.stringify(cree && cree.corps.niveaux));
   check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit avec le menu'));
   await a.clic('Anniversaire Leroy');
   check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques[\s\S]*gluten/.test(await a.texte()));
+  check('fiche groupe : boissons précommandées et règlement', await a.enOrdre(['Boissons précommandées', '3 magnums de Chablis', 'Eaux et cafés', 'Restrictions', 'Règlement', 'Acompte versé']));
   check('fiche groupe : salle et menu en tête', await a.voit('Menu Carte du soir') && await a.voit('Salle principale'));
   check('fiche groupe : niveaux, quantités et totaux', await a.enOrdre(['Plat', '8 / 8 pers.', '8', 'CASSOLETTE DE SAINT-JACQUES', 'Dessert', '6 / 8 pers. · il manque 2', '6', 'TARTE AU CITRON', 'Mignardises', '2', 'Café gourmand']), (await a.texte()).slice(0, 600));
   check('fiche groupe : pas de « modifié par »', !(await a.voit('modifié par')));

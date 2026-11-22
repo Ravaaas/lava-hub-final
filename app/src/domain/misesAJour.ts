@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-22",
+    titre: "Fiche groupe : règlement et boissons",
+    desc: "La fiche groupe indique où en est le paiement (rien reçu, empreinte bancaire, acompte versé ou réglé en totalité) et les boissons précommandées, écrites librement. Les deux apparaissent sur la fiche imprimée."
+  },
+  {
+    date: "2026-11-22",
     titre: "Fiche groupe : niveaux et nombre de plats",
     desc: "Le menu d'un groupe se range en niveaux (Entrée, Plat, Dessert… autant que nécessaire). Pour chaque plat, on indique combien les clients en ont choisi à l'avance, par exemple 10 betteraves, 2 veloutés et 4 tartares : la fiche imprimée montre ces nombres et signale un niveau qui ne fait pas le compte de personnes. Choisir un menu recopie ses plats, que l'on peut ensuite adapter pour le groupe. La salle et le menu apparaissent en tête de la fiche."
   },

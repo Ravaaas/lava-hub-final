@@ -66,7 +66,13 @@ export interface Groupe {
   /** Nombre de personnes concernées par allergie ou régime (facultatif, par nom). */
   effectifs: Record<string, number>;
   notes: string;
+  /** Boissons précommandées (texte libre). */
+  boissons: string;
+  reglement: Reglement;
 }
+
+/** Où en est le paiement du groupe. */
+export type Reglement = 'aucun' | 'empreinte' | 'acompte' | 'regle';
 
 export interface Membre {
   email: string;

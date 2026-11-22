@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import type { Groupe, Niveau, PlatCompte } from '../domain/types';
 import { avecEffectifs, joindre, listeAllergenes, separerEffectifs } from '../domain/allergenes';
 import { lirePlat } from './config';
+import { lireReglement } from '../domain/groupes';
 import { objet, tableau, texte } from './lecture';
 import { prudent, verifier, type Resultat } from './resultat';
 
@@ -41,6 +42,8 @@ export async function chargerGroupes(): Promise<Groupe[]> {
     regimes: re.noms,
     effectifs: { ...al.effectifs, ...re.effectifs },
     notes: l.notes ?? '',
+    boissons: texte(l.boissons),
+    reglement: lireReglement(l.reglement),
     };
   });
 }
