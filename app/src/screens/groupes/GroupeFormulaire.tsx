@@ -3,7 +3,7 @@ import type { ContactGroupe, Groupe, Niveau } from '../../domain/types';
 import type { Alerte } from '../../domain/menus';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
 import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit, libelleMontant, montantSaisi, profilsAEnregistrer, resumeProfils } from '../../domain/groupes';
-import { alertesMenu, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
+import { alertesMenu, allergieSaisie, estAllergieLibre, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
 import { creerGroupe, enregistrerContact, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
@@ -139,11 +139,19 @@ type ProfilSaisi = { nb: string; allergenes: string[]; regimes: string[] };
  */
 function Profils({ profils, alertes, onChange }: { profils: ProfilSaisi[]; alertes: Alerte[]; onChange: (p: ProfilSaisi[]) => void }) {
   const [ouvert, setOuvert] = useState<number | null>(null);
+  const [autre, setAutre] = useState('');
+  const ouvrir = (i: number | null) => { setOuvert(i); setAutre(''); };
   const modifier = (i: number, f: (p: ProfilSaisi) => ProfilSaisi) => { onChange(profils.map((p, k) => (k === i ? f(p) : p))); };
+  // allergie libre (Kiwi…) : ajoutée comme une puce cochée ; « gluten » coche l'allergène Gluten
+  const ajouterAutre = (i: number) => {
+    const a = allergieSaisie(autre);
+    if (a) modifier(i, x => (x.allergenes.includes(a) ? x : { ...x, allergenes: [...x.allergenes, a] }));
+    setAutre('');
+  };
   return (
     <>
       <div className="fsect">Allergies et régimes</div>
-      <p className="niv-aide">Une ligne par personne, ou par personnes qui ont exactement les mêmes allergies et régimes.</p>
+      <p className="niv-aide">Une ligne par personne, ou par personnes qui ont exactement les mêmes allergies et régimes. Une allergie absente de la liste s'écrit à la main : elle est cherchée dans les ingrédients des plats.</p>
       {profils.length === 0 && <div className="ci-label" style={{ color: 'var(--gt)', marginBottom: '0.6rem' }}>Aucune allergie ni régime déclaré.</div>}
       {profils.map((p, i) => {
         const coches = [...p.allergenes, ...p.regimes];
@@ -153,21 +161,27 @@ function Profils({ profils, alertes, onChange }: { profils: ProfilSaisi[]; alert
               <input className="fi2 niv-qte" type="number" min="1" step="1" placeholder="1" aria-label={`Nombre de personnes — ligne ${i + 1}`} value={p.nb}
                 onChange={e => { modifier(i, x => ({ ...x, nb: e.target.value })); }} />
               <span className="prof-pers">pers.</span>
-              <button type="button" className="prof-resume" aria-expanded={ouvert === i} onClick={() => { setOuvert(ouvert === i ? null : i); }}>
+              <button type="button" className="prof-resume" aria-expanded={ouvert === i} onClick={() => { ouvrir(ouvert === i ? null : i); }}>
                 {coches.length ? coches.join(' · ') : 'Choisir les allergies et régimes'}<Icone nom={ouvert === i ? 'chevron-up' : 'chevron-down'} taille={16} />
               </button>
-              <button type="button" className="btn-rm" aria-label="Retirer cette ligne" onClick={() => { onChange(profils.filter((_, k) => k !== i)); setOuvert(null); }}><Icone nom="x" /></button>
+              <button type="button" className="btn-rm" aria-label="Retirer cette ligne" onClick={() => { onChange(profils.filter((_, k) => k !== i)); ouvrir(null); }}><Icone nom="x" /></button>
             </div>
             {ouvert === i && <>
               <div className="prof-sous">Allergies</div>
-              <Puces choix={ALLERGENES} selection={p.allergenes} onChange={v => { modifier(i, x => ({ ...x, allergenes: v })); }} />
+              <Puces choix={[...ALLERGENES, ...p.allergenes.filter(estAllergieLibre)]} selection={p.allergenes} onChange={v => { modifier(i, x => ({ ...x, allergenes: v })); }} />
+              <div className="prof-autre">
+                <input className="fi2" aria-label={`Autre allergie ou intolérance — ligne ${i + 1}`} placeholder="Autre allergie (ex: Kiwi)" value={autre}
+                  onChange={e => { setAutre(e.target.value); }}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); ajouterAutre(i); } }} />
+                <button type="button" className="btn-ar" disabled={!autre.trim()} onClick={() => { ajouterAutre(i); }}><Icone nom="plus" />Ajouter</button>
+              </div>
               <div className="prof-sous">Régimes</div>
               <Puces choix={REGIMES} selection={p.regimes} onChange={v => { modifier(i, x => ({ ...x, regimes: v })); }} />
             </>}
           </div>
         );
       })}
-      <button type="button" className="btn-ar" style={{ marginBottom: '1rem' }} onClick={() => { onChange([...profils, { nb: '1', allergenes: [], regimes: [] }]); setOuvert(profils.length); }}>
+      <button type="button" className="btn-ar" style={{ marginBottom: '1rem' }} onClick={() => { onChange([...profils, { nb: '1', allergenes: [], regimes: [] }]); ouvrir(profils.length); }}>
         <Icone nom="plus" />Ajouter une personne</button>
       <AlertesMenu alertes={alertes} />
     </>

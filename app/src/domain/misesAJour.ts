@@ -2,6 +2,11 @@
 // Chaque ajout visible par l'équipe reçoit une entrée ici.
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
+    date: "2026-11-23",
+    titre: "Fiche groupe : allergies et intolérances hors liste",
+    desc: "Sur chaque ligne de personne, une allergie absente de la liste (kiwi, ail, pomme de terre…) s'écrit dans « Autre allergie ou intolérance » puis Ajouter. Elle est cherchée dans le nom du plat, ses éléments et les ingrédients de ses fiches techniques : l'encadré « Plats à adapter » indique où elle a été trouvée, par exemple « Kiwi (KIWI GOLD) ». Un plat écrit librement, sans fiche, n'est vérifié que sur son nom."
+  },
+  {
     date: "2026-11-22",
     titre: "Fiche groupe : allergies par personne et plats à adapter",
     desc: "Les allergies et régimes d'un groupe se saisissent par personne : une ligne pour 1 personne allergique à l'œuf et à la moutarde, une autre pour 1 personne allergique à l'œuf seulement. La fiche liste chaque ligne, et un encadré « Plats à adapter » indique quel plat pose problème, pour quelle allergie et combien de personnes. La carte du groupe nomme le plat en conflit."

@@ -4,7 +4,7 @@ import { identifiantPour, profilsClasses, verifierMotDePasse, postesProposes, et
 import { diffFiche, lireConditionnement, quantiteAffichee, quantitePour } from './fiches';
 import { allergenesDesElements, diffFicheRecette, elementsResolus } from './fichesRecette';
 import { lignesJournal, libelleJour } from './journal';
-import { alertesGroupe, alertesMenu, resumeAlertes, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
+import { alertesGroupe, alertesMenu, allergieSaisie, estAllergieLibre, resumeAlertes, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
 import { contactsUniques, csvContacts, erreurGroupe, profilsAEnregistrer, profilsDepuisAnciens, resumeProfils, euros, groupesEnConflit, groupesFiltres, libelleMontant, libelleReglement, lireMontant, lireReglement, montantSaisi } from './groupes';
 import { normNom } from './texte';
@@ -198,6 +198,29 @@ describe('groupes', () => {
     expect(niveauxDuGroupe({ ...g, niveaux: [], menu_id: 'm1' }, menus)).toEqual([{ nom: 'Entrée', plats: [{ frId: 'r1', qte: null }] }]);
     expect(niveauxDuGroupe({ ...g, niveaux: [] }, menus)).toEqual([]);
     expect(alertesGroupe(g, [], frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'], personnes: 1 }]);
+  });
+  it('allergies libres : saisie, recherche dans les ingrédients (fiches liées comprises), mot entier', () => {
+    expect(allergieSaisie('  gluten ')).toBe('Gluten');
+    expect(allergieSaisie('fruit a coque')).toBe('Fruit à coque');
+    expect(allergieSaisie('kiwi  jaune')).toBe('Kiwi jaune');
+    expect(estAllergieLibre('Kiwi')).toBe(true);
+    expect(estAllergieLibre('celeri')).toBe(false);
+    const fiches = [
+      fiche('s', 'SALADE DE FRUITS', [], { ingredients: [{ nom: 'KIWIS GOLD', quantite: '2', unite: 'pc' }, { nom: 'Base', quantite: '1', unite: 'kg', ficheId: 'b' }] }),
+      fiche('b', 'SIROP', [], { ingredients: [{ nom: 'Ail noir', quantite: '1', unite: 'g' }, { nom: 'Base', quantite: '1', unite: 'kg', ficheId: 's' }] }),
+      fiche('c', 'CAILLE RÔTIE', ['Céleri'], { ingredients: [{ nom: 'Céleri', quantite: '1', unite: 'g' }] }),
+    ];
+    const frs = [
+      { id: 'd', nom: 'DESSERT', allergenes: [], elements: [{ type: 'fiche', id: 's', grammage: '' }] },
+      { id: 'v', nom: 'VOLAILLE', allergenes: ['Céleri'], elements: [{ type: 'fiche', id: 'c', grammage: '' }, { type: 'libre', texte: 'Purée de pomme de terre', grammage: '' }] },
+    ] as unknown as FicheRecette[];
+    const niveaux = [{ nom: 'Plat', plats: [{ frId: 'v', qte: null }, { texte: 'Tarte au kiwi', qte: null }] }, { nom: 'Dessert', plats: [{ frId: 'd', qte: null }] }];
+    const profils = [{ nb: 1, allergenes: ['Kiwi'], regimes: [] }, { nb: 2, allergenes: ['Ail', 'Pomme de terre'], regimes: [] }];
+    expect(alertesMenu(niveaux, profils, frs, fiches)).toEqual([
+      { plat: 'VOLAILLE', allergenes: ['Pomme de terre'], personnes: 2, indices: { 'Pomme de terre': 'Purée de pomme de terre' } },
+      { plat: 'Tarte au kiwi', allergenes: ['Kiwi'], personnes: 1 },
+      { plat: 'DESSERT', allergenes: ['Kiwi', 'Ail'], personnes: 3, indices: { Kiwi: 'KIWIS GOLD', Ail: 'Ail noir' } },
+    ]);
   });
   it('personnes à plusieurs allergies : lignes séparées, résumé, conflits expliqués', () => {
     const profils = [{ nb: 1, allergenes: ['Œuf', 'Moutarde'], regimes: [] }, { nb: 1, allergenes: ['Œuf'], regimes: ['Végétarien'] }, { nb: 2, allergenes: [], regimes: ['Halal'] }];

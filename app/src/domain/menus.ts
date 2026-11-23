@@ -1,5 +1,6 @@
 import type { Fiche, FicheRecette, Groupe, Menu, Niveau, Plat, Profil, Service } from './types';
 import { elementsResolus } from './fichesRecette';
+import { ALLERGENES } from './allergenes';
 
 /** Menus à temps fixes : leurs temps sont imposés et ne se modifient pas. */
 const MENUS_FIXES: Record<string, readonly string[]> = {
@@ -68,19 +69,75 @@ export function totalNiveau(n: Niveau, pax: number): { total: number; ecart: num
   return { total, ecart: total - pax };
 }
 
-/** Plat à adapter : allergies déclarées qu'il contient et nombre de personnes concernées (au moins une de leurs allergies). */
-export interface Alerte { plat: string; allergenes: string[]; personnes: number }
+/** Texte comparé sans accents ni majuscules (« Céleri » = « celeri »). */
+const sansAccents = (t: string): string => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
 
-/** Plats qui contiennent une allergie déclarée, chacun une fois, avec les personnes concernées. */
+/** Allergie déclarée qui n'est pas un des allergènes réglementaires (Kiwi, Ail…), écrite à la main. */
+export const estAllergieLibre = (a: string): boolean => !ALLERGENES.some(x => sansAccents(x) === sansAccents(a));
+
+/** Allergie saisie à la main : l'allergène réglementaire s'il est écrit autrement (« gluten » → « Gluten »), sinon le texte nettoyé. */
+export function allergieSaisie(t: string): string {
+  const propre = t.replace(/\s+/g, ' ').trim();
+  return ALLERGENES.find(x => sansAccents(x) === sansAccents(propre)) ?? (propre.charAt(0).toUpperCase() + propre.slice(1));
+}
+
+/** Ce qu'on sait d'un plat pour y chercher une allergie libre : son nom, ses éléments, et les ingrédients de ses fiches techniques (fiches liées comprises). */
+function textesDuPlat(p: Plat, frs: readonly FicheRecette[], fiches: readonly Fiche[]): string[] {
+  if ('texte' in p) return [p.texte];
+  const fr = frs.find(f => f.id === p.frId);
+  if (!fr) return [];
+  const out = [fr.nom];
+  const vues = new Set<string>();
+  const parcourir = (f: Fiche) => {
+    if (vues.has(f.id)) return;
+    vues.add(f.id);
+    out.push(f.nom);
+    for (const i of f.ingredients) {
+      const liee = i.ficheId ? fiches.find(x => x.id === i.ficheId) : undefined;
+      if (liee) parcourir(liee); else out.push(i.nom);
+    }
+  };
+  for (const e of elementsResolus(fr, fiches)) { if (e.fiche) parcourir(e.fiche); else out.push(e.nom); }
+  return out;
+}
+
+/** Premier texte qui contient le mot (pluriel compris : « noisette » trouve « NOISETTES TORRÉFIÉES », mais « ail » ne trouve pas « caille »). */
+function chercherMot(mot: string, textes: readonly string[]): string | undefined {
+  const m = sansAccents(mot).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  if (!m) return undefined;
+  const re = new RegExp(`(^|[^a-z0-9])${m}(s|x)?($|[^a-z0-9])`);
+  return textes.find(t => re.test(sansAccents(t)));
+}
+
+/**
+ * Plat à adapter : allergies déclarées qu'il contient et nombre de personnes concernées (au moins une de leurs allergies).
+ * `indices` : pour une allergie libre, où elle a été trouvée (ingrédient ou élément), quand ce n'est pas le nom du plat.
+ */
+export interface Alerte { plat: string; allergenes: string[]; personnes: number; indices?: Record<string, string> }
+
+/**
+ * Plats qui contiennent une allergie déclarée, chacun une fois, avec les personnes concernées.
+ * Allergènes réglementaires : ceux du plat. Allergies libres (Kiwi…) : cherchées dans le nom, les éléments et les ingrédients du plat.
+ */
 export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): Alerte[] {
   if (!profils.some(p => p.allergenes.length)) return [];
+  const libres = [...new Set(profils.flatMap(p => p.allergenes).filter(estAllergieLibre))];
   const vus = new Set<string>();
-  return niveaux.flatMap(n => n.plats).map(p => platAffiche(p, frs, fiches)).flatMap(d => {
+  return niveaux.flatMap(n => n.plats).flatMap(p => {
+    const d = platAffiche(p, frs, fiches);
     if (vus.has(d.nom)) return [];
     vus.add(d.nom);
-    const touches = profils.filter(p => p.allergenes.some(a => d.allergenes.includes(a)));
-    const allergenes = d.allergenes.filter(a => touches.some(p => p.allergenes.includes(a)));
-    return touches.length ? [{ plat: d.nom, allergenes, personnes: touches.reduce((t, p) => t + p.nb, 0) }] : [];
+    const indices: Record<string, string> = {};
+    if (libres.length) {
+      const textes = textesDuPlat(p, frs, fiches);
+      for (const a of libres) { const t = chercherMot(a, textes); if (t !== undefined) indices[a] = t; }
+    }
+    const contenus = [...d.allergenes, ...Object.keys(indices)];
+    const touches = profils.filter(x => x.allergenes.some(a => contenus.includes(a)));
+    if (!touches.length) return [];
+    const allergenes = contenus.filter(a => touches.some(x => x.allergenes.includes(a)));
+    const visibles = Object.fromEntries(Object.entries(indices).filter(([, t]) => sansAccents(t) !== sansAccents(d.nom)));
+    return [{ plat: d.nom, allergenes, personnes: touches.reduce((t, x) => t + x.nb, 0), ...(Object.keys(visibles).length ? { indices: visibles } : {}) }];
   });
 }
 

@@ -447,7 +447,16 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   m = await a.marque(); await a.clic('Enregistrer');
   check('allergies : pas plus de personnes que le groupe', await a.notif(m, /10 personnes déclarées pour 8/i) && a.ecritures('groupes', 'POST').length === 0);
   await a.remplir('Nombre de personnes — ligne 2', '2');
-  check('formulaire : plats à adapter expliqués', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten · 3 pers.', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*allergies et régimes/, '').slice(0, 400));
+  // allergie hors liste écrite à la main : cherchée dans les ingrédients des fiches techniques du plat (fiche VELOUTÉ CURRY de la cassolette)
+  await a.clic('Ajouter une personne');
+  await a.remplir('Autre allergie ou intolérance — ligne 3', '  curry ');
+  await a.clic('Ajouter');
+  const puce = t => page.evaluate(t => [...document.querySelectorAll('[role=checkbox]')].filter(e => e.textContent.trim() === t).map(e => e.getAttribute('aria-checked')), t);
+  check('allergie libre : ajoutée comme puce cochée', (await a.champ('Autre allergie ou intolérance — ligne 3'))?.valeur === '' && JSON.stringify(await puce('Curry')) === '["true"]');
+  await a.remplir('Autre allergie ou intolérance — ligne 3', 'gluten'); await a.clic('Ajouter');
+  check('allergie libre : « gluten » coche l\'allergène Gluten, sans doublon', await a.voit('Curry · Gluten') && JSON.stringify(await puce('Gluten')) === '["true"]');
+  await a.clic('Gluten');
+  check('formulaire : plats à adapter expliqués', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY) · 4 pers.', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*allergies et régimes/, '').slice(0, 400));
   await a.remplir('Notes', '2 enfants');
   await a.remplir('Boissons précommandées', '3 magnums de Chablis\nEaux et cafés');
   check('règlement : rien reçu par défaut', await a.estActif('Rien reçu'));
@@ -484,17 +493,17 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   check('coordonnées du référent dans la base de contacts', contact && cree && contact.corps.groupe_id === cree.corps.id && contact.corps.nom === 'Sophie Leroy'
     && contact.corps.email === 'sophie.leroy@exemple.fr' && contact.corps.telephone === '06 11 22 33 44' && contact.corps.groupe === 'Anniversaire Leroy', JSON.stringify(contact && contact.corps));
   check('groupe enregistré', cree && cree.corps.nom === 'Anniversaire Leroy' && cree.corps.pax === 8 && cree.corps.menu_id === 'm1' && cree.corps.menu_nom === 'Carte du soir'
-    && cree.corps.allergenes === 'Gluten (3), Moutarde (1)' && cree.corps.regimes === 'Végétarien (2)' && cree.corps.notes === '2 enfants'
-    && JSON.stringify(cree.corps.profils) === JSON.stringify([{ nb: 1, allergenes: ['Gluten', 'Moutarde'], regimes: [] }, { nb: 2, allergenes: ['Gluten'], regimes: ['Végétarien'] }])
+    && cree.corps.allergenes === 'Gluten (3), Moutarde (1), Curry (1)' && cree.corps.regimes === 'Végétarien (2)' && cree.corps.notes === '2 enfants'
+    && JSON.stringify(cree.corps.profils) === JSON.stringify([{ nb: 1, allergenes: ['Gluten', 'Moutarde'], regimes: [] }, { nb: 2, allergenes: ['Gluten'], regimes: ['Végétarien'] }, { nb: 1, allergenes: ['Curry'], regimes: [] }])
     && cree.corps.boissons === '3 magnums de Chablis\nEaux et cafés' && cree.corps.reglement === 'acompte', JSON.stringify(cree && cree.corps));
   check('niveaux et quantités enregistrés', cree && JSON.stringify(cree.corps.niveaux) === JSON.stringify([
     { nom: 'Plat', plats: [{ frId: 'r1', qte: 8 }] }, { nom: 'Dessert', plats: [{ frId: 'r2', qte: 6 }] }, { nom: 'Mignardises', plats: [{ text: 'Café gourmand', qte: 2 }] },
   ]), JSON.stringify(cree && cree.corps.niveaux));
-  check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit : CASSOLETTE DE SAINT-JACQUES (Gluten) +1'));
+  check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit : CASSOLETTE DE SAINT-JACQUES (Gluten, Curry) +1'));
   await a.clic('Anniversaire Leroy');
   check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques[\s\S]*gluten/.test(await a.texte()));
-  check('fiche groupe : encadré des plats à adapter avant le menu', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten · 3 pers.', 'TARTE AU CITRON — Gluten · 3 pers.', 'Plat', '8 / 8 pers.']));
-  check('fiche groupe : une ligne par personne', await a.enOrdre(['Restrictions', '1 pers.', 'Gluten', 'Moutarde', '2 pers.', 'Gluten', 'Végétarien', 'Référent et règlement']));
+  check('fiche groupe : encadré des plats à adapter avant le menu', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY) · 4 pers.', 'TARTE AU CITRON — Gluten · 3 pers.', 'Plat', '8 / 8 pers.']));
+  check('fiche groupe : une ligne par personne', await a.enOrdre(['Restrictions', '1 pers.', 'Gluten', 'Moutarde', '2 pers.', 'Gluten', 'Végétarien', '1 pers.', 'Curry', 'Référent et règlement']));
   check('fiche groupe : boissons précommandées et règlement', await a.enOrdre(['Boissons précommandées', '3 magnums de Chablis', 'Eaux et cafés', 'Restrictions', 'Règlement', 'Acompte versé']));
   check('fiche groupe : référent, coordonnées et montant à l\'écran', await a.enOrdre(['Référent et règlement', 'Référent', 'Sophie Leroy', 'Règlement', 'Acompte versé · 250,50 €', 'Coordonnées du référent', 'sophie.leroy@exemple.fr', '06 11 22 33 44', 'Notes']));
   check('fiche groupe : salle et menu en tête', await a.voit('Menu Carte du soir') && await a.voit('Salle principale'));
