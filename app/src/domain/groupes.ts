@@ -78,18 +78,24 @@ export function dateLongue(d: string): string {
 
 export const PAX_MAX = 500;
 
-/** Contrôle de la saisie ; null si tout est bon. */
-export function erreurGroupe(g: { nom: string; date: string; pax: number; effectifs?: Record<string, number>; profils?: readonly Profil[]; niveaux?: readonly Niveau[]; montant?: number | null; email?: string }): string | null {
-  if (!g.nom.trim() || !g.date || !(g.pax > 0)) return 'Nom, date et nombre de personnes obligatoires';
-  if (!Number.isInteger(g.pax) || g.pax > PAX_MAX) return `Nombre de personnes : un entier entre 1 et ${PAX_MAX}`;
+/**
+ * Contrôle de la saisie ; null si tout est bon.
+ * Brouillon : seuls le nom et la date sont obligatoires ; sans nombre de personnes (0), rien n'est comparé au nombre de personnes.
+ */
+export function erreurGroupe(g: { nom: string; date: string; pax: number; effectifs?: Record<string, number>; profils?: readonly Profil[]; niveaux?: readonly Niveau[]; montant?: number | null; email?: string }, brouillon = false): string | null {
+  if (brouillon ? !g.nom.trim() || !g.date : !g.nom.trim() || !g.date || !(g.pax > 0)) return brouillon ? 'Nom et date obligatoires' : 'Nom, date et nombre de personnes obligatoires';
+  const sansNombre = brouillon && g.pax === 0;
+  if (!sansNombre && (!Number.isInteger(g.pax) || g.pax > PAX_MAX) || g.pax < 0) return `Nombre de personnes : un entier entre 1 et ${PAX_MAX}`;
+  const max = sansNombre ? Infinity : g.pax;
+  const bornes = sansNombre ? "un nombre entier d'au moins 1" : `un entier entre 1 et ${g.pax}`;
   const profils = g.profils ?? [];
   if (profils.some(p => !Number.isInteger(p.nb) || p.nb < 1)) return 'Allergies et régimes : un nombre entier de personnes sur chaque ligne';
   const declares = profils.reduce((t, p) => t + p.nb, 0);
-  if (declares > g.pax) return `Allergies et régimes : ${declares} personnes déclarées pour ${g.pax}`;
-  if (Object.values(g.effectifs ?? {}).some(n => !Number.isInteger(n) || n < 1 || n > g.pax)) return `Allergies et régimes : un nombre entier de personnes entre 1 et ${g.pax}`;
+  if (declares > max) return `Allergies et régimes : ${declares} personnes déclarées pour ${g.pax}`;
+  if (Object.values(g.effectifs ?? {}).some(n => !Number.isInteger(n) || n < 1 || n > max)) return `Allergies et régimes : ${bornes}`;
   // nombre de chaque plat : facultatif ; s'il est donné, entier, au moins 1 et pas plus que le groupe
   const qtes = (g.niveaux ?? []).flatMap(n => n.plats).map(p => p.qte).filter(q => q !== null);
-  if (qtes.some(q => !Number.isInteger(q) || q < 1 || q > g.pax)) return `Nombre de plats : un entier entre 1 et ${g.pax}`;
+  if (qtes.some(q => !Number.isInteger(q) || q < 1 || q > max)) return `Nombre de plats : ${bornes}`;
   if (g.montant != null && !(Number.isFinite(g.montant) && g.montant >= 0 && g.montant <= MONTANT_MAX)) return 'Montant : un nombre en euros, par exemple 300 ou 1250,50';
   if (g.email && !emailValide(g.email)) return 'Email du référent : adresse invalide (ex: nom@exemple.fr)';
   return null;
@@ -133,8 +139,8 @@ export function csvContacts(liste: readonly ContactUnique[]): string {
 
 const minutes = (h: string): number => { const [a = 0, b = 0] = h.split(':').map(Number); return a * 60 + b; };
 
-/** Autres groupes le même jour, dans la même salle, à moins de 2 h (heures connues des deux côtés). */
+/** Autres groupes le même jour, dans la même salle, à moins de 2 h (heures connues des deux côtés) ; un brouillon ne réserve pas la salle. */
 export function groupesEnConflit(g: { id?: string | undefined; date: string; heure: string; salle: string }, autres: readonly Groupe[]): Groupe[] {
   if (!g.heure) return [];
-  return autres.filter(o => o.id !== g.id && o.date === g.date && o.salle === g.salle && !!o.heure && Math.abs(minutes(o.heure) - minutes(g.heure)) < 120);
+  return autres.filter(o => o.id !== g.id && o.statut !== 'brouillon' && o.date === g.date && o.salle === g.salle && !!o.heure && Math.abs(minutes(o.heure) - minutes(g.heure)) < 120);
 }

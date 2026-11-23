@@ -85,8 +85,15 @@ export function niveauxDuGroupe(g: Groupe, menus: readonly Menu[]): Niveau[] {
 /** Total commandé dans un niveau et écart avec le nombre de personnes (0 = juste ; positif = plats en trop). */
 export function totalNiveau(n: Niveau, pax: number): { total: number; ecart: number } {
   const total = n.plats.reduce((t, p) => t + (p.qte ?? 0), 0);
-  return { total, ecart: total - pax };
+  return { total, ecart: pax > 0 ? total - pax : 0 };   // brouillon sans nombre de personnes : pas d'écart
 }
+
+/**
+ * Plats d'un niveau servis au groupe, tels que la fiche les montre : dès qu'un nombre est saisi dans le niveau, seuls les plats qui ont un nombre
+ * (et les plats de remplacement, même sans nombre) ; un niveau sans aucun nombre montre tous ses plats.
+ */
+export const platsCommandes = (n: Niveau): PlatCompte[] =>
+  n.plats.some(p => p.qte !== null) ? n.plats.filter(p => p.qte !== null || p.remplace !== undefined) : n.plats;
 
 /** Texte comparé sans accents ni majuscules (« Céleri » = « celeri »). */
 const sansAccents = (t: string): string => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
@@ -144,7 +151,7 @@ export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil
   if (!profils.some(p => p.allergenes.length)) return [];
   const libres = [...new Set(profils.flatMap(p => p.allergenes).filter(estAllergieLibre))];
   const vus = new Set<string>();
-  return niveaux.flatMap(n => n.plats).flatMap(p => {
+  return niveaux.flatMap(platsCommandes).flatMap(p => {
     const d = platAffiche(p, frs, fiches);
     if (vus.has(d.nom)) return [];
     vus.add(d.nom);

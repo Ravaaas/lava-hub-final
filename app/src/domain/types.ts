@@ -56,8 +56,12 @@ export type PlatCompte = Plat & {
 /** Niveau du menu d'un groupe (Entrée, Plat, Dessert…), copié du menu choisi ou composé pour le groupe. */
 export interface Niveau { nom: string; plats: PlatCompte[] }
 
+/** Brouillon : fiche pas encore validée (à finir), d'une autre couleur dans la liste et marquée sur la fiche imprimée. */
+export type StatutGroupe = 'confirme' | 'brouillon';
+
 export interface Groupe {
   id: string;
+  statut: StatutGroupe;
   nom: string;
   date: string;
   heure: string;

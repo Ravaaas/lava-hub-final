@@ -1,10 +1,10 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import type { ContactGroupe, Groupe } from '../../domain/types';
-import { alertesGroupe, clePlat, niveauxDuGroupe, platAffiche, resumeAlertes, totalNiveau } from '../../domain/menus';
+import { alertesGroupe, clePlat, niveauxDuGroupe, platAffiche, platsCommandes, resumeAlertes, totalNiveau } from '../../domain/menus';
 import { AlertesMenu } from './AlertesMenu';
-import { contactsUniques, csvContacts, dateCourte, dateLongue, euros, groupesFiltres, libelleReglement } from '../../domain/groupes';
+import { contactsUniques, csvContacts, dateCourte, dateLongue, erreurGroupe, euros, groupesFiltres, libelleReglement } from '../../domain/groupes';
 import { contient, heureFr, pluriel } from '../../domain/texte';
-import { chargerContacts, supprimerGroupe } from '../../db/groupes';
+import { changerStatut, chargerContacts, supprimerGroupe } from '../../db/groupes';
 import { telecharger } from '../../lib/image';
 import { Fenetre } from '../../ui/Fenetre';
 import { useDonnees } from '../../etat/Donnees';
@@ -59,13 +59,14 @@ export function Groupes() {
         {pret && !liste.length && <Vide icone="users" titre="Aucun groupe" texte="Rien à afficher ici" />}
         {liste.map(g => {
           const conflit = resumeAlertes(alertesGroupe(g, menus, fichesRecette, fiches));
-          const infos = [dateCourte(g.date), heureFr(g.heure), `${g.pax} pers.`, g.salle, menus.find(m => m.id === g.menu_id)?.nom ?? g.menu_nom ?? (g.niveaux.some(n => n.plats.length) ? 'Sur mesure' : '')].filter(Boolean).join(' · ');
+          const infos = [dateCourte(g.date), heureFr(g.heure), g.pax > 0 ? `${g.pax} pers.` : '', g.salle, menus.find(m => m.id === g.menu_id)?.nom ?? g.menu_nom ?? (g.niveaux.some(n => n.plats.length) ? 'Sur mesure' : '')].filter(Boolean).join(' · ');
           return (
-            <div key={g.id} className="fc" role="button" tabIndex={0} onClick={() => { setOuvert(g.id); }}
+            <div key={g.id} className={`fc${g.statut === 'brouillon' ? ' fc-brouillon' : ''}`} role="button" tabIndex={0} onClick={() => { setOuvert(g.id); }}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOuvert(g.id); } }}>
               <div className="fc-top"><div className="fc-name">{g.nom}</div><div className="fc-cat">{infos}</div></div>
               {/* toujours une ligne d'étiquettes : toutes les cartes ont la même hauteur, avec ou sans allergie */}
               <div className="fc-tags">
+                {g.statut === 'brouillon' && <span className="tag tag-brouillon">Brouillon</span>}
                 {conflit && <span className="tag tag-danger"><Icone nom="alert" taille={14} />{conflit}</span>}
                 {g.allergenes.length ? <Etiquettes liste={g.allergenes} effectifs={g.effectifs} /> : <span className="tag">Aucune allergie</span>}
               </div>
@@ -92,6 +93,20 @@ function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Gr
   const avecQte = niveaux.some(n => n.plats.some(p => p.qte !== null));
   const debuts = niveaux.map((_, i) => niveaux.slice(0, i).reduce((t, n) => t + n.plats.length, 0));
 
+  // un brouillon se valide si la fiche passe tous les contrôles ; sinon on ouvre le formulaire pour la finir
+  const valider = async () => {
+    const erreur = erreurGroupe({ ...g, email: contact?.email ?? '' });
+    if (erreur) { notifier(`${erreur} — à compléter pour valider`, 'err'); onModifier(); return; }
+    setSynchro(true);
+    const r = await changerStatut(g.id, 'confirme');
+    setSynchro(false);
+    if (!r.ok) { notifier('Validation impossible : ' + r.message, 'err'); return; }
+    await journal('validation groupe', g.nom);
+    notifier('Fiche validée', 'ok');
+    onFermer();
+    await recharger();
+  };
+
   const supprimer = async () => {
     if (!await confirmer('Supprimer ce groupe ?')) return;
     setSynchro(true);
@@ -109,6 +124,7 @@ function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Gr
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         <button type="button" className="btn btn-g btn-sm" onClick={() => { window.print(); }}><Icone nom="printer" />Imprimer</button>
         {peutGererGroupes && <>
+          {g.statut === 'brouillon' && <button type="button" className="btn btn-p btn-sm" onClick={() => void valider()}>Valider la fiche</button>}
           <button type="button" className="btn btn-g btn-sm" onClick={onModifier}>Modifier</button>
           <button type="button" className="btn btn-d btn-sm" onClick={() => void supprimer()}>Supprimer</button>
         </>}
@@ -116,8 +132,9 @@ function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Gr
     }>
       <div className="fdoc fdoc-groupe">
         <div className="fdoc-hdr"><div className="fdoc-sur">Fiche groupe</div><div className="fdoc-nom">{g.nom}</div>
-          <div className="fdoc-cles">{[dateLongue(g.date), heureFr(g.heure), pluriel(g.pax, 'personne'), g.salle, nomMenu ? `Menu ${nomMenu}` : niveaux.length ? 'Menu sur mesure' : ''].filter(Boolean).map(t => <span key={t}>{t}</span>)}</div>
+          <div className="fdoc-cles">{[dateLongue(g.date), heureFr(g.heure), g.pax > 0 ? pluriel(g.pax, 'personne') : '', g.salle, nomMenu ? `Menu ${nomMenu}` : niveaux.length ? 'Menu sur mesure' : ''].filter(Boolean).map(t => <span key={t}>{t}</span>)}</div>
         </div>
+        {g.statut === 'brouillon' && <div className="fdoc-brouillon" role="note">Brouillon — fiche non validée</div>}
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
           <AlertesMenu alertes={alertesGroupe(g, menus, fichesRecette, fiches)} />
@@ -128,8 +145,8 @@ function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Gr
             return (
               <Fragment key={i}>
                 <div className="fdoc-ptitle fdoc-niv"><span>{n.nom || 'Menu'}</span>
-                  {total > 0 && <span className={`fdoc-total${ecart ? ' fdoc-ecart' : ''}`}>{total} / {g.pax} pers.{ecart < 0 ? ` · il manque ${-ecart}` : ecart > 0 ? ` · ${ecart} de trop` : ''}</span>}</div>
-                <div className="fdoc-steps">{n.plats.map((p, k) => {
+                  {total > 0 && <span className={`fdoc-total${ecart ? ' fdoc-ecart' : ''}`}>{total}{g.pax > 0 ? ` / ${g.pax}` : ''} pers.{ecart < 0 ? ` · il manque ${-ecart}` : ecart > 0 ? ` · ${ecart} de trop` : ''}</span>}</div>
+                <div className="fdoc-steps">{platsCommandes(n).map((p, k) => {
                   const d = platAffiche(p, fichesRecette, fiches);
                   const risques = d.allergenes.filter(a => g.allergenes.includes(a));
                   const remplace = p.remplace === undefined ? undefined : n.plats.filter(q => clePlat(q) === p.remplace).map(q => platAffiche(q, fichesRecette, fiches).nom)[0];

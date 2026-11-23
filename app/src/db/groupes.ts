@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { ContactGroupe, Groupe, Niveau, PlatCompte, Profil } from '../domain/types';
+import type { ContactGroupe, Groupe, Niveau, PlatCompte, Profil, StatutGroupe } from '../domain/types';
 import { avecEffectifs, joindre, listeAllergenes, separerEffectifs } from '../domain/allergenes';
 import { lirePlat } from './config';
 import { lireMontant, lireReglement, profilsDepuisAnciens, resumeProfils } from '../domain/groupes';
@@ -43,6 +43,7 @@ export async function chargerGroupes(): Promise<Groupe[]> {
     const profils = lus.length ? lus : profilsDepuisAnciens(al.noms, re.noms, { ...al.effectifs, ...re.effectifs });
     return {
     id: l.id,
+    statut: l.statut === 'brouillon' ? 'brouillon' : 'confirme',
     nom: l.nom,
     date: l.date,
     heure: l.heure ?? '',
@@ -79,6 +80,10 @@ export const creerGroupe = (id: string, g: Omit<Groupe, 'id'>): Promise<Resultat
 
 export const modifierGroupe = (id: string, g: Omit<Groupe, 'id'>): Promise<Resultat> =>
   prudent(async () => verifier(await supabase.from('groupes').update(versLigne(g)).eq('id', id).select('id')));
+
+/** Valide un brouillon (ou le repasse en brouillon). */
+export const changerStatut = (id: string, statut: StatutGroupe): Promise<Resultat> =>
+  prudent(async () => verifier(await supabase.from('groupes').update({ statut }).eq('id', id).select('id')));
 
 export const supprimerGroupe = (id: string): Promise<Resultat> =>
   prudent(async () => verifier(await supabase.from('groupes').delete().eq('id', id).select('id')));

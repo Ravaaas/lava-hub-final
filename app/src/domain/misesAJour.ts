@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-23",
+    titre: "Fiche groupe : brouillon, et seulement les plats commandés",
+    desc: "Un groupe peut s'enregistrer en brouillon (« Enregistrer en brouillon », seuls le nom et la date sont exigés) : sa carte est orange avec l'étiquette « Brouillon », la fiche porte le bandeau « Brouillon — fiche non validée », imprimé aussi, et le bouton « Valider la fiche » la confirme. Un brouillon ne bloque pas la salle. Sur la fiche, dès qu'un nombre est saisi dans un niveau, seuls les plats qui ont un nombre sont affichés (les plats de remplacement restent) ; le formulaire montre toujours tous les plats."
+  },
+  {
+    date: "2026-11-23",
     titre: "Fiche groupe : plat de remplacement pour les allergies",
     desc: "Dans les niveaux du menu d'un groupe, le bouton ⇄ d'un plat indique qu'il est servi « à la place de » un autre plat du même niveau, par exemple un bœuf sans tempura à la place du BŒUF AXURIA pour les personnes sans gluten. Dans l'encadré « Plats à adapter », le plat remplacé passe en gris avec « remplacé par… » ; il reste rouge si le remplaçant est prévu pour moins de personnes que celles concernées. La fiche note « à la place de… » sous le plat de remplacement, et la carte du groupe ne signale plus que les plats non adaptés."
   },

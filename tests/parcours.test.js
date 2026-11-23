@@ -477,6 +477,8 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.remplir('Nom du niveau', 'Mignardises', 3);
   await a.remplir('Plat libre (Mignardises)', 'Café gourmand'); await a.clic('Libre', 3);
   await a.remplir('Nombre — Café gourmand', '2');
+  // un plat sans nombre reste dans le formulaire mais n'est pas servi : absent de la fiche
+  await a.remplir('Plat libre (Dessert)', 'Sorbet maison'); await a.clic('Libre', 2);
   // plat de remplacement : la cassolette sans gluten à la place de la cassolette, pour les personnes allergiques
   await a.remplir('Plat libre (Plat)', 'Cassolette sans gluten'); await a.clic('Libre', 1);
   await a.clic('Remplace un plat — Cassolette sans gluten');
@@ -507,7 +509,7 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
     && JSON.stringify(cree.corps.profils) === JSON.stringify([{ nb: 1, allergenes: ['Gluten', 'Moutarde'], regimes: [] }, { nb: 2, allergenes: ['Gluten'], regimes: ['Végétarien'] }, { nb: 1, allergenes: ['Curry'], regimes: [] }])
     && cree.corps.boissons === '3 magnums de Chablis\nEaux et cafés' && cree.corps.reglement === 'acompte', JSON.stringify(cree && cree.corps));
   check('niveaux et quantités enregistrés', cree && JSON.stringify(cree.corps.niveaux) === JSON.stringify([
-    { nom: 'Plat', plats: [{ frId: 'r1', qte: 8 }, { text: 'Cassolette sans gluten', qte: null, remplace: 'r1' }] }, { nom: 'Dessert', plats: [{ frId: 'r2', qte: 6 }] }, { nom: 'Mignardises', plats: [{ text: 'Café gourmand', qte: 2 }] },
+    { nom: 'Plat', plats: [{ frId: 'r1', qte: 8 }, { text: 'Cassolette sans gluten', qte: null, remplace: 'r1' }] }, { nom: 'Dessert', plats: [{ frId: 'r2', qte: 6 }, { text: 'Sorbet maison', qte: null }] }, { nom: 'Mignardises', plats: [{ text: 'Café gourmand', qte: 2 }] },
   ]), JSON.stringify(cree && cree.corps.niveaux));
   check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit : TARTE AU CITRON (Gluten)') && !(await a.voit('Conflit : CASSOLETTE')));
   await a.clic('Anniversaire Leroy');
@@ -518,6 +520,7 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   check('fiche groupe : référent, coordonnées et montant à l\'écran', await a.enOrdre(['Référent et règlement', 'Référent', 'Sophie Leroy', 'Règlement', 'Acompte versé · 250,50 €', 'Coordonnées du référent', 'sophie.leroy@exemple.fr', '06 11 22 33 44', 'Notes']));
   check('fiche groupe : salle et menu en tête', await a.voit('Menu Carte du soir') && await a.voit('Salle principale'));
   check('fiche groupe : niveaux, quantités et totaux', await a.enOrdre(['Plat', '8 / 8 pers.', '8', 'CASSOLETTE DE SAINT-JACQUES', 'Dessert', '6 / 8 pers. · il manque 2', '6', 'TARTE AU CITRON', 'Mignardises', '2', 'Café gourmand']), (await a.texte()).slice(0, 600));
+  check('fiche groupe : plat sans nombre non affiché', !(await a.voit('Sorbet maison')));
   check('fiche groupe : pas de « modifié par »', !(await a.voit('modifié par')));
   // Impression : la fiche telle qu'à l'écran, sans les boutons ni le reste de l'app
   const imprime = await a.imprime('Imprimer');
@@ -525,6 +528,7 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
     && !imprime.texte.includes('retour') && !imprime.texte.includes('séminaire dupont'), imprime.texte.slice(0, 200));
   check('impression : nom du référent, sans email, téléphone ni montant', imprime.texte.includes('référent et règlement') && imprime.texte.includes('sophie leroy') && !imprime.texte.includes('coordonnées') && !imprime.texte.includes('sophie.leroy@') && !imprime.texte.includes('06 11 22') && !imprime.texte.includes('250'), imprime.texte);
   await a.clic('Modifier');
+  check('modification : plat sans nombre toujours dans le formulaire, pas de brouillon sur un groupe validé', await a.voit('Sorbet maison') && !(await a.voit('Enregistrer en brouillon')));
   check('modification : lignes d\'allergies reprises', await a.voit('Gluten · Moutarde') && await a.voit('Gluten · Végétarien') && (await a.champ('Nombre de personnes — ligne 2'))?.valeur === '2');
   check('modification : coordonnées et montant repris', (await a.champ('Email du référent'))?.valeur === 'sophie.leroy@exemple.fr' && (await a.champ("Montant de l'acompte (€)"))?.valeur === '250,5');
   await a.remplir('Nombre de personnes', '10');
@@ -692,6 +696,39 @@ scenario('Yokitup sans clé', { yokitupSansCle: true }, async (a) => {
   const m = await a.marque();
   await a.clic('Mettre à jour depuis Yokitup');
   check('clé absente : message clair, rien de lu', await a.notif(m, /clé yokitup absente/i) && await a.attend('échec') && !a.ecritures('yokitup_liens').length);
+});
+
+scenario('Groupes brouillon', {}, async (a) => {
+  await a.connexion('Cuisine', 'Alexandre RAVASIO');
+  await a.onglet('Groupes');
+  await a.clic('Nouveau groupe');
+  await a.remplir('Nom du groupe', 'Cocktail Martin');
+  await a.clic('Enregistrer en brouillon');
+  const brouillon = await a.attendEcriture('groupes', 'POST');
+  check('brouillon : enregistré avec le seul nom', brouillon && brouillon.corps.statut === 'brouillon' && brouillon.corps.pax === 0 && brouillon.corps.nom === 'Cocktail Martin', JSON.stringify(brouillon && brouillon.corps));
+  check('brouillon : étiquette sur la carte', await a.attend('Cocktail Martin') && await a.voit('Brouillon'));
+  await a.clic('Cocktail Martin');
+  check('brouillon : bandeau sur la fiche, bouton Valider', await a.attend('Brouillon — fiche non validée') && await a.voit('Valider la fiche'));
+  const imprime = await a.imprime('Imprimer');
+  check('brouillon : mention dans l\'impression', imprime.texte.includes('brouillon — fiche non validée'), imprime.texte.slice(0, 200));
+  let m = await a.marque(); await a.clic('Valider la fiche');
+  check('brouillon incomplet : validation refusée, formulaire ouvert', await a.notif(m, /obligatoires|à compléter/i) && await a.attend('Modifier — Cocktail Martin'));
+  await a.remplir('Nombre de personnes', '10');
+  await a.clic('Enregistrer');
+  const valide = await a.attendEcriture('groupes', 'PATCH');
+  check('brouillon complété : groupe validé', valide && valide.corps.statut === 'confirme' && valide.corps.pax === 10, JSON.stringify(valide && valide.corps));
+  check('groupe validé : plus de brouillon', await a.attend('Cocktail Martin') && !(await a.voit('Brouillon')));
+  // un autre brouillon complet se valide d'un clic
+  await a.clic('Nouveau groupe');
+  await a.remplir('Nom du groupe', 'Dîner Petit'); await a.remplir('Nombre de personnes', '6');
+  await a.clic('Enregistrer en brouillon');
+  check('brouillon avec nombre de personnes', await a.attend('Dîner Petit') && await a.voit('6 pers.'));
+  await a.clic('Dîner Petit');
+  await a.attend('Valider la fiche');
+  const avant = a.ecritures('groupes', 'PATCH').length;
+  await a.clic('Valider la fiche'); await sleep(800);
+  const v2 = a.ecritures('groupes', 'PATCH').slice(avant)[0];
+  check('validation directe du brouillon', v2 && v2.corps.statut === 'confirme' && Object.keys(v2.corps).length === 1, JSON.stringify(v2 && v2.corps));
 });
 
 scenario('Journal', {}, async (a) => {

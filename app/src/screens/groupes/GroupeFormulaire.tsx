@@ -39,12 +39,14 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
   const [telephone, setTelephone] = useState(contact?.telephone ?? '');
   const [occupe, setOccupe] = useState(false);
 
-  const enregistrer = async () => {
+  // brouillon : seuls le nom et la date sont exigés, la fiche reste à valider (aussi « Enregistrer » sur un brouillon la valide)
+  const enregistrer = async (brouillon = false) => {
     const menu = menus.find(m => m.id === menuId);
     // une ligne par personne (ou personnes identiques) ; lignes sans rien de coché écartées ; nombre vide = 1
     const lignes = profilsAEnregistrer(profils.map(p => ({ ...p, nb: p.nb.trim() ? Number(p.nb) : 1 })));
     const personnes = { profils: lignes, ...resumeProfils(lignes) };
     const donnees: Omit<Groupe, 'id'> = {
+      statut: brouillon ? 'brouillon' : 'confirme',
       nom: nom.trim(), date, heure, pax: pax.trim() ? Number(pax) : 0, salle,
       menu_id: menu ? menu.id : null, menu_nom: menu ? menu.nom : null,
       // niveaux du groupe (copiés du menu ou composés) ; fiches supprimées et plats libres vides écartés
@@ -54,10 +56,10 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
       montant: reglement === 'aucun' ? null : montantSaisi(montant), referent: referent.trim(),
     };
     const coord = { email: email.trim(), telephone: telephone.trim() };
-    const erreur = erreurGroupe({ ...donnees, email: coord.email });
+    const erreur = erreurGroupe({ ...donnees, email: coord.email }, brouillon);
     if (erreur) { notifier(erreur, 'err'); return; }
-    if (date < aujourdhui() && date !== g?.date && !await confirmer(`Cette date est passée (${dateCourte(date)}). Enregistrer quand même ?`, 'Enregistrer')) return;
-    const conflit = groupesEnConflit({ id: g?.id, date, heure, salle }, groupes)[0];
+    if (!brouillon && date < aujourdhui() && date !== g?.date && !await confirmer(`Cette date est passée (${dateCourte(date)}). Enregistrer quand même ?`, 'Enregistrer')) return;
+    const conflit = brouillon ? undefined : groupesEnConflit({ id: g?.id, date, heure, salle }, groupes)[0];
     if (conflit && !await confirmer(`« ${conflit.nom} » est déjà prévu dans cette salle à ${heureFr(conflit.heure)} le même jour. Enregistrer quand même ?`, 'Enregistrer')) return;
     setOccupe(true); setSynchro(true);
     try {
@@ -70,8 +72,8 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
         if (!c.ok) notifier('Groupe enregistré, mais pas les coordonnées du référent : ' + c.message, 'err');
         onContact();
       }
-      await journal(g ? 'modification groupe' : 'création groupe', donnees.nom);
-      notifier(g ? 'Groupe modifié' : 'Groupe enregistré', 'ok');
+      await journal(g ? 'modification groupe' : 'création groupe', brouillon ? `${donnees.nom} (brouillon)` : donnees.nom);
+      notifier(brouillon ? 'Brouillon enregistré' : g ? 'Groupe modifié' : 'Groupe enregistré', 'ok');
       onFermer();
       await recharger();
     } finally { setOccupe(false); setSynchro(false); }
@@ -91,6 +93,7 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
     <Fenetre titre={g ? `Modifier — ${g.nom}` : 'Nouveau groupe'} onFermer={onFermer}
       pied={<>
         <button type="button" className="btn btn-g" onClick={onFermer}>Annuler</button>
+        {(!g || g.statut === 'brouillon') && <button type="button" className="btn btn-brouillon" disabled={occupe} onClick={() => void enregistrer(true)}>Enregistrer en brouillon</button>}
         <button type="button" className="btn btn-p" disabled={occupe} onClick={() => void enregistrer()}>Enregistrer</button>
       </>}>
       <div className="fg2"><label className="fl" htmlFor={id.nom}>Nom du groupe *</label>
@@ -263,7 +266,7 @@ function Niveaux({ niveaux, pax, onChange }: { niveaux: Niveau[]; pax: number; o
               );
             })}
             {total > 0 && <div className={`niv-total${ecart ? ' niv-ecart' : ''}`} role="note">
-              Total : {total} / {pax} pers.{ecart < 0 ? ` — il manque ${-ecart}` : ecart > 0 ? ` — ${ecart} de trop` : ''}</div>}
+              Total : {total}{pax > 0 ? ` / ${pax}` : ''} pers.{ecart < 0 ? ` — il manque ${-ecart}` : ecart > 0 ? ` — ${ecart} de trop` : ''}</div>}
             <div className="niv-ajout">
               <Selecteur style={{ flex: 1 }} libelle={`Fiche recette à ajouter (${nom})`} vide={recettes.length ? undefined : 'Aucune fiche recette'}
                 options={recettes.map(f => ({ valeur: f.id, libelle: f.nom }))} valeur={choix[i] || recettes[0]?.id || ''} onChange={v => { setChoix(c => ({ ...c, [i]: v })); }} />
