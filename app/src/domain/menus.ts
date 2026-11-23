@@ -151,32 +151,43 @@ function chercherMot(mot: string, textes: readonly string[]): string | undefined
  */
 export interface Alerte { plat: string; allergenes: string[]; personnes: number; indices?: Record<string, string>; remplacants?: string[]; adapte?: boolean }
 
+/** Allergies, mots libres et régimes que ce plat contredit, où ils ont été trouvés, et les lignes de personnes concernées. */
+function contredit(p: Plat, allergenes: readonly string[], profils: readonly Profil[], regimes: readonly string[], libres: readonly string[], frs: readonly FicheRecette[], fiches: readonly Fiche[]) {
+  const indices: Record<string, string> = {};
+  if (libres.length || regimes.length) {
+    const textes = textesDuPlat(p, frs, fiches);
+    for (const a of libres) {
+      const famille = familleDuMot(a);
+      if (famille) { const t = trouverTerme(famille.termes, textes, famille.sans); if (t) indices[a] = t.terme; }
+      else { const t = chercherMot(a, textes); if (t !== undefined) indices[a] = t; }
+    }
+    for (const r of regimes) { const t = trouverPourRegime(r, textes, allergenes); if (t) indices[r] = t.terme; }
+  }
+  const contenus = [...allergenes, ...Object.keys(indices)];
+  const touches = profils.filter(x => [...x.allergenes, ...x.regimes].some(a => contenus.includes(a)));
+  return { indices, contenus, touches };
+}
+
+/** Régimes suivis (avec une règle) et allergies libres (hors des 13 allergènes) de ces personnes. */
+const exigences = (profils: readonly Profil[]) => ({
+  regimes: [...new Set(profils.flatMap(p => p.regimes))].filter(r => r in REGLES_REGIMES),
+  libres: [...new Set(profils.flatMap(p => p.allergenes).filter(estAllergieLibre))],
+});
+
 /**
  * Plats qui contiennent une allergie déclarée ou un aliment exclu par un régime, chacun une fois, avec les personnes concernées.
  * Allergènes réglementaires : ceux du plat. Allergies libres (Kiwi, Fromage…) : cherchées dans le nom, les éléments et les ingrédients du plat,
  * un mot général (viande, fromage, fruits de mer…) trouvant tous ses aliments. Régimes : voir `REGLES_REGIMES` (supabase/functions/recap-groupes/aliments.ts).
  */
 export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): Alerte[] {
-  const regimes = [...new Set(profils.flatMap(p => p.regimes))].filter(r => r in REGLES_REGIMES);
+  const { regimes, libres } = exigences(profils);
   if (!profils.some(p => p.allergenes.length) && !regimes.length) return [];
-  const libres = [...new Set(profils.flatMap(p => p.allergenes).filter(estAllergieLibre))];
   const vus = new Set<string>();
   return niveaux.flatMap(platsCommandes).flatMap(p => {
     const d = platAffiche(p, frs, fiches);
     if (vus.has(d.nom)) return [];
     vus.add(d.nom);
-    const indices: Record<string, string> = {};
-    if (libres.length || regimes.length) {
-      const textes = textesDuPlat(p, frs, fiches);
-      for (const a of libres) {
-        const famille = familleDuMot(a);
-        if (famille) { const t = trouverTerme(famille.termes, textes, famille.sans); if (t) indices[a] = t.terme; }
-        else { const t = chercherMot(a, textes); if (t !== undefined) indices[a] = t; }
-      }
-      for (const r of regimes) { const t = trouverPourRegime(r, textes, d.allergenes); if (t) indices[r] = t.terme; }
-    }
-    const contenus = [...d.allergenes, ...Object.keys(indices)];
-    const touches = profils.filter(x => [...x.allergenes, ...x.regimes].some(a => contenus.includes(a)));
+    const { indices, contenus, touches } = contredit(p, d.allergenes, profils, regimes, libres, frs, fiches);
     if (!touches.length) return [];
     const allergenes = contenus.filter(a => touches.some(x => x.allergenes.includes(a) || x.regimes.includes(a)));
     const visibles = Object.fromEntries(Object.entries(indices).filter(([, t]) => sansAccents(t) !== sansAccents(d.nom)));
@@ -191,6 +202,47 @@ export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil
       ...(remplacants.length ? { remplacants: remplacants.map(q => platAffiche(q, frs, fiches).nom), adapte } : {}),
     }];
   });
+}
+
+/** Plat proposé à la place d'un plat en conflit, et d'où il vient : autre plat du niveau, plat du même temps d'un menu, fiche recette. */
+export interface Proposition { plat: Plat; nom: string; origine: 'niveau' | 'menu' | 'fiches' }
+
+/**
+ * Alternatives au plat en conflit du niveau `iNiveau` : des plats qui ne contredisent AUCUNE restriction des personnes concernées
+ * (régimes, allergies, mots libres), au plus `max`. On cherche d'abord les autres plats du niveau, puis les plats du même temps dans les menus
+ * (le menu choisi en premier ; le temps se reconnaît à son nom : « Entrée »), puis toutes les fiches recette non archivées.
+ */
+export function propositionsPour(
+  niveaux: readonly Niveau[], iNiveau: number, conflit: PlatCompte, profils: readonly Profil[],
+  frs: readonly FicheRecette[], fiches: readonly Fiche[], menus: readonly Menu[], menuId: string | null, max = 4,
+): Proposition[] {
+  const niveau = niveaux[iNiveau];
+  if (!niveau) return [];
+  const tous = exigences(profils);
+  const concernes = contredit(conflit, platAffiche(conflit, frs, fiches).allergenes, profils, tous.regimes, tous.libres, frs, fiches).touches;
+  if (!concernes.length) return [];
+  const ex = exigences(concernes);
+  const compatible = (p: Plat) => contredit(p, platAffiche(p, frs, fiches).allergenes, concernes, ex.regimes, ex.libres, frs, fiches).touches.length === 0;
+  const vues = new Set<string>([clePlat(conflit)]);
+  const out: Proposition[] = [];
+  const essayer = (p: Plat, origine: Proposition['origine']) => {
+    if (out.length >= max) return;
+    const cle = clePlat(p);
+    if (vues.has(cle)) return;
+    vues.add(cle);
+    const { nom } = platAffiche(p, frs, fiches);
+    const supprime = 'frId' in p && !frs.some(f => f.id === p.frId);   // plat d'un menu dont la fiche n'existe plus
+    if (nom.trim() && !supprime && compatible(p)) out.push({ plat: p, nom, origine });
+  };
+  for (const q of niveau.plats) if (q.remplace === undefined) essayer('frId' in q ? { frId: q.frId } : { texte: q.texte }, 'niveau');
+  const temps = sansAccents(niveau.nom);
+  if (temps) {
+    for (const m of [...menus.filter(x => x.id === menuId), ...menus.filter(x => x.id !== menuId)]) {
+      for (const sv of servicesAffiches(m)) if (sansAccents(sv.nom) === temps) for (const p of sv.plats) essayer(p, 'menu');
+    }
+  }
+  for (const f of frs.filter(x => x.statut !== 'archive').sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))) essayer({ frId: f.id }, 'fiches');
+  return out;
 }
 
 /** Plats du menu d'un groupe qui contiennent une allergie déclarée par le groupe. */

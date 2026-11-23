@@ -762,6 +762,26 @@ scenario('Groupes brouillon', {}, async (a) => {
   check('validation directe du brouillon', v2 && v2.corps.statut === 'confirme' && Object.keys(v2.corps).length === 1, JSON.stringify(v2 && v2.corps));
 });
 
+scenario('Groupes alternatives', {}, async (a) => {
+  await a.connexion('Cuisine', 'Alexandre RAVASIO');
+  await a.onglet('Groupes');
+  await a.clic('Nouveau groupe');
+  await a.remplir('Nom du groupe', 'Déjeuner Roux'); await a.remplir('Nombre de personnes', '8');
+  await a.remplir('Plat libre (Entrée)', 'Tartare de veau'); await a.clic('Libre', 0);
+  await a.remplir('Nombre — Tartare de veau', '8');
+  await a.clic('Ajouter une personne'); await a.clic('Sans viande');
+  check('plat à adapter : le régime sans viande trouve le veau', await a.attend('Tartare de veau — Sans viande (veau) · 1 pers.'));
+  check('alternatives proposées automatiquement', await a.voit('Proposer') && await a.existe('Servir CASSOLETTE DE SAINT-JACQUES à la place de Tartare de veau')
+    && !(await a.existe('Servir Tartare de veau à la place de Tartare de veau')));
+  await a.clic('Servir CASSOLETTE DE SAINT-JACQUES à la place de Tartare de veau');
+  check('un clic : plat ajouté, nombre retiré du plat en conflit, total juste', await a.attend('Plats adaptés') && (await a.champ('Nombre — Tartare de veau'))?.valeur === '7'
+    && (await a.champ('Nombre — CASSOLETTE DE SAINT-JACQUES'))?.valeur === '1' && await a.voit('Total : 8 / 8 pers.'));
+  check('conflit réglé : remplacé par l\'alternative', await a.voit('remplacé par CASSOLETTE DE SAINT-JACQUES'));
+  await a.clic('Enregistrer');
+  const cree = await a.attendEcriture('groupes', 'POST');
+  check('alternative enregistrée, liée au plat remplacé', cree && JSON.stringify(cree.corps.niveaux[0]) === JSON.stringify({ nom: 'Entrée', plats: [{ text: 'Tartare de veau', qte: 7 }, { frId: 'r1', qte: 1, remplace: 'Tartare de veau' }] }), JSON.stringify(cree && cree.corps.niveaux));
+});
+
 scenario('Journal', {}, async (a) => {
   await a.connexion('Cuisine', 'Alexandre RAVASIO');
   await a.onglet('Journal');

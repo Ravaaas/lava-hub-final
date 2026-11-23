@@ -1,6 +1,6 @@
 // Plats à adapter : régimes (végétarien, végétalien, sans viande, sans porc, sans alcool, halal) et mots généraux écrits à la main (fromage, viande…).
 import { describe, expect, it } from 'vitest';
-import { alertesMenu } from './menus';
+import { alertesMenu, propositionsPour } from './menus';
 import { familleDuMot, trouverPourRegime, trouverTerme, FAMILLES } from '../../../supabase/functions/recap-groupes/aliments';
 import * as srv from '../../../supabase/functions/recap-groupes/domaine';
 import type { Fiche, FicheRecette, Niveau, Profil } from './types';
@@ -113,5 +113,49 @@ describe('plats à adapter avec régimes et mots généraux', () => {
     const srvFrs = brutes.map(l => srv.lireFicheRecette(l as Record<string, unknown>));
     const srvFiches = [srv.lireFiche({ id: 'g', nom: 'CHOCOLAT IVOIRE', ingredients: [{ nom: 'CRÈME' }, { nom: 'Fromage frais' }] })];
     expect(srv.alertesMenu(niveaux as never, profils, srvFrs, srvFiches)).toEqual(alertesMenu(niveaux, profils, frs, fiches));
+  });
+});
+
+describe('alternatives proposées à la place d\'un plat en conflit', () => {
+  const frs = [
+    { id: 't', nom: 'TARTARE DE VEAU, GARUM ANCHOIS', statut: 'carte', allergenes: [], elements: [] },
+    { id: 'r', nom: 'RISOTTO DE CÈPES', statut: 'carte', allergenes: [], elements: [] },
+    { id: 'h', nom: 'HOUMOUS BETTERAVE', statut: 'partages', allergenes: ['Sésame'], elements: [] },
+    { id: 'p', nom: 'POULET RÔTI', statut: 'carte', allergenes: [], elements: [] },
+    { id: 'c', nom: 'COURGE RÔTIE, CHÈVRE', statut: 'carte', allergenes: ['Lactose'], elements: [] },
+    { id: 'a', nom: 'ANCIEN PLAT VÉGÉTAL', statut: 'archive', allergenes: [], elements: [] },
+    { id: 'z', nom: 'ZUCCHINI GRILLÉ', statut: 'lunch', allergenes: [], elements: [] },
+  ] as unknown as FicheRecette[];
+  const menus = [{ id: 'm', nom: 'Carte', services: [{ nom: 'Entrée', plats: [{ frId: 'h' }, { texte: 'Velouté de potimarron' }, { frId: 'supprimee' }] }, { nom: 'Plat', plats: [{ frId: 'p' }] }] }];
+  const niveaux: Niveau[] = [{ nom: 'Entrée', plats: [{ frId: 't', qte: 8 }, { frId: 'r', qte: null }] }, { nom: 'Plat', plats: [{ frId: 'p', qte: 8 }] }];
+  const noms = (l: ReturnType<typeof propositionsPour>) => l.map(x => `${x.origine}:${x.nom}`);
+
+  it('autres plats du niveau, puis plats du même temps dans les menus, puis toutes les fiches', () => {
+    const profils: Profil[] = [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }];
+    const conflit = niveaux[0]?.plats[0];
+    if (!conflit) throw new Error('plat absent');
+    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm'))).toEqual([
+      'niveau:RISOTTO DE CÈPES', 'menu:HOUMOUS BETTERAVE', 'menu:Velouté de potimarron', 'fiches:COURGE RÔTIE, CHÈVRE']);
+    // le plat en conflit, les plats d'un autre temps (Plat), les fiches archivées et les fiches supprimées ne sont jamais proposés
+    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm', 10)).join('|')).not.toMatch(/TARTARE|POULET|ANCIEN|supprim/);
+    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm', 10)).at(-1)).toBe('fiches:ZUCCHINI GRILLÉ');
+    expect(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm', 2)).toHaveLength(2);
+  });
+
+  it('compatible avec TOUTES les restrictions des personnes concernées', () => {
+    const profils: Profil[] = [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }, { nb: 1, allergenes: ['Sésame'], regimes: ['Végétalien'] }];
+    const conflit = niveaux[0]?.plats[0];
+    if (!conflit) throw new Error('plat absent');
+    // sésame (houmous), lactose déclaré (courge au chèvre : végétalien) exclus ; le risotto, le velouté et le zucchini restent
+    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm', 10))).toEqual(['niveau:RISOTTO DE CÈPES', 'menu:Velouté de potimarron', 'fiches:ZUCCHINI GRILLÉ']);
+  });
+
+  it('aucune proposition quand rien n\'est contredit, ou quand rien ne convient', () => {
+    const conflit = niveaux[0]?.plats[0];
+    if (!conflit) throw new Error('plat absent');
+    expect(propositionsPour(niveaux, 0, conflit, [{ nb: 1, allergenes: ['Gluten'], regimes: [] }], frs, [], menus, 'm')).toEqual([]);
+    expect(propositionsPour(niveaux, 5, conflit, [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }], frs, [], menus, 'm')).toEqual([]);
+    const toutViande = frs.map(f => ({ ...f, nom: `${f.nom} AU POULET` })) as unknown as FicheRecette[];
+    expect(propositionsPour(niveaux, 0, conflit, [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }], toutViande, [], [], null)).toEqual([]);
   });
 });

@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-24",
+    titre: "Fiche groupe : l'app propose un plat de remplacement",
+    desc: "Sous chaque plat en conflit de l'encadré « Plats à adapter » du formulaire, jusqu'à quatre plats compatibles avec toutes les restrictions des personnes concernées sont proposés : d'abord les autres plats du niveau, puis les plats du même temps dans vos menus (les autres entrées pour une entrée), puis toutes les fiches recette. Un clic sur une proposition l'ajoute au niveau pour le nombre de personnes concernées, retire ce nombre du plat en conflit (un tartare de veau à 8 passe à 7) et lie les deux plats : la ligne passe en gris « remplacé par… »."
+  },
+  {
+    date: "2026-11-24",
     titre: "Fiche groupe : régimes et mots généraux détectés dans les plats",
     desc: "L'encadré « Plats à adapter » repère maintenant les plats qui contredisent un régime : Végétarien (viandes, volailles, poissons, fruits de mer), Végétalien (en plus lait, fromage, œuf, miel, beurre, crème), Sans viande (nouveau), Sans porc, Sans alcool et Halal (porc et alcool). Un mot général écrit à la main (fromage, viande, fruits de mer, alcool, fruits rouges…) trouve tous ses aliments : « Fromage » repère le comté, le brie, la feta… L'encadré indique ce qui a été trouvé, par exemple « Végétarien (saint-jacques) ». C'est une aide : seuls le nom du plat, ses éléments et les ingrédients de ses fiches techniques sont lus."
   },

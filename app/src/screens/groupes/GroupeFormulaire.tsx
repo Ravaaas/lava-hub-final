@@ -1,9 +1,9 @@
-import { Fragment, useId, useState } from 'react';
+import { Fragment, useId, useMemo, useState } from 'react';
 import type { ContactGroupe, Groupe, Niveau } from '../../domain/types';
-import type { Alerte } from '../../domain/menus';
+import type { Alerte, Proposition } from '../../domain/menus';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
 import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit, libelleMontant, montantSaisi, profilsAEnregistrer, resumeProfils } from '../../domain/groupes';
-import { alertesMenu, allergieSaisie, clePlat, estAllergieLibre, lierRemplacant, niveauxAEnregistrer, sansRemplace, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
+import { alertesMenu, allergieSaisie, clePlat, estAllergieLibre, lierRemplacant, niveauxAEnregistrer, propositionsPour, sansRemplace, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
 import { creerGroupe, enregistrerContact, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
@@ -18,7 +18,7 @@ import { useConfirmer } from '../../ui/Confirmation';
 
 /** contact : coordonnées déjà enregistrées du référent (admin et salle) ; onContact : relire la base de contacts après un enregistrement. */
 export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { groupe: Groupe | null; contact?: ContactGroupe | undefined; onFermer: () => void; onContact: () => void }) {
-  const { menus, groupes, fichesRecette, fiches, recharger, journal, setSynchro } = useDonnees();
+  const { menus, groupes, fichesRecette, recharger, journal, setSynchro } = useDonnees();
   const confirmer = useConfirmer();
   const notifier = useNotifier();
   const id = { nom: useId(), date: useId(), heure: useId(), pax: useId(), menu: useId(), boissons: useId(), notes: useId(), referent: useId(), email: useId(), tel: useId(), montant: useId() };
@@ -123,7 +123,7 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
       <div className="fg2"><label className="fl" htmlFor={id.boissons}>Boissons précommandées</label>
         <textarea className="fta" id={id.boissons} placeholder="ex: 3 magnums de Chablis, 2 bouteilles de Saint-Joseph, eaux et cafés" value={boissons} onChange={e => { setBoissons(e.target.value); }} /></div>
       <Profils profils={profils} onChange={setProfils} niveaux={niveaux} onNiveaux={setNiveaux}
-        alertes={alertesMenu(niveaux, profils.map(p => ({ ...p, nb: Number(p.nb) || 1 })), fichesRecette, fiches)} />
+        menuId={menuId} />
       <div className="fg2" style={{ marginTop: '1.25rem' }}><span className="fl">Règlement</span>
         <Choix libelle="Règlement" options={REGLEMENTS} valeur={reglement} onChange={setReglement} /></div>
       {reglement !== 'aucun' && <div className="fg2"><label className="fl" htmlFor={id.montant}>{libelleMontant(reglement)}</label>
@@ -140,8 +140,37 @@ type ProfilSaisi = { id: string; nb: string; allergenes: string[]; regimes: stri
  * Allergies et régimes : une ligne par personne, ou par personnes qui ont exactement les mêmes
  * (ex. 1 personne Œuf + Moutarde, 1 personne Œuf seul). Une seule ligne ouverte à la fois ; les autres sont résumées.
  */
-function Profils({ profils, alertes, niveaux, onNiveaux, onChange }: { profils: ProfilSaisi[]; alertes: Alerte[]; niveaux: Niveau[]; onNiveaux: (n: Niveau[]) => void; onChange: (p: ProfilSaisi[]) => void }) {
-  const { fichesRecette, fiches } = useDonnees();
+function Profils({ profils, menuId, niveaux, onNiveaux, onChange }: { profils: ProfilSaisi[]; menuId: string; niveaux: Niveau[]; onNiveaux: (n: Niveau[]) => void; onChange: (p: ProfilSaisi[]) => void }) {
+  const { fichesRecette, fiches, menus } = useDonnees();
+  const notifier = useNotifier();
+  // plats à adapter et, pour chacun, des alternatives compatibles (cherchées une fois par changement de plats ou de personnes)
+  const analyse = useMemo(() => {
+    const personnes = profils.map(p => ({ ...p, nb: Number(p.nb) || 1 }));
+    const alertes = alertesMenu(niveaux, personnes, fichesRecette, fiches);
+    const propositions = new Map<string, Proposition[]>();
+    for (const a of alertes) {
+      if (a.adapte) continue;
+      const i = niveaux.findIndex(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
+      const conflit = niveaux[i]?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
+      if (conflit) propositions.set(a.plat, propositionsPour(niveaux, i, conflit, personnes, fichesRecette, fiches, menus, menuId || null));
+    }
+    return { alertes, propositions };
+  }, [niveaux, profils, fichesRecette, fiches, menus, menuId]);
+  // un clic sur une proposition : le plat est ajouté au niveau (avec le nombre de personnes concernées, retiré du plat en conflit) et lié « à la place de »
+  const accepter = (a: Alerte, pr: Proposition) => {
+    const i = niveaux.findIndex(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
+    const conflit = niveaux[i]?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
+    if (!conflit) return;
+    let suite = niveaux;
+    let precision = '';
+    if (pr.origine !== 'niveau') {
+      const reste = conflit.qte === null ? null : conflit.qte - a.personnes;
+      suite = niveaux.map((n, k) => (k !== i ? n : { ...n, plats: [...n.plats.map(q => (q === conflit && q.qte !== null ? { ...q, qte: reste !== null && reste > 0 ? reste : null } : q)), { ...pr.plat, qte: a.personnes }] }));
+      if (conflit.qte !== null) precision = ` ; ${a.plat} : ${conflit.qte} → ${reste !== null && reste > 0 ? reste : '–'}`;
+    }
+    onNiveaux(lierRemplacant(suite, clePlat(conflit), clePlat(pr.plat)));
+    notifier(`${pr.nom} servi à la place de ${a.plat} (${a.personnes} pers.${precision})`, 'ok');
+  };
   const [ouvert, setOuvert] = useState<number | null>(null);
   const [autre, setAutre] = useState('');
   const ouvrir = (i: number | null) => { setOuvert(i); setAutre(''); };
@@ -187,17 +216,26 @@ function Profils({ profils, alertes, niveaux, onNiveaux, onChange }: { profils: 
       })}
       <button type="button" className="btn-ar" style={{ marginBottom: '1rem' }} onClick={() => { onChange([...profils, { id: crypto.randomUUID(), nb: '1', allergenes: [], regimes: [] }]); ouvrir(profils.length); }}>
         <Icone nom="plus" />Ajouter une personne</button>
-      <AlertesMenu alertes={alertes} adapter={a => {
+      <AlertesMenu alertes={analyse.alertes} adapter={a => {
         // autres plats du niveau où se trouve le plat en conflit : l'un d'eux peut être servi à sa place
         const niveau = niveaux.find(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
         const conflit = niveau?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
         if (!niveau || !conflit) return null;
         const cle = clePlat(conflit);
         const autres = niveau.plats.filter(p => clePlat(p) !== cle).map(p => ({ valeur: clePlat(p), libelle: platAffiche(p, fichesRecette, fiches).nom }));
-        if (!autres.length) return null;
         const choisi = niveau.plats.find(p => p.remplace === cle);
-        return <Selecteur className="alerte-menu-choix" libelle={`Adapté avec — ${a.plat}`} vide="Adapté avec : choisir le plat" options={autres}
-          valeur={choisi ? clePlat(choisi) : ''} onChange={v => { onNiveaux(lierRemplacant(niveaux, cle, v)); }} />;
+        const propositions = analyse.propositions.get(a.plat);
+        return (
+          <>
+            {autres.length > 0 && <Selecteur className="alerte-menu-choix" libelle={`Adapté avec — ${a.plat}`} vide="Adapté avec : choisir le plat" options={autres}
+              valeur={choisi ? clePlat(choisi) : ''} onChange={v => { onNiveaux(lierRemplacant(niveaux, cle, v)); }} />}
+            {propositions && (propositions.length
+              ? <div className="alerte-menu-props"><span>Proposer :</span>{propositions.map(pr => (
+                <button key={clePlat(pr.plat)} type="button" className="alerte-menu-prop" aria-label={`Servir ${pr.nom} à la place de ${a.plat}`}
+                  title={pr.origine === 'niveau' ? 'Déjà dans ce niveau' : pr.origine === 'menu' ? 'Plat du même temps dans vos menus' : 'Fiche recette'} onClick={() => { accepter(a, pr); }}>{pr.nom}</button>))}</div>
+              : <div className="alerte-menu-aucune">Aucune alternative compatible dans vos fiches recette et vos menus.</div>)}
+          </>
+        );
       }} />
     </>
   );

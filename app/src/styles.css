@@ -521,6 +521,10 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .alerte-menu-plat{font-weight:600}
 .alerte-menu-adapte{color:#6B5C5C}
 .alerte-menu-choix{margin:0.3rem 0 0.5rem;max-width:26rem}
+.alerte-menu-props{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0.2rem 0 0.6rem;font-size:13px;color:#6B5C5C}
+.alerte-menu-prop{min-height:32px;padding:4px 12px;border:1px solid #CFA9A5;border-radius:999px;background:#fff;color:#8F2F29;font:inherit;font-size:13px;font-weight:600;text-align:left;cursor:pointer}
+.alerte-menu-prop:hover{background:#FBEFEE;border-color:#B5433C}
+.alerte-menu-aucune{margin:0.2rem 0 0.6rem;font-size:13px;color:#6B5C5C}
 .alerte-menu.alerte-menu-ok{border-color:#CFC6C6;background:#F6F3F3}
 .alerte-menu-ok .alerte-menu-titre{color:#6B5C5C}
 .fdoc-remplace{font-size:0.8125rem;color:#6B5C5C}
