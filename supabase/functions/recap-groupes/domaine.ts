@@ -2,7 +2,9 @@
 // Copie autonome des règles de l'app (app/src/domain/menus.ts, groupes.ts, allergenes.ts et lecture des tables dans app/src/db/) :
 // la fonction se déploie à la main, elle ne peut pas importer le code de l'app. Un test de l'app
 // (app/src/domain/recapGroupes.test.ts) compare les deux sur les mêmes données : en changer une, changer l'autre.
-// Aucune dépendance : ce fichier est lu aussi bien par Deno (fonction) que par Vitest (test).
+// Seule dépendance : la liste d'aliments `aliments.ts`, partagée avec l'app (Deno et Vitest lisent ce fichier).
+
+import { familleDuMot, norm, REGLES_REGIMES, trouverPourRegime, trouverTerme } from "./aliments.ts";
 
 // ── Lecture prudente des colonnes (valeur inattendue = valeur vide) ──
 const texte = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
@@ -183,7 +185,7 @@ export function platAffiche(p: Plat, frs: readonly FicheRecette[]): { nom: strin
 }
 
 // ── Allergies et plats à adapter ──
-const sansAccents = (t: string): string => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
+const sansAccents = norm;
 export const estAllergieLibre = (a: string): boolean => !ALLERGENES.some((x) => sansAccents(x) === sansAccents(a));
 function textesDuPlat(p: Plat, frs: readonly FicheRecette[], fiches: readonly Fiche[]): string[] {
   if ("texte" in p) return [p.texte];
@@ -211,22 +213,28 @@ function chercherMot(mot: string, textes: readonly string[]): string | undefined
 }
 export interface Alerte { plat: string; allergenes: string[]; personnes: number; indices?: Record<string, string>; remplacants?: string[]; adapte?: boolean }
 export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): Alerte[] {
-  if (!profils.some((p) => p.allergenes.length)) return [];
-  const libres = [...new Set(profils.flatMap((p) => p.allergenes).filter(estAllergieLibre))];
+  const regimes = [...new Set(profils.flatMap(p => p.regimes))].filter(r => r in REGLES_REGIMES);
+  if (!profils.some(p => p.allergenes.length) && !regimes.length) return [];
+  const libres = [...new Set(profils.flatMap(p => p.allergenes).filter(estAllergieLibre))];
   const vus = new Set<string>();
-  return niveaux.flatMap(platsCommandes).flatMap((p) => {
+  return niveaux.flatMap(platsCommandes).flatMap(p => {
     const d = platAffiche(p, frs);
     if (vus.has(d.nom)) return [];
     vus.add(d.nom);
     const indices: Record<string, string> = {};
-    if (libres.length) {
-      const t = textesDuPlat(p, frs, fiches);
-      for (const a of libres) { const x = chercherMot(a, t); if (x !== undefined) indices[a] = x; }
+    if (libres.length || regimes.length) {
+      const textes = textesDuPlat(p, frs, fiches);
+      for (const a of libres) {
+        const famille = familleDuMot(a);
+        if (famille) { const t = trouverTerme(famille.termes, textes, famille.sans); if (t) indices[a] = t.terme; }
+        else { const t = chercherMot(a, textes); if (t !== undefined) indices[a] = t; }
+      }
+      for (const r of regimes) { const t = trouverPourRegime(r, textes, d.allergenes); if (t) indices[r] = t.terme; }
     }
     const contenus = [...d.allergenes, ...Object.keys(indices)];
-    const touches = profils.filter((x) => x.allergenes.some((a) => contenus.includes(a)));
+    const touches = profils.filter(x => [...x.allergenes, ...x.regimes].some(a => contenus.includes(a)));
     if (!touches.length) return [];
-    const allergenes = contenus.filter((a) => touches.some((x) => x.allergenes.includes(a)));
+    const allergenes = contenus.filter(a => touches.some(x => x.allergenes.includes(a) || x.regimes.includes(a)));
     const visibles = Object.fromEntries(Object.entries(indices).filter(([, t]) => sansAccents(t) !== sansAccents(d.nom)));
     const personnes = touches.reduce((t, x) => t + x.nb, 0);
     const cle = clePlat(p);

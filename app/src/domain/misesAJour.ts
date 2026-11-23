@@ -2,6 +2,11 @@
 // Chaque ajout visible par l'équipe reçoit une entrée ici.
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
+    date: "2026-11-24",
+    titre: "Fiche groupe : régimes et mots généraux détectés dans les plats",
+    desc: "L'encadré « Plats à adapter » repère maintenant les plats qui contredisent un régime : Végétarien (viandes, volailles, poissons, fruits de mer), Végétalien (en plus lait, fromage, œuf, miel, beurre, crème), Sans viande (nouveau), Sans porc, Sans alcool et Halal (porc et alcool). Un mot général écrit à la main (fromage, viande, fruits de mer, alcool, fruits rouges…) trouve tous ses aliments : « Fromage » repère le comté, le brie, la feta… L'encadré indique ce qui a été trouvé, par exemple « Végétarien (saint-jacques) ». C'est une aide : seuls le nom du plat, ses éléments et les ingrédients de ses fiches techniques sont lus."
+  },
+  {
     date: "2026-11-23",
     titre: "Fiches des groupes de la semaine par email, chaque lundi",
     desc: "Chaque lundi matin, un email envoie les fiches des groupes validés de la semaine (lundi au dimanche), une fiche A4 en PDF par groupe, identique à la fiche imprimée depuis l'onglet Groupes. Les brouillons ne sont pas envoyés, et rien n'est envoyé s'il n'y a aucun groupe cette semaine."

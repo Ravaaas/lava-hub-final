@@ -1,6 +1,7 @@
 import type { Fiche, FicheRecette, Groupe, Menu, Niveau, Plat, PlatCompte, Profil, Service } from './types';
 import { elementsResolus } from './fichesRecette';
 import { ALLERGENES } from './allergenes';
+import { familleDuMot, norm, REGLES_REGIMES, trouverPourRegime, trouverTerme } from '../../../supabase/functions/recap-groupes/aliments';
 
 /** Menus à temps fixes : leurs temps sont imposés et ne se modifient pas. */
 const MENUS_FIXES: Record<string, readonly string[]> = {
@@ -102,8 +103,8 @@ export const libelleProfil = (p: Profil): string => [...p.allergenes, ...p.regim
 export const personnesDuPlat = (p: PlatCompte, profils: readonly Profil[]): Profil[] =>
   profils.filter(x => x.id !== undefined && p.pour?.includes(x.id));
 
-/** Texte comparé sans accents ni majuscules (« Céleri » = « celeri »). */
-const sansAccents = (t: string): string => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
+/** Texte comparé sans accents ni majuscules (« Céleri » = « celeri », « œuf » = « oeuf »). */
+const sansAccents = norm;
 
 /** Allergie déclarée qui n'est pas un des allergènes réglementaires (Kiwi, Ail…), écrite à la main. */
 export const estAllergieLibre = (a: string): boolean => !ALLERGENES.some(x => sansAccents(x) === sansAccents(a));
@@ -151,11 +152,13 @@ function chercherMot(mot: string, textes: readonly string[]): string | undefined
 export interface Alerte { plat: string; allergenes: string[]; personnes: number; indices?: Record<string, string>; remplacants?: string[]; adapte?: boolean }
 
 /**
- * Plats qui contiennent une allergie déclarée, chacun une fois, avec les personnes concernées.
- * Allergènes réglementaires : ceux du plat. Allergies libres (Kiwi…) : cherchées dans le nom, les éléments et les ingrédients du plat.
+ * Plats qui contiennent une allergie déclarée ou un aliment exclu par un régime, chacun une fois, avec les personnes concernées.
+ * Allergènes réglementaires : ceux du plat. Allergies libres (Kiwi, Fromage…) : cherchées dans le nom, les éléments et les ingrédients du plat,
+ * un mot général (viande, fromage, fruits de mer…) trouvant tous ses aliments. Régimes : voir `REGLES_REGIMES` (supabase/functions/recap-groupes/aliments.ts).
  */
 export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): Alerte[] {
-  if (!profils.some(p => p.allergenes.length)) return [];
+  const regimes = [...new Set(profils.flatMap(p => p.regimes))].filter(r => r in REGLES_REGIMES);
+  if (!profils.some(p => p.allergenes.length) && !regimes.length) return [];
   const libres = [...new Set(profils.flatMap(p => p.allergenes).filter(estAllergieLibre))];
   const vus = new Set<string>();
   return niveaux.flatMap(platsCommandes).flatMap(p => {
@@ -163,14 +166,19 @@ export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil
     if (vus.has(d.nom)) return [];
     vus.add(d.nom);
     const indices: Record<string, string> = {};
-    if (libres.length) {
+    if (libres.length || regimes.length) {
       const textes = textesDuPlat(p, frs, fiches);
-      for (const a of libres) { const t = chercherMot(a, textes); if (t !== undefined) indices[a] = t; }
+      for (const a of libres) {
+        const famille = familleDuMot(a);
+        if (famille) { const t = trouverTerme(famille.termes, textes, famille.sans); if (t) indices[a] = t.terme; }
+        else { const t = chercherMot(a, textes); if (t !== undefined) indices[a] = t; }
+      }
+      for (const r of regimes) { const t = trouverPourRegime(r, textes, d.allergenes); if (t) indices[r] = t.terme; }
     }
     const contenus = [...d.allergenes, ...Object.keys(indices)];
-    const touches = profils.filter(x => x.allergenes.some(a => contenus.includes(a)));
+    const touches = profils.filter(x => [...x.allergenes, ...x.regimes].some(a => contenus.includes(a)));
     if (!touches.length) return [];
-    const allergenes = contenus.filter(a => touches.some(x => x.allergenes.includes(a)));
+    const allergenes = contenus.filter(a => touches.some(x => x.allergenes.includes(a) || x.regimes.includes(a)));
     const visibles = Object.fromEntries(Object.entries(indices).filter(([, t]) => sansAccents(t) !== sansAccents(d.nom)));
     const personnes = touches.reduce((t, x) => t + x.nb, 0);
     const cle = clePlat(p);

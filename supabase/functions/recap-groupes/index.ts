@@ -1,7 +1,7 @@
 // Edge Function "recap-groupes" — envoie par email, chaque lundi, les fiches des groupes validés de la semaine (lundi → dimanche),
 // une fiche A4 en PDF par groupe (même dessin que la fiche imprimée de l'app, marge haute de 4 cm comprise).
 // À déployer une seule fois : Supabase > Edge Functions > Deploy a new function > "Via Editor", nom : recap-groupes,
-// avec les trois fichiers index.ts, pdf.ts et domaine.ts. Laisser "Verify JWT" activé.
+// avec les quatre fichiers index.ts, pdf.ts, domaine.ts et aliments.ts. Laisser "Verify JWT" activé.
 // SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont fournis automatiquement.
 // Secrets à créer (Supabase > Edge Functions > Secrets) :
 //   GROUPES_DESTINATAIRE  adresse(s) qui reçoivent les fiches, séparées par des virgules

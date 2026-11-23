@@ -468,7 +468,7 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.remplir('Autre allergie ou intolérance — ligne 3', 'gluten'); await a.clic('Ajouter');
   check('allergie libre : « gluten » coche l\'allergène Gluten, sans doublon', await a.voit('Curry · Gluten') && JSON.stringify(await puce('Gluten')) === '["true"]');
   await a.clic('Gluten');
-  check('formulaire : plats à adapter expliqués', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY) · 4 pers.', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*allergies et régimes/, '').slice(0, 400));
+  check('formulaire : plats à adapter expliqués', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY), Végétarien (saint-jacques) · 4 pers.', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*allergies et régimes/, '').slice(0, 400));
   await a.remplir('Notes', '2 enfants');
   await a.remplir('Boissons précommandées', '3 magnums de Chablis\nEaux et cafés');
   check('règlement : rien reçu par défaut', await a.estActif('Rien reçu'));
@@ -499,7 +499,7 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.clic('Pour qui — Cassolette sans gluten');
   await a.clic('1 pers. — Curry');
   check('pour qui : personne reliée au plat', JSON.stringify(await puce('1 pers. — Curry')) === '["true"]' && !(await puce('2 pers. — Gluten · Végétarien')).includes('true'));
-  check('remplacement : conflit adapté dans l\'encadré', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY) · 4 pers. → remplacé par Cassolette sans gluten', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*plats à adapter/, '').slice(0, 300));
+  check('remplacement : conflit adapté dans l\'encadré', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY), Végétarien (saint-jacques) · 4 pers. → remplacé par Cassolette sans gluten', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*plats à adapter/, '').slice(0, 300));
   // depuis l'encadré : choisir le plat adapté sur la ligne en conflit (et le retirer)
   await a.remplir('Adapté avec — CASSOLETTE DE SAINT-JACQUES', 'Adapté avec : choisir le plat');
   check('encadré : retrait du plat adapté', !(await a.voit('remplacé par Cassolette sans gluten')) && await a.voit('Plats à adapter'));
@@ -530,7 +530,7 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit : TARTE AU CITRON (Gluten)') && !(await a.voit('Conflit : CASSOLETTE')));
   await a.clic('Anniversaire Leroy');
   check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques[\s\S]*gluten/.test(await a.texte()));
-  check('fiche groupe : encadré des plats à adapter avant le menu', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY) · 4 pers. → remplacé par Cassolette sans gluten', 'TARTE AU CITRON — Gluten · 3 pers.', 'Plat', '8 / 8 pers.', 'CASSOLETTE DE SAINT-JACQUES', 'Cassolette sans gluten · à la place de CASSOLETTE DE SAINT-JACQUES', 'Dessert']));
+  check('fiche groupe : encadré des plats à adapter avant le menu', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY), Végétarien (saint-jacques) · 4 pers. → remplacé par Cassolette sans gluten', 'TARTE AU CITRON — Gluten · 3 pers.', 'Plat', '8 / 8 pers.', 'CASSOLETTE DE SAINT-JACQUES', 'Cassolette sans gluten · à la place de CASSOLETTE DE SAINT-JACQUES', 'Dessert']));
   check('fiche groupe : une ligne par personne', await a.enOrdre(['Restrictions', '1 pers.', 'Gluten', 'Moutarde', '2 pers.', 'Gluten', 'Végétarien', '1 pers.', 'Curry', 'Référent et règlement']));
   check('fiche groupe : boissons précommandées et règlement', await a.enOrdre(['Boissons précommandées', '3 magnums de Chablis', 'Eaux et cafés', 'Restrictions', 'Règlement', 'Acompte versé']));
   check('fiche groupe : référent, coordonnées et montant à l\'écran', await a.enOrdre(['Référent et règlement', 'Référent', 'Sophie Leroy', 'Règlement', 'Acompte versé · 250,50 €', 'Coordonnées du référent', 'sophie.leroy@exemple.fr', '06 11 22 33 44', 'Notes']));

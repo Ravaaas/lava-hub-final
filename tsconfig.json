@@ -17,6 +17,7 @@
     "erasableSyntaxOnly": true,
     "isolatedModules": true,
     "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
     "noEmit": true
   },
   "include": ["app/src", "vite.config.mts"]
