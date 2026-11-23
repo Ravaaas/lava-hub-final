@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-23",
+    titre: "Fiches des groupes de la semaine par email, chaque lundi",
+    desc: "Chaque lundi matin, un email envoie les fiches des groupes validés de la semaine (lundi au dimanche), une fiche A4 en PDF par groupe, identique à la fiche imprimée depuis l'onglet Groupes. Les brouillons ne sont pas envoyés, et rien n'est envoyé s'il n'y a aucun groupe cette semaine."
+  },
+  {
+    date: "2026-11-23",
     titre: "Fiche groupe : relier une personne à son plat",
     desc: "Dans le formulaire du groupe, le bouton « Pour qui » d'un plat permet de cocher les lignes de personnes (allergies et régimes) servies avec ce plat. La fiche écrit « Pour Végétalien · 1 pers. » en face du plat, par exemple en face du risotto. Un plat relié à une personne reste affiché même sans nombre."
   },
