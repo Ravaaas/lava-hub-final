@@ -188,6 +188,16 @@ function actions(page, base) {
       await page.emulateMediaType(null);
       return r;
     },
+    /** Feuille imprimée sur A4 (PDF de Chrome) : nombre de pages et marge haute de la page imprimée (règle @page). */
+    async feuilleA4() {
+      const pdf = Buffer.from(await page.pdf({ preferCSSPageSize: true, printBackground: true })).toString('latin1');
+      const margeHaute = await page.evaluate(() => {
+        const regles = l => [...l].flatMap(r => [r, ...(r.cssRules ? regles(r.cssRules) : [])]);
+        const p = [...document.styleSheets].flatMap(f => { try { return regles(f.cssRules); } catch (e) { return []; } }).find(r => r instanceof CSSPageRule);
+        return p ? p.style.marginTop : '';
+      });
+      return { pages: (pdf.match(/\/Type\s*\/Page(?![s\w])/g) || []).length, margeHaute };
+    },
     async onglet(nom) { await a.clic(nom); await sleep(300); },
     async connexion(equipe, profil, mdp = MOT_DE_PASSE) {
       await a.clic(equipe); await a.clic(profil);
@@ -283,6 +293,8 @@ scenario('Fiches techniques', {}, async (a, page) => {
   const impFT = await a.imprime('Imprimer');
   check('fiche technique : impression de la fiche seule, portions comprises', impFT.n === 1 && impFT.texte.includes('fiche technique') && impFT.texte.includes('1000 g')
     && !impFT.texte.includes('retour') && !impFT.texte.includes('croustillant sarrasin'), impFT.texte.slice(0, 200));
+  const a4 = await a.feuilleA4();
+  check('impression A4 : 1 page, commencée à 4 cm du haut de chaque page', a4.pages === 1 && a4.margeHaute === '40mm', JSON.stringify(a4));
   await a.clic('Retour');
   // création
   await a.clic('Nouvelle fiche');
