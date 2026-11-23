@@ -48,7 +48,11 @@ export type Plat = { frId: string } | { texte: string };
 export interface Service { nom: string; plats: Plat[] }
 export interface Menu { id: string; nom: string; services: Service[] }
 /** Plat d'un groupe : le nombre commandé à l'avance (null = pas encore connu). */
-export type PlatCompte = Plat & { qte: number | null };
+export type PlatCompte = Plat & {
+  qte: number | null;
+  /** Plat du même niveau qu'il remplace pour les personnes allergiques (clé : id de la fiche recette ou texte du plat libre). */
+  remplace?: string;
+};
 /** Niveau du menu d'un groupe (Entrée, Plat, Dessert…), copié du menu choisi ou composé pour le groupe. */
 export interface Niveau { nom: string; plats: PlatCompte[] }
 

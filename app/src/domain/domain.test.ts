@@ -199,6 +199,26 @@ describe('groupes', () => {
     expect(niveauxDuGroupe({ ...g, niveaux: [] }, menus)).toEqual([]);
     expect(alertesGroupe(g, [], frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'], personnes: 1 }]);
   });
+  it('plat de remplacement : conflit adapté si le remplaçant couvre les personnes concernées', () => {
+    const frs = [{ id: 'b', nom: 'BŒUF AXURIA', allergenes: ['Gluten'], elements: [] }, { id: 'd', nom: 'TARTE', allergenes: ['Gluten'], elements: [] }] as unknown as FicheRecette[];
+    const profils = [{ nb: 2, allergenes: ['Gluten'], regimes: [] }];
+    const niveaux = (qte: number | null) => [
+      { nom: 'Temps 4', plats: [{ frId: 'b', qte: 9 }, { texte: 'Bœuf sans tempura', qte, remplace: 'b' }] },
+      { nom: 'Dessert', plats: [{ frId: 'd', qte: null }] },
+    ];
+    const a = alertesMenu(niveaux(2), profils, frs, []);
+    expect(a).toEqual([
+      { plat: 'BŒUF AXURIA', allergenes: ['Gluten'], personnes: 2, remplacants: ['Bœuf sans tempura'], adapte: true },
+      { plat: 'TARTE', allergenes: ['Gluten'], personnes: 2 },
+    ]);
+    expect(resumeAlertes(a)).toBe('Conflit : TARTE (Gluten)');
+    expect(alertesMenu(niveaux(null), profils, frs, [])[0]?.adapte).toBe(true);
+    expect(alertesMenu(niveaux(1), profils, frs, [])[0]?.adapte).toBe(false);
+    expect(resumeAlertes(alertesMenu(niveaux(1), profils, frs, []))).toBe('Conflit : BŒUF AXURIA (Gluten) +1');
+    // lien vers un plat retiré du niveau, ou vers lui-même : effacé à l'enregistrement
+    const propres = niveauxAEnregistrer([{ nom: 'T', plats: [{ texte: 'A', qte: null, remplace: 'b' }, { texte: 'B', qte: null, remplace: 'B' }, { texte: 'C', qte: 1, remplace: 'A' }] }], frs);
+    expect(propres).toEqual([{ nom: 'T', plats: [{ texte: 'A', qte: null }, { texte: 'B', qte: null }, { texte: 'C', qte: 1, remplace: 'A' }] }]);
+  });
   it('allergies libres : saisie, recherche dans les ingrédients (fiches liées comprises), mot entier', () => {
     expect(allergieSaisie('  gluten ')).toBe('Gluten');
     expect(allergieSaisie('fruit a coque')).toBe('Fruit à coque');

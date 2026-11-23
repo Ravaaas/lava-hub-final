@@ -1,4 +1,4 @@
-import type { Fiche, FicheRecette, Groupe, Menu, Niveau, Plat, Profil, Service } from './types';
+import type { Fiche, FicheRecette, Groupe, Menu, Niveau, Plat, PlatCompte, Profil, Service } from './types';
 import { elementsResolus } from './fichesRecette';
 import { ALLERGENES } from './allergenes';
 
@@ -49,6 +49,12 @@ export function platAffiche(p: Plat, frs: readonly FicheRecette[], fiches: reado
   if (!fr) return { nom: '(fiche supprimée)', allergenes: [], elements: [] };
   return { nom: fr.nom, allergenes: fr.allergenes, elements: elementsResolus(fr, fiches).map(e => e.nom) };
 }
+
+/** Clé d'un plat dans son niveau (lien « remplace ») : id de la fiche recette, ou texte du plat libre. */
+export const clePlat = (p: Plat): string => ('frId' in p ? p.frId : p.texte);
+
+/** Plat sans lien « remplace » (lien vers un plat qui n'est plus dans le niveau). */
+export const sansRemplace = (p: PlatCompte): PlatCompte => ('frId' in p ? { frId: p.frId, qte: p.qte } : { texte: p.texte, qte: p.qte });
 
 export const platsDuMenu = (m: Menu, frs: readonly FicheRecette[], fiches: readonly Fiche[]): PlatAffiche[] =>
   servicesAffiches(m).flatMap(s => s.plats).map(p => platAffiche(p, frs, fiches));
@@ -112,8 +118,10 @@ function chercherMot(mot: string, textes: readonly string[]): string | undefined
 /**
  * Plat à adapter : allergies déclarées qu'il contient et nombre de personnes concernées (au moins une de leurs allergies).
  * `indices` : pour une allergie libre, où elle a été trouvée (ingrédient ou élément), quand ce n'est pas le nom du plat.
+ * `remplacants` : plats du même niveau prévus à sa place ; `adapte` : ils couvrent les personnes concernées
+ * (nombre non précisé = couvert ; sinon leur total doit atteindre le nombre de personnes concernées).
  */
-export interface Alerte { plat: string; allergenes: string[]; personnes: number; indices?: Record<string, string> }
+export interface Alerte { plat: string; allergenes: string[]; personnes: number; indices?: Record<string, string>; remplacants?: string[]; adapte?: boolean }
 
 /**
  * Plats qui contiennent une allergie déclarée, chacun une fois, avec les personnes concernées.
@@ -137,7 +145,16 @@ export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil
     if (!touches.length) return [];
     const allergenes = contenus.filter(a => touches.some(x => x.allergenes.includes(a)));
     const visibles = Object.fromEntries(Object.entries(indices).filter(([, t]) => sansAccents(t) !== sansAccents(d.nom)));
-    return [{ plat: d.nom, allergenes, personnes: touches.reduce((t, x) => t + x.nb, 0), ...(Object.keys(visibles).length ? { indices: visibles } : {}) }];
+    const personnes = touches.reduce((t, x) => t + x.nb, 0);
+    const cle = clePlat(p);
+    const remplacants = niveaux.flatMap(n => (n.plats.some(q => clePlat(q) === cle) ? n.plats.filter(q => q.remplace === cle && clePlat(q) !== cle) : []));
+    const comptes = remplacants.map(q => q.qte);
+    const adapte = remplacants.length > 0 && (comptes.includes(null) || comptes.reduce<number>((t, q) => t + (q ?? 0), 0) >= personnes);
+    return [{
+      plat: d.nom, allergenes, personnes,
+      ...(Object.keys(visibles).length ? { indices: visibles } : {}),
+      ...(remplacants.length ? { remplacants: remplacants.map(q => platAffiche(q, frs, fiches).nom), adapte } : {}),
+    }];
   });
 }
 
@@ -145,14 +162,20 @@ export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil
 export const alertesGroupe = (g: Groupe, menus: readonly Menu[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): Alerte[] =>
   alertesMenu(niveauxDuGroupe(g, menus), g.profils, frs, fiches);
 
-/** « Conflit : CASSOLETTE (Moutarde) +1 » pour la carte d'un groupe. */
-export const resumeAlertes = (a: readonly Alerte[]): string =>
-  a[0] ? `Conflit : ${a[0].plat} (${a[0].allergenes.join(', ')})${a.length > 1 ? ` +${a.length - 1}` : ''}` : '';
+/** « Conflit : CASSOLETTE (Moutarde) +1 » pour la carte d'un groupe ; les plats déjà adaptés n'y figurent pas. */
+export const resumeAlertes = (toutes: readonly Alerte[]): string => {
+  const a = toutes.filter(x => !x.adapte);
+  return a[0] ? `Conflit : ${a[0].plat} (${a[0].allergenes.join(', ')})${a.length > 1 ? ` +${a.length - 1}` : ''}` : '';
+};
 
-/** Niveaux nettoyés avant enregistrement : plats vers des fiches supprimées et plats libres vides retirés, puis niveaux sans plat retirés. */
+/**
+ * Niveaux nettoyés avant enregistrement : plats vers des fiches supprimées et plats libres vides retirés, puis niveaux sans plat retirés ;
+ * lien « remplace » retiré s'il ne désigne plus un autre plat du niveau.
+ */
 export function niveauxAEnregistrer(niveaux: readonly Niveau[], frs: readonly FicheRecette[]): Niveau[] {
   return niveaux
     .map(n => ({ nom: n.nom.trim(), plats: n.plats.filter(p => ('frId' in p ? frs.some(f => f.id === p.frId) : p.texte.trim() !== '')).map(p => ('texte' in p ? { ...p, texte: p.texte.trim() } : p)) }))
+    .map(n => ({ ...n, plats: n.plats.map(p => (p.remplace === undefined || (p.remplace !== clePlat(p) && n.plats.some(q => clePlat(q) === p.remplace)) ? p : sansRemplace(p))) }))
     .filter(n => n.plats.length);
 }
 

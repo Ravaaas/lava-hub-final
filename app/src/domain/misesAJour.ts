@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-23",
+    titre: "Fiche groupe : plat de remplacement pour les allergies",
+    desc: "Dans les niveaux du menu d'un groupe, le bouton ⇄ d'un plat indique qu'il est servi « à la place de » un autre plat du même niveau, par exemple un bœuf sans tempura à la place du BŒUF AXURIA pour les personnes sans gluten. Dans l'encadré « Plats à adapter », le plat remplacé passe en gris avec « remplacé par… » ; il reste rouge si le remplaçant est prévu pour moins de personnes que celles concernées. La fiche note « à la place de… » sous le plat de remplacement, et la carte du groupe ne signale plus que les plats non adaptés."
+  },
+  {
+    date: "2026-11-23",
     titre: "Fiches recette : portions Carte et Menu",
     desc: "Un plat servi en plus petite portion dans les menus garde ses deux grammages sur la même fiche : dans Modifier, choisir « Carte et Menu » puis remplir la colonne Menu (vide = comme à la carte). La fiche affiche un choix Carte / Menu, à l'écran comme à l'impression. Dans Config > Yokitup, la version Menu de Yokitup se compare à la portion Menu et ses grammages repris vont dans la portion Menu, sans toucher à la Carte."
   },

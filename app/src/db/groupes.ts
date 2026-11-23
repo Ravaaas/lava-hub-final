@@ -6,11 +6,13 @@ import { lireMontant, lireReglement, profilsDepuisAnciens, resumeProfils } from 
 import { objet, tableau, texte, textes } from './lecture';
 import { prudent, verifier, type Resultat } from './resultat';
 
-// Plat d'un niveau : {frId, qte} ou {text, qte} ; qte absente ou illisible = pas encore connue.
+// Plat d'un niveau : {frId, qte, remplace?} ou {text, qte, remplace?} ; qte absente ou illisible = pas encore connue.
 function lirePlatCompte(v: unknown): PlatCompte | null {
   const p = lirePlat(v);
-  const q = objet(v).qte;
-  return p && { ...p, qte: typeof q === 'number' && Number.isFinite(q) ? q : null };
+  const { qte: q, remplace } = objet(v);
+  if (!p) return null;
+  const lu = { ...p, qte: typeof q === 'number' && Number.isFinite(q) ? q : null };
+  return texte(remplace) ? { ...lu, remplace: texte(remplace) } : lu;
 }
 const lireNiveau = (v: unknown): Niveau => ({ nom: texte(objet(v).nom), plats: tableau(objet(v).plats).map(lirePlatCompte).filter(p => p !== null) });
 
@@ -61,7 +63,7 @@ export async function chargerGroupes(): Promise<Groupe[]> {
 }
 
 // Les colonnes texte gardent le résumé des profils, nombres compris (« Gluten (2), Lactose (1) ») : lisible par les versions d'avant.
-const versPlat = (p: PlatCompte) => ('frId' in p ? { frId: p.frId, qte: p.qte } : { text: p.texte, qte: p.qte });
+const versPlat = (p: PlatCompte) => ({ ...('frId' in p ? { frId: p.frId } : { text: p.texte }), qte: p.qte, ...(p.remplace ? { remplace: p.remplace } : {}) });
 // plats_sur_mesure (liste plate, sans quantités) reste écrit pour un groupe sans menu choisi : lisible par les versions d'avant.
 const versLigne = ({ effectifs, niveaux, profils, ...g }: Omit<Groupe, 'id'>) => ({
   ...g,

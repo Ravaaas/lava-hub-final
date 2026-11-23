@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import type { ContactGroupe, Groupe } from '../../domain/types';
-import { alertesGroupe, niveauxDuGroupe, platAffiche, resumeAlertes, totalNiveau } from '../../domain/menus';
+import { alertesGroupe, clePlat, niveauxDuGroupe, platAffiche, resumeAlertes, totalNiveau } from '../../domain/menus';
 import { AlertesMenu } from './AlertesMenu';
 import { contactsUniques, csvContacts, dateCourte, dateLongue, euros, groupesFiltres, libelleReglement } from '../../domain/groupes';
 import { contient, heureFr, pluriel } from '../../domain/texte';
@@ -132,12 +132,13 @@ function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Gr
                 <div className="fdoc-steps">{n.plats.map((p, k) => {
                   const d = platAffiche(p, fichesRecette, fiches);
                   const risques = d.allergenes.filter(a => g.allergenes.includes(a));
+                  const remplace = p.remplace === undefined ? undefined : n.plats.filter(q => clePlat(q) === p.remplace).map(q => platAffiche(q, fichesRecette, fiches).nom)[0];
                   return (
                     <div key={k} className="fdoc-step">
                       {avecQte
                         ? <div className="fdoc-snum fdoc-qte" aria-label={p.qte === null ? 'Nombre non précisé' : `${p.qte} ×`}>{p.qte ?? '–'}</div>
                         : <div className="fdoc-snum">{(debuts[i] ?? 0) + k + 1}</div>}
-                      <div className="fdoc-stxt">{d.nom}{risques.length > 0 && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={risques} effectifs={g.effectifs} /></div>}</div>
+                      <div className="fdoc-stxt">{d.nom}{remplace && <span className="fdoc-remplace"> · à la place de {remplace}</span>}{risques.length > 0 && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={risques} effectifs={g.effectifs} /></div>}</div>
                     </div>
                   );
                 })}</div>

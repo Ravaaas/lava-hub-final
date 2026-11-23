@@ -1,9 +1,9 @@
-import { useId, useState } from 'react';
+import { Fragment, useId, useState } from 'react';
 import type { ContactGroupe, Groupe, Niveau } from '../../domain/types';
 import type { Alerte } from '../../domain/menus';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
 import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit, libelleMontant, montantSaisi, profilsAEnregistrer, resumeProfils } from '../../domain/groupes';
-import { alertesMenu, allergieSaisie, estAllergieLibre, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
+import { alertesMenu, allergieSaisie, clePlat, estAllergieLibre, niveauxAEnregistrer, sansRemplace, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
 import { creerGroupe, enregistrerContact, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
@@ -198,6 +198,7 @@ function Niveaux({ niveaux, pax, onChange }: { niveaux: Niveau[]; pax: number; o
   const { fichesRecette, fiches } = useDonnees();
   const [choix, setChoix] = useState<Record<number, string>>({});
   const [libres, setLibres] = useState<Record<number, string>>({});
+  const [lien, setLien] = useState<string | null>(null);   // ligne « à la place de » ouverte : « niveau-plat »
   const recettes = fichesRecette.filter(f => f.statut !== 'archive').sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
   const modifier = (i: number, f: (n: Niveau) => Niveau) => { onChange(niveaux.map((n, k) => (k === i ? f(n) : n))); };
   const echanger = <T,>(l: readonly T[], i: number, d: number): T[] => { const c = [...l]; const [x] = c.splice(i, 1); if (x !== undefined) c.splice(i + d, 0, x); return c; };
@@ -227,15 +228,26 @@ function Niveaux({ niveaux, pax, onChange }: { niveaux: Niveau[]; pax: number; o
             {n.plats.length === 0 && <div className="ci-label" style={{ color: 'var(--gt)', marginBottom: '0.4rem' }}>Aucun plat pour le moment.</div>}
             {n.plats.map((p, j) => {
               const libelle = platAffiche(p, fichesRecette, fiches).nom;
+              const autres = n.plats.filter(q => clePlat(q) !== clePlat(p)).map(q => ({ valeur: clePlat(q), libelle: platAffiche(q, fichesRecette, fiches).nom }));
+              const voirLien = autres.length > 0 && (p.remplace !== undefined || lien === `${i}-${j}`);
               return (
-                <div key={j} className="ci niv-plat">
+                <Fragment key={j}>
+                <div className="ci niv-plat">
                   <input className="fi2 niv-qte" type="number" min="1" step="1" placeholder="—" aria-label={`Nombre — ${libelle}`} value={p.qte ?? ''}
                     onChange={e => { const v = e.target.value.trim(); modifier(i, x => ({ ...x, plats: x.plats.map((q, k) => (k === j ? { ...q, qte: v ? Number(v) : null } : q)) })); }} />
                   <span className="ci-label">{libelle}</span>
                   <button type="button" className="btn-rm" aria-label="Monter" disabled={j === 0} onClick={() => { modifier(i, x => ({ ...x, plats: echanger(x.plats, j, -1) })); }}>↑</button>
                   <button type="button" className="btn-rm" aria-label="Descendre" disabled={j === n.plats.length - 1} onClick={() => { modifier(i, x => ({ ...x, plats: echanger(x.plats, j, 1) })); }}>↓</button>
+                  {autres.length > 0 && <button type="button" className={`btn-rm${voirLien ? ' actif' : ''}`} aria-label={`Remplace un plat — ${libelle}`} aria-expanded={voirLien}
+                    onClick={() => { if (p.remplace !== undefined) modifier(i, x => ({ ...x, plats: x.plats.map((q, k) => (k === j ? sansRemplace(q) : q)) })); setLien(voirLien ? null : `${i}-${j}`); }}>⇄</button>}
                   <button type="button" className="btn-rm" aria-label="Retirer ce plat" onClick={() => { modifier(i, x => ({ ...x, plats: x.plats.filter((_, k) => k !== j) })); }}><Icone nom="x" /></button>
                 </div>
+                {voirLien && <div className="niv-remplace">
+                  <span>à la place de</span>
+                  <Selecteur style={{ flex: 1 }} libelle={`Remplace — ${libelle}`} vide="Choisir le plat remplacé" options={autres} valeur={p.remplace ?? ''}
+                    onChange={v => { modifier(i, x => ({ ...x, plats: x.plats.map((q, k) => (k !== j ? q : v ? { ...q, remplace: v } : sansRemplace(q))) })); }} />
+                </div>}
+                </Fragment>
               );
             })}
             {total > 0 && <div className={`niv-total${ecart ? ' niv-ecart' : ''}`} role="note">
