@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FicheRecette } from '../../domain/types';
-import { comparer, grammageYk, libelleVersion, lignesAReprendre, nbEcarts, platsYokitup, proposerLiens, reprendreGrammages, versionDeReference, type LigneComparaison, type PlatYk } from '../../domain/yokitup';
+import { comparer, grammageYk, libelleVersion, lignesAReprendre, nbEcarts, platsYokitup, portionDeVersion, proposerLiens, reprendreGrammages, versionDeReference, type LigneComparaison, type PlatYk } from '../../domain/yokitup';
 import { diffFicheRecette } from '../../domain/fichesRecette';
 import { compareFr, heureFr, pluriel } from '../../domain/texte';
 import { chargerYokitup, delier, enregistrerElements, lireYokitup, relier, type DonneesYokitup } from '../../db/yokitup';
@@ -160,12 +160,17 @@ function Comparaison({ plat, fr, onFermer, onEnregistre }: { plat: PlatYk; fr: F
   const confirmer = useConfirmer();
   const [version, setVersion] = useState(versionDeReference(plat, fr).version);
   const recette = plat.versions.find(v => v.version === version) ?? versionDeReference(plat, fr);
-  const lignes = comparer(fr, recette, fiches);
-  const aReprendre = lignesAReprendre(lignes);
+  // Yokitup Menu → portion Menu de la fiche ; Carte (ou Lunch) → portion Carte ; autres versions : comparaison seulement.
+  const portion = portionDeVersion(recette.version);
+  const lignes = comparer(fr, recette, fiches, portion ?? 'carte');
+  const aReprendre = portion ? lignesAReprendre(lignes) : [];
+  const nomPortion = portion === 'menu' ? 'Menu' : 'Carte';
 
   const reprendre = async () => {
-    if (!await confirmer(`Remplacer ${pluriel(aReprendre.length, 'grammage')} de la fiche par ceux de Yokitup (${libelleVersion(version)}) ? Les autres éléments ne changent pas.`, 'Remplacer')) return;
-    const elements = reprendreGrammages(fr, lignes);
+    if (!portion) return;
+    if (!await confirmer(`Remplacer ${pluriel(aReprendre.length, 'grammage')} de la portion ${nomPortion} de la fiche par ceux de Yokitup (${libelleVersion(version)}) ? `
+      + (portion === 'menu' ? 'Les grammages Carte ne changent pas.' : 'Les grammages Menu ne changent pas.'), 'Remplacer')) return;
+    const elements = reprendreGrammages(fr, lignes, portion);
     setSynchro(true);
     const r = await enregistrerElements(fr.id, elements);
     setSynchro(false);
@@ -180,10 +185,14 @@ function Comparaison({ plat, fr, onFermer, onEnregistre }: { plat: PlatYk; fr: F
       pied={<>
         <button type="button" className="btn btn-g" onClick={onFermer}>Fermer</button>
         <button type="button" className="btn btn-p" disabled={!aReprendre.length} onClick={() => void reprendre()}>
-          {aReprendre.length ? `Reprendre ${pluriel(aReprendre.length, 'grammage')} de Yokitup` : 'Rien à reprendre'}
+          {!portion ? 'Comparaison seulement' : aReprendre.length ? `Reprendre ${pluriel(aReprendre.length, 'grammage')} ${nomPortion} de Yokitup` : 'Rien à reprendre'}
         </button>
       </>}>
       <p className="ph-sub" style={{ marginBottom: '0.75rem' }}>Yokitup : {recette.nom}</p>
+      {portion === 'menu' && (
+        <p className="ph-sub" style={{ marginBottom: '0.75rem' }}>Comparé à la portion Menu de la fiche (grammage Carte quand la portion Menu n'est pas précisée). Les grammages repris vont dans la portion Menu : la Carte ne change pas.</p>
+      )}
+      {!portion && <p className="ph-sub" style={{ marginBottom: '0.75rem' }}>Version comparée à la portion Carte, sans reprise possible.</p>}
       {plat.versions.length > 1 && (
         <div style={{ marginBottom: '0.75rem' }}>
           <Choix libelle="Version Yokitup" options={plat.versions.map(v => ({ valeur: v.version, libelle: libelleVersion(v.version) }))} valeur={version} onChange={setVersion} />
@@ -191,7 +200,7 @@ function Comparaison({ plat, fr, onFermer, onEnregistre }: { plat: PlatYk; fr: F
       )}
       <div style={{ overflowX: 'auto' }}>
         <table className="fdoc-table yk-table">
-          <thead><tr><th>Élément</th><th>Hub</th><th>Yokitup</th><th>État</th></tr></thead>
+          <thead><tr><th>Élément</th><th>Hub {nomPortion}</th><th>Yokitup</th><th>État</th></tr></thead>
           <tbody>
             {lignes.map((l, k) => (
               <tr key={k} className={l.etat === 'identique' || l.etat === 'assaisonnement' ? '' : 'yk-ecart'}>

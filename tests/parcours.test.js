@@ -607,15 +607,6 @@ scenario('Catégories et sauvegardes', {}, async (a) => {
   check('sauvegarde immédiate', await a.notif(m2, /sauvegarde faite/i) && a.ecritures('sauvegardes').length === 1);
 });
 
-scenario('Journal', {}, async (a) => {
-  await a.connexion('Cuisine', 'Alexandre RAVASIO');
-  await a.onglet('Journal');
-  check('mises à jour de l\'app et modifications', await a.attend('Onglet Partages') && await a.voit('VELOUTÉ CURRY') && await a.voit('CRÈME : 400 g → 500 g'));
-  await a.clic('Modifications');
-  check('filtre Modifications', await a.attendPlus('Onglet Partages') && await a.voit('VELOUTÉ CURRY'));
-});
-
-scenario('Nouvelle version', {}, async (a, page, base) => {
 scenario('Yokitup', {}, async (a, page, base) => {
   await a.connexion('Cuisine', 'Alexandre RAVASIO');
   await a.onglet('Config'); await a.clic('Yokitup');
@@ -630,29 +621,58 @@ scenario('Yokitup', {}, async (a, page, base) => {
   check('lien plat Yokitup ↔ fiche recette enregistré', lien && lien.corps.plat === 'CASSOLETTE ST JACQUES' && lien.corps.fiche_recette_id === 'r1', JSON.stringify(lien && lien.corps));
   check('écarts comptés sur la version Carte', await a.attend('2 écarts'));
   await a.clicLigne('CASSOLETTE DE SAINT-JACQUES', 'Comparer');
-  check('comparaison : différent, absent, assaisonnement', await a.attend('Différent') && await a.voit('90G') && await a.voit('Absent de Yokitup') && await a.voit('Assaisonnement'));
-  await a.clic('Menu');
-  check('comparaison avec la version Menu', await a.attend('60G') && await a.voit('CASSOLETTE ST JACQUES (MENU)'));
-  await a.clic('Carte');
-  await a.clic('Reprendre 1 grammage de Yokitup'); await a.clic('Remplacer');
-  const p = await a.attendEcriture('fiches_recette', 'PATCH');
-  const sr = p && p.corps.sous_recettes;
-  check('grammage repris de Yokitup : seuls les éléments changent (ni nom, ni photo)', p && p.filtre.id === 'eq.r1' && sr[0].grammage === '90G' && sr[1].grammage === '20g'
-    && sr[2].text === 'Herbes fraîches' && !('photo' in p.corps) && !('nom' in p.corps), JSON.stringify(p && p.corps));
+  check('comparaison Carte : différent, absent, assaisonnement', await a.attend('Différent') && await a.voit('Hub Carte') && await a.voit('90G') && await a.voit('Absent de Yokitup') && await a.voit('Assaisonnement'));
+  await a.clic('Reprendre 1 grammage Carte de Yokitup'); await a.clic('Remplacer');
+  let p = await a.attendEcriture('fiches_recette', 'PATCH');
+  let sr = p && p.corps.sous_recettes;
+  check('grammage Carte repris de Yokitup : seuls les éléments changent (ni nom, ni photo)', p && p.filtre.id === 'eq.r1' && sr[0].grammage === '90G' && sr[1].grammage === '20g'
+    && !sr.some(e => 'grammage_menu' in e) && sr[2].text === 'Herbes fraîches' && !('photo' in p.corps) && !('nom' in p.corps), JSON.stringify(p && p.corps));
   check('reprise inscrite au journal', a.ecritures('audit_log', 'POST').some(e => e.corps.action === 'grammages repris de Yokitup' && JSON.stringify(e.corps.detail).includes('80g → 90G')));
-  check('plus rien à reprendre', await a.attend('Rien à reprendre'));
+  check('Carte : plus rien à reprendre', await a.attend('Rien à reprendre'));
+  await a.clic('Menu');
+  check('comparaison Menu : portion Menu de la fiche (la Carte tant qu\'elle n\'est pas précisée)', await a.attend('Hub Menu') && await a.voit('CASSOLETTE ST JACQUES (MENU)') && await a.voit('60G') && await a.voit('15G'));
+  const n = a.ecritures('fiches_recette', 'PATCH').length;
+  const patch = async k => { for (let i = 0; i < 60; i++) { const e = a.ecritures('fiches_recette', 'PATCH'); if (e.length > k) return e[k]; await sleep(100); } return null; };
+  await a.clic('Reprendre 2 grammages Menu de Yokitup'); await a.clic('Remplacer');
+  p = await patch(n);
+  sr = p && p.corps.sous_recettes;
+  check('grammages Menu repris dans la portion Menu, la Carte ne change pas', sr && sr[0].grammage === '90G' && sr[0].grammage_menu === '60G' && sr[1].grammage === '20g' && sr[1].grammage_menu === '15G'
+    && !('grammage_menu' in sr[2]), JSON.stringify(p && p.corps));
+  check('reprise Menu inscrite au journal', a.ecritures('audit_log', 'POST').some(e => JSON.stringify(e.corps.detail).includes('(Menu) : — → 60G')));
+  check('Menu : plus rien à reprendre', await a.attend('Rien à reprendre'));
   await a.clic('Fermer');
   await a.onglet('Fiche Recette'); await a.clic('CASSOLETTE DE SAINT-JACQUES');
-  check('fiche recette : choix Fiche / Carte / Menu', await a.attendClic('Menu') && await a.existe('Fiche'));
+  check('fiche recette : choix Carte / Menu, Carte d\'abord', await a.attendClic('Menu') && await a.existe('Carte') && await a.voit('Portion Carte') && await a.voit('90G') && !(await a.voit('60G')));
   await a.clic('Menu');
-  check('fiche recette : grammages de la version Menu', await a.attend('Grammages Yokitup : Menu') && await a.voit('60G') && await a.voit('15G'));
+  check('fiche recette : portion Menu', await a.attend('Portion Menu') && await a.voit('60G') && await a.voit('15G') && !(await a.voit('90G')));
   const imp = await a.imprime('Imprimer');
-  check('impression : grammages Menu, sans les boutons de choix', imp.texte.includes('60g') && imp.texte.includes('grammages yokitup : menu') && !/fiche\s*carte\s*menu/.test(imp.texte), imp.texte.slice(0, 300));
+  check('impression : portion Menu, sans les boutons de choix', imp.texte.includes('60g') && imp.texte.includes('portion menu') && !/carte\s*menu/.test(imp.texte), imp.texte.slice(0, 300));
+  // Formulaire : deux grammages par élément quand le plat a deux portions
+  await a.clic('Modifier');
+  check('formulaire : portions Carte et Menu reprises', (await a.champ('Grammage Menu — VELOUTÉ CURRY'))?.valeur === '60G' && (await a.champ('Grammage Carte — VELOUTÉ CURRY'))?.valeur === '90G');
+  await a.remplir('Grammage Menu — VELOUTÉ CURRY', '50G');
+  await a.remplir('Grammage Menu — CROUSTILLANT SARRASIN', '20g');
+  await a.clic('Enregistrer');
+  p = await patch(n + 1);
+  sr = p && p.corps.sous_recettes;
+  check('formulaire : grammage Menu modifié ; Menu égal à la Carte non gardé', sr && sr[0].grammage_menu === '50G' && sr[0].grammage === '90G' && !('grammage_menu' in sr[1]), JSON.stringify(p && p.corps));
+  await a.attendPlus('Grammage Menu — VELOUTÉ CURRY');
+  await a.attendClic('Modifier'); await a.clic('Modifier');
+  await a.attendClic('Une portion'); await a.clic('Une portion');
+  check('une seule portion : un seul grammage par élément', await a.attendPlus('Grammage Menu — VELOUTÉ CURRY') && !!(await a.champ('Grammage — VELOUTÉ CURRY')));
+  await a.clic('Enregistrer');
+  p = await patch(n + 2);
+  sr = p && p.corps.sous_recettes;
+  check('une seule portion : grammages Menu retirés', sr && sr[0].grammage === '90G' && !sr.some(e => 'grammage_menu' in e), JSON.stringify(p && p.corps));
+  check('fiche sans portion Menu : pas de choix', await a.attendPlus('Portion Carte'));
   await a.clic('Retour');
   await a.deconnexion();
+  base.db.fiches_recette[0].sous_recettes[0].grammage_menu = '60G';
   check('connexion cuisine', await a.connexion('Cuisine', 'Hugo PETIT'));
   await a.onglet('Fiche Recette'); await a.clic('CASSOLETTE DE SAINT-JACQUES');
-  check('cuisine : voit les grammages Menu', await a.attendClic('Menu'));
+  check('cuisine : choix Carte / Menu', await a.attendClic('Menu'));
+  await a.clic('Menu');
+  check('cuisine : voit la portion Menu', await a.attend('60G'));
   check('cuisine : pas de Config', !(await a.existe('Config')));
 });
 
@@ -664,6 +684,15 @@ scenario('Yokitup sans clé', { yokitupSansCle: true }, async (a) => {
   check('clé absente : message clair, rien de lu', await a.notif(m, /clé yokitup absente/i) && await a.attend('échec') && !a.ecritures('yokitup_liens').length);
 });
 
+scenario('Journal', {}, async (a) => {
+  await a.connexion('Cuisine', 'Alexandre RAVASIO');
+  await a.onglet('Journal');
+  check('mises à jour de l\'app et modifications', await a.attend('Onglet Partages') && await a.voit('VELOUTÉ CURRY') && await a.voit('CRÈME : 400 g → 500 g'));
+  await a.clic('Modifications');
+  check('filtre Modifications', await a.attendPlus('Onglet Partages') && await a.voit('VELOUTÉ CURRY'));
+});
+
+scenario('Nouvelle version', {}, async (a, page, base) => {
   const relire = () => page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await relire(); await sleep(800);
   check('pas de bandeau sans nouvelle publication', !(await a.voit('Nouvelle version disponible')));

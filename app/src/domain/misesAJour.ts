@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-23",
+    titre: "Fiches recette : portions Carte et Menu",
+    desc: "Un plat servi en plus petite portion dans les menus garde ses deux grammages sur la même fiche : dans Modifier, choisir « Carte et Menu » puis remplir la colonne Menu (vide = comme à la carte). La fiche affiche un choix Carte / Menu, à l'écran comme à l'impression. Dans Config > Yokitup, la version Menu de Yokitup se compare à la portion Menu et ses grammages repris vont dans la portion Menu, sans toucher à la Carte."
+  },
+  {
+    date: "2026-11-23",
     titre: "Fiche groupe : allergies et intolérances hors liste",
     desc: "Sur chaque ligne de personne, une allergie absente de la liste (kiwi, ail, pomme de terre…) s'écrit dans « Autre allergie ou intolérance » puis Ajouter. Elle est cherchée dans le nom du plat, ses éléments et les ingrédients de ses fiches techniques : l'encadré « Plats à adapter » indique où elle a été trouvée, par exemple « Kiwi (KIWI GOLD) ». Un plat écrit librement, sans fiche, n'est vérifié que sur son nom."
   },
@@ -13,13 +18,13 @@ export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string 
   },
   {
     date: "2026-11-22",
-    titre: "Fiche groupe : montant, référent et contacts",
-    desc: "Le montant de l'empreinte bancaire, de l'acompte ou du règlement se note sur la fiche groupe. On y inscrit aussi le référent du groupe : son nom figure sur la fiche imprimée, son email et son téléphone ne sont visibles que par l'admin et la salle. Le bouton « Contacts » de l'onglet Groupes réunit les référents de tous les groupes, un par personne, et les télécharge en fichier CSV pour Excel ou un outil d'emailing."
+    titre: "Grammages depuis Yokitup",
+    desc: "L'admin relit les recettes Yokitup (chaque nuit, ou avec un bouton dans Config > Yokitup), relie chaque plat à sa fiche recette, voit les écarts de grammage et choisit de les reprendre. Rien n'est jamais écrit dans Yokitup."
   },
   {
     date: "2026-11-22",
-    titre: "Grammages Carte et Menu depuis Yokitup",
-    desc: "Une fiche recette reliée à son plat Yokitup affiche, au choix, ses propres grammages ou ceux des versions Carte, Menu ou Lunch de Yokitup, à l'écran comme à l'impression. L'admin relit les recettes Yokitup (chaque nuit, ou avec un bouton dans Config > Yokitup), relie chaque plat à sa fiche, voit les écarts de grammage et choisit de les reprendre. Rien n'est jamais écrit dans Yokitup."
+    titre: "Fiche groupe : montant, référent et contacts",
+    desc: "Le montant de l'empreinte bancaire, de l'acompte ou du règlement se note sur la fiche groupe. On y inscrit aussi le référent du groupe : son nom figure sur la fiche imprimée, son email et son téléphone ne sont visibles que par l'admin et la salle. Le bouton « Contacts » de l'onglet Groupes réunit les référents de tous les groupes, un par personne, et les télécharge en fichier CSV pour Excel ou un outil d'emailing."
   },
   {
     date: "2026-11-22",

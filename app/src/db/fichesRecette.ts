@@ -5,14 +5,17 @@ import { estStatut } from '../domain/fichesRecette';
 import { objet, tableau, texte, versJson } from './lecture';
 import { prudent, verifier, type Resultat } from './resultat';
 
-// Éléments en base : "id" (très ancien), {id, grammage} ou {text, grammage}.
+// Éléments en base : "id" (très ancien), {id, grammage} ou {text, grammage}, avec grammage_menu si la portion Menu diffère.
 export function lireElement(v: unknown): Element {
   if (typeof v === 'string') return { type: 'fiche', id: v, grammage: '' };
   const o = objet(v);
-  const grammage = texte(o.grammage);
-  return texte(o.id) ? { type: 'fiche', id: texte(o.id), grammage } : { type: 'libre', texte: texte(o.text), grammage };
+  const grammage = texte(o.grammage), menu = texte(o.grammage_menu);
+  const e: Element = texte(o.id) ? { type: 'fiche', id: texte(o.id), grammage } : { type: 'libre', texte: texte(o.text), grammage };
+  return menu ? { ...e, grammageMenu: menu } : e;
 }
-export const ecrireElement = (e: Element) => (e.type === 'fiche' ? { id: e.id, grammage: e.grammage } : { text: e.texte, grammage: e.grammage });
+export const ecrireElement = (e: Element) => ({
+  ...(e.type === 'fiche' ? { id: e.id } : { text: e.texte }), grammage: e.grammage, ...(e.grammageMenu ? { grammage_menu: e.grammageMenu } : {}),
+});
 
 // La photo (base64, lourde) n'est pas chargée avec la liste : voir chargerPhoto.
 const COLONNES = 'id,nom,statut,allergenes,sous_recettes';

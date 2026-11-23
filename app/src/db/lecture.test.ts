@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lireMenu } from './config';
 import { lireFiche } from './fiches';
-import { lireElement } from './fichesRecette';
+import { ecrireElement, lireElement } from './fichesRecette';
 import { tableauTexte } from './lecture';
 
 // Formats historiques réellement présents dans la base : ils doivent être lus sans erreur.
@@ -28,6 +28,9 @@ describe('lecture des données de la base', () => {
     expect(lireElement('f1')).toEqual({ type: 'fiche', id: 'f1', grammage: '' });
     expect(lireElement({ id: 'f2', grammage: '20g' })).toEqual({ type: 'fiche', id: 'f2', grammage: '20g' });
     expect(lireElement({ text: 'Herbes', grammage: '' })).toEqual({ type: 'libre', texte: 'Herbes', grammage: '' });
+    expect(lireElement({ id: 'f3', grammage: '90G', grammage_menu: '60G' })).toEqual({ type: 'fiche', id: 'f3', grammage: '90G', grammageMenu: '60G' });
+    expect(ecrireElement({ type: 'fiche', id: 'f3', grammage: '90G', grammageMenu: '60G' })).toEqual({ id: 'f3', grammage: '90G', grammage_menu: '60G' });
+    expect(ecrireElement({ type: 'libre', texte: 'Herbes', grammage: '2G' })).toEqual({ text: 'Herbes', grammage: '2G' });
   });
   it('ancien menu (liste plate de plats) : un seul temps sans nom', () => {
     expect(lireMenu({ id: 'm', nom: 'Vieux', plats: [{ frId: 'r1' }, { text: 'Café' }, {}] }))

@@ -26,8 +26,10 @@ export interface Fiche {
 
 /** Élément d'une fiche recette, dans l'ordre de dressage : une fiche technique liée ou un élément libre. */
 export type Element =
-  | { type: 'fiche'; id: string; grammage: string }
-  | { type: 'libre'; texte: string; grammage: string };
+  | { type: 'fiche'; id: string; grammage: string; grammageMenu?: string }
+  | { type: 'libre'; texte: string; grammage: string; grammageMenu?: string };
+/** Portion d'un plat : à la carte (grammage) ou dans les menus (grammageMenu, sinon le grammage carte). */
+export type Portion = 'carte' | 'menu';
 
 export type StatutFR = 'carte' | 'partages' | 'lunch' | 'bestof' | 'archive';
 

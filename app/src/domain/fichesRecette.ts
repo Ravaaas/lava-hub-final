@@ -1,4 +1,4 @@
-import type { Element, Fiche, FicheRecette, StatutFR } from './types';
+import type { Element, Fiche, FicheRecette, Portion, StatutFR } from './types';
 import { union } from './allergenes';
 
 export const STATUTS: readonly { valeur: StatutFR; libelle: string; adminSeulement?: true }[] = [
@@ -39,6 +39,19 @@ export function allergenesDesElements(elements: readonly Element[], fiches: read
 export const fichesRecetteUtilisant = (frs: readonly FicheRecette[], id: string): FicheRecette[] =>
   frs.filter(fr => fr.elements.some(e => e.type === 'fiche' && e.id === id));
 
+/** La fiche a une portion Menu différente de la Carte (au moins un grammage Menu). */
+export const aPortionMenu = (fr: Pick<FicheRecette, 'elements'>): boolean => fr.elements.some(e => !!e.grammageMenu);
+/** Grammage d'un élément pour une portion : Menu = grammage Menu s'il existe, sinon celui de la Carte. */
+export const grammageDe = (e: Element, portion: Portion): string => (portion === 'menu' && e.grammageMenu ? e.grammageMenu : e.grammage);
+/** Élément avec un nouveau grammage pour une portion. Un grammage Menu égal à la Carte (ou vide) n'est pas gardé. */
+export function avecGrammage(e: Element, portion: Portion, g: string): Element {
+  if (portion === 'carte') return { ...e, grammage: g };
+  if (g && g !== e.grammage) return { ...e, grammageMenu: g };
+  const reste = { ...e };
+  delete reste.grammageMenu;
+  return reste;
+}
+
 export function diffFicheRecette(avant: FicheRecette, apres: Pick<FicheRecette, 'nom' | 'statut' | 'elements'>, fiches: readonly Fiche[]): string[] {
   const c: string[] = [];
   if (avant.nom !== apres.nom) c.push(`Nom : ${avant.nom || '—'} → ${apres.nom || '—'}`);
@@ -50,7 +63,10 @@ export function diffFicheRecette(avant: FicheRecette, apres: Pick<FicheRecette, 
   for (const [k, n] of nouveaux) {
     const a = anciens.get(k);
     if (!a) c.push(`+ ${nom(n)}`);
-    else if (a.grammage !== n.grammage) c.push(`${nom(n)} : ${a.grammage || '—'} → ${n.grammage || '—'}`);
+    else {
+      if (a.grammage !== n.grammage) c.push(`${nom(n)} : ${a.grammage || '—'} → ${n.grammage || '—'}`);
+      if ((a.grammageMenu ?? '') !== (n.grammageMenu ?? '')) c.push(`${nom(n)} (Menu) : ${a.grammageMenu || '—'} → ${n.grammageMenu || '—'}`);
+    }
   }
   for (const [k, a] of anciens) if (!nouveaux.has(k)) c.push(`− ${nom(a)}`);
   return c;

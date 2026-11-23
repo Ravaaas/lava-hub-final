@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { FicheRecette } from '../../domain/types';
-import { elementsResolus, libelleStatut } from '../../domain/fichesRecette';
+import type { FicheRecette, Portion } from '../../domain/types';
+import { aPortionMenu, elementsResolus, grammageDe, libelleStatut } from '../../domain/fichesRecette';
 import { supprimerFicheRecette } from '../../db/fichesRecette';
-import { chargerYokitup } from '../../db/yokitup';
-import { grammagesVersion, libelleVersion, platsYokitup, type PlatYk } from '../../domain/yokitup';
 import { Choix } from '../../ui/Choix';
 import { useDonnees } from '../../etat/Donnees';
 import { useMoi } from '../../etat/Session';
@@ -22,19 +20,10 @@ export function FRDetail({ fr, onFermer, onModifier }: { fr: FicheRecette; onFer
 
   useEffect(() => { if (image === undefined) void chargerPhotoDe(fr.id); }, [fr.id, image, chargerPhotoDe]);
 
-  // Plat Yokitup relié à cette fiche : grammages Carte / Menu / Lunch à afficher à la place de ceux de la fiche.
-  const [plat, setPlat] = useState<PlatYk | null>(null);
-  const [version, setVersion] = useState('');
-  useEffect(() => {
-    let actif = true;
-    void chargerYokitup().then(d => {
-      const nom = [...d.liens].find(([, id]) => id === fr.id)?.[0];
-      if (actif) setPlat(platsYokitup(d.recettes).find(p => p.plat === nom) ?? null);
-    }).catch(() => {});
-    return () => { actif = false; };
-  }, [fr.id]);
-  const recette = plat?.versions.find(v => v.version === version) ?? null;
-  const grammagesYk = recette ? grammagesVersion(fr, recette, fiches) : null;
+  // Portions Carte / Menu : le choix n'apparaît que si la fiche a des grammages Menu ; l'impression suit le choix.
+  const deuxPortions = aPortionMenu(fr);
+  const [portion, setPortion] = useState<Portion>('carte');
+  const vue: Portion = deuxPortions ? portion : 'carte';
 
   // Impression : la fiche telle qu'à l'écran (styles @media print). La photo est chargée dès l'ouverture.
   const imprimer = () => { window.print(); };
@@ -63,11 +52,11 @@ export function FRDetail({ fr, onFermer, onModifier }: { fr: FicheRecette; onFer
         <div className="fdoc-hdr">
           <div className="fdoc-sur">Fiche recette</div>
           <div className="fdoc-nom">{fr.nom}</div>
-          <div className="fdoc-cles"><span>{libelleStatut(fr.statut)}</span>{recette && <span>Grammages Yokitup : {libelleVersion(recette.version)}</span>}</div>
-          {plat && (
+          <div className="fdoc-cles"><span>{libelleStatut(fr.statut)}</span>{deuxPortions && <span>Portion {vue === 'menu' ? 'Menu' : 'Carte'}</span>}</div>
+          {deuxPortions && (
             <div className="fr-versions">
-              <Choix libelle="Grammages" valeur={version} onChange={setVersion}
-                options={[{ valeur: '', libelle: 'Fiche' }, ...plat.versions.map(v => ({ valeur: v.version, libelle: libelleVersion(v.version) }))]} />
+              <Choix libelle="Portion" valeur={portion} onChange={setPortion}
+                options={[{ valeur: 'carte', libelle: 'Carte' }, { valeur: 'menu', libelle: 'Menu' }]} />
             </div>
           )}
           {fr.allergenes.length > 0 && <div className="fr-allerg-sub"><span className="fr-allerg-sub-lbl">Allergènes</span><Etiquettes liste={fr.allergenes} /></div>}
@@ -88,9 +77,7 @@ export function FRDetail({ fr, onFermer, onModifier }: { fr: FicheRecette; onFer
               <div key={n} className="fr-sr-card">
                 <div className="fr-sr-head">
                   <span className="fr-sr-badge">{n + 1}</span><span className="fr-sr-name">{nom}</span>
-                  {grammagesYk
-                    ? <span className="fr-sr-gram">{grammagesYk.get(fr.elements.indexOf(element)) ?? '—'}</span>
-                    : element.grammage && <span className="fr-sr-gram">{element.grammage}</span>}
+                  {grammageDe(element, vue) && <span className="fr-sr-gram">{grammageDe(element, vue)}</span>}
                   {f && f.allergenes.length > 0 && <div className="fr-sr-allerg"><Etiquettes liste={f.allergenes} /></div>}
                 </div>
                 {f && <>

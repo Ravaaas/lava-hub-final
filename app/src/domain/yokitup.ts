@@ -1,7 +1,7 @@
 // Recettes Yokitup (copie lue par l'Edge Function « yokitup ») : regroupement Carte / Menu / Lunch, rapprochement avec
 // les fiches recette du Hub et comparaison des grammages. Règles pures : rien n'est écrit ici.
-import type { Element, Fiche, FicheRecette } from './types';
-import { elementsResolus } from './fichesRecette';
+import type { Element, Fiche, FicheRecette, Portion } from './types';
+import { avecGrammage, elementsResolus, grammageDe } from './fichesRecette';
 
 export interface IngredientYk {
   id: string;
@@ -139,8 +139,16 @@ export interface LigneComparaison {
   approx: boolean;
 }
 
-/** Compare les éléments d'une fiche aux ingrédients d'une recette Yokitup. Chaque ingrédient Yokitup sert au plus une fois. */
-export function comparer(fr: FicheRecette, r: RecetteYk, fiches: readonly Fiche[]): LigneComparaison[] {
+/** Portion de la fiche qui correspond à une version Yokitup : MENU → Menu ; CARTE, LUNCH (fiche lunch) ou sans version → Carte ;
+ *  autres versions (MENU ENFANT, 1 PAX…) : aucune, comparaison seulement. */
+export function portionDeVersion(version: string): Portion | null {
+  if (version === 'MENU') return 'menu';
+  return version === 'CARTE' || version === 'LUNCH' || version === '' ? 'carte' : null;
+}
+
+/** Compare les éléments d'une fiche (grammages de la portion donnée) aux ingrédients d'une recette Yokitup.
+ *  Chaque ingrédient Yokitup sert au plus une fois. */
+export function comparer(fr: FicheRecette, r: RecetteYk, fiches: readonly Fiche[], portion: Portion = portionDeVersion(r.version) ?? 'carte'): LigneComparaison[] {
   const el = fr.elements.map((e, index) => ({ e, index, nom: nomElement(e, fiches) })).filter(x => x.nom);
   const pris = new Set<IngredientYk>();
   const assoc = new Map<number, { i: IngredientYk; approx: boolean }>();
@@ -153,9 +161,10 @@ export function comparer(fr: FicheRecette, r: RecetteYk, fiches: readonly Fiche[
   }
   const lignes: LigneComparaison[] = el.map(x => {
     const a = assoc.get(x.index);
-    const ligne = { index: x.index, nom: x.nom, grammageHub: x.e.grammage, ingredient: a?.i ?? null, approx: a?.approx ?? false };
+    const g = grammageDe(x.e, portion);
+    const ligne = { index: x.index, nom: x.nom, grammageHub: g, ingredient: a?.i ?? null, approx: a?.approx ?? false };
     if (!a) return { ...ligne, etat: 'absent' as const };
-    const h = quantite(x.e.grammage), y = quantite(`${a.i.quantite}${a.i.unite}`);
+    const h = quantite(g), y = quantite(`${a.i.quantite}${a.i.unite}`);
     if (!h) return { ...ligne, etat: 'vide' as const };
     if (!y || h.u !== y.u) return { ...ligne, etat: 'unites' as const };
     return { ...ligne, etat: Math.abs(h.v - y.v) < 0.01 ? 'identique' as const : 'different' as const };
@@ -177,17 +186,11 @@ export const nbEcarts = (lignes: readonly LigneComparaison[]): number =>
 export const lignesAReprendre = (lignes: readonly LigneComparaison[]): LigneComparaison[] =>
   lignes.filter(l => l.index !== null && l.ingredient && !l.approx && (l.etat === 'different' || l.etat === 'vide'));
 
-/** Grammages de la fiche remplacés par ceux de Yokitup, pour les seuls éléments retrouvés sûrement dont la quantité diffère ou manque.
- *  N'ajoute ni ne retire aucun élément, et ne reprend jamais un rapprochement sur un nom seulement proche. */
-export function reprendreGrammages(fr: FicheRecette, lignes: readonly LigneComparaison[]): Element[] {
+/** Grammages d'une portion de la fiche (Carte ou Menu) remplacés par ceux de Yokitup, pour les seuls éléments retrouvés sûrement
+ *  dont la quantité diffère ou manque. N'ajoute ni ne retire aucun élément, ne touche pas à l'autre portion, et ne reprend jamais
+ *  un rapprochement sur un nom seulement proche. */
+export function reprendreGrammages(fr: FicheRecette, lignes: readonly LigneComparaison[], portion: Portion): Element[] {
   const nouveaux = new Map<number, string>();
   for (const l of lignesAReprendre(lignes)) if (l.index !== null && l.ingredient) nouveaux.set(l.index, grammageYk(l.ingredient));
-  return fr.elements.map((e, k) => { const g = nouveaux.get(k); return g === undefined ? e : { ...e, grammage: g }; });
-}
-
-/** Grammages d'une version Yokitup pour chaque élément de la fiche (affichage Carte | Menu sur la fiche). */
-export function grammagesVersion(fr: FicheRecette, r: RecetteYk, fiches: readonly Fiche[]): Map<number, string> {
-  const m = new Map<number, string>();
-  for (const l of comparer(fr, r, fiches)) if (l.index !== null && l.ingredient && !l.approx) m.set(l.index, grammageYk(l.ingredient));
-  return m;
+  return fr.elements.map((e, k) => { const g = nouveaux.get(k); return g === undefined ? e : avecGrammage(e, portion, g); });
 }

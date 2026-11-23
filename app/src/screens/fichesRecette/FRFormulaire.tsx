@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import type { Element, FicheRecette, StatutFR } from '../../domain/types';
-import { STATUTS, allergenesDesElements, diffFicheRecette } from '../../domain/fichesRecette';
+import { STATUTS, aPortionMenu, allergenesDesElements, avecGrammage, diffFicheRecette } from '../../domain/fichesRecette';
 import { contient } from '../../domain/texte';
 import { creerFicheRecette, modifierFicheRecette } from '../../db/fichesRecette';
 import { useDonnees } from '../../etat/Donnees';
@@ -21,6 +21,8 @@ export function FRFormulaire({ fr, statutParDefaut, onFermer }: { fr: FicheRecet
   const [nom, setNom] = useState(fr?.nom ?? '');
   const [statut, setStatut] = useState<StatutFR>(fr?.statut ?? statutParDefaut);
   const [lignes, setLignes] = useState<Ligne[]>(() => (fr?.elements ?? []).map(e => ({ ...e, cle: ++compteur })));
+  // Plats servis avec une portion différente à la carte et dans les menus : un grammage Menu par élément.
+  const [portions, setPortions] = useState<'une' | 'deux'>(fr && aPortionMenu(fr) ? 'deux' : 'une');
   const [recherche, setRecherche] = useState('');
   const [libre, setLibre] = useState('');
   const [occupe, setOccupe] = useState(false);
@@ -31,11 +33,15 @@ export function FRFormulaire({ fr, statutParDefaut, onFermer }: { fr: FicheRecet
   const photoPrete = photoEnBase !== undefined;
   const ordre = useReordonner(lignes, setLignes);
 
-  const elements: Element[] = lignes.map(l => (l.type === 'fiche' ? { type: 'fiche', id: l.id, grammage: l.grammage } : { type: 'libre', texte: l.texte, grammage: l.grammage }));
+  const elements: Element[] = lignes.map(l => {
+    const e: Element = l.type === 'fiche' ? { type: 'fiche', id: l.id, grammage: l.grammage } : { type: 'libre', texte: l.texte, grammage: l.grammage };
+    return l.grammageMenu ? { ...e, grammageMenu: l.grammageMenu } : e;
+  });
   const allergenes = allergenesDesElements(elements, fiches);
   const disponibles = fiches.filter(f => !lignes.some(l => l.type === 'fiche' && l.id === f.id) && (!recherche || contient(f.nom, recherche)))
     .sort((a, b) => a.nom.localeCompare(b.nom));
-  const changer = (c: number, p: { grammage?: string; texte?: string }) => { setLignes(l => l.map(x => (x.cle === c ? { ...x, ...p } : x))); };
+  const changer = (c: number, p: { grammage?: string; grammageMenu?: string; texte?: string }) => { setLignes(l => l.map(x => (x.cle === c ? { ...x, ...p } : x))); };
+  const nomLigne = (l: Ligne) => (l.type === 'fiche' ? fiches.find(f => f.id === l.id)?.nom ?? 'fiche supprimée' : l.texte || 'élément libre');
   const ajouterLibre = () => {
     const t = libre.trim();
     if (!t) return;
@@ -46,8 +52,11 @@ export function FRFormulaire({ fr, statutParDefaut, onFermer }: { fr: FicheRecet
   const enregistrer = async () => {
     const n = nom.trim();
     if (!n) { notifier('Le nom est obligatoire', 'err'); return; }
-    const propres = elements.map(e => (e.type === 'fiche' ? { ...e, grammage: e.grammage.trim() } : { ...e, texte: e.texte.trim(), grammage: e.grammage.trim() }))
-      .filter(e => e.type === 'fiche' || e.texte);
+    // Une seule portion : les grammages Menu sont retirés ; un grammage Menu vide ou égal à la Carte n'est pas gardé.
+    const propres = elements.map(e => {
+      const base = e.type === 'fiche' ? { ...e, grammage: e.grammage.trim() } : { ...e, texte: e.texte.trim(), grammage: e.grammage.trim() };
+      return avecGrammage(base, 'menu', portions === 'deux' ? (e.grammageMenu ?? '').trim() : '');
+    }).filter(e => e.type === 'fiche' || e.texte);
     const saisie = { nom: n, statut, elements: propres, photo: nouvellePhoto === undefined ? photoEnBase ?? null : nouvellePhoto, allergenes };
     setOccupe(true); setSynchro(true);
     try {
@@ -91,14 +100,26 @@ export function FRFormulaire({ fr, statutParDefaut, onFermer }: { fr: FicheRecet
       </div>
 
       <div className="fsect">Sélection (ordre de dressage)</div>
+      <div className="fg2"><span className="fl">Portions</span>
+        <Choix libelle="Portions" valeur={portions} onChange={setPortions}
+          options={[{ valeur: 'une', libelle: 'Une portion' }, { valeur: 'deux', libelle: 'Carte et Menu' }]} /></div>
       <div className="il">
+        {portions === 'deux' && lignes.length > 0 && (
+          <div className="ir ir-deux ir-tete" aria-hidden="true"><span /><span>Élément</span><span>Carte</span><span>Menu</span><span /></div>
+        )}
         {lignes.map((l, i) => (
-          <div key={l.cle} {...ordre.ligne(i)} className={`ir${ordre.glisse === i ? ' dragging' : ''}`} style={{ gridTemplateColumns: '20px 1fr 110px 36px' }}>
+          <div key={l.cle} {...ordre.ligne(i)} className={`ir${portions === 'deux' ? ' ir-deux' : ''}${ordre.glisse === i ? ' dragging' : ''}`}
+            style={portions === 'deux' ? undefined : { gridTemplateColumns: '20px 1fr 110px 36px' }}>
             <div {...ordre.poignee(i)}><Icone nom="grip" /></div>
             {l.type === 'fiche'
               ? <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--noir)' }}>{fiches.find(f => f.id === l.id)?.nom ?? '(fiche supprimée)'}</div>
               : <input className="fi2" type="text" placeholder="Élément libre" style={{ padding: '0.3rem 0.5rem', fontSize: '0.875rem', fontWeight: 500 }} value={l.texte} onChange={e => { changer(l.cle, { texte: e.target.value }); }} />}
-            <input className="fi2" type="text" placeholder="Grammage" style={{ padding: '0.3rem 0.5rem', fontSize: '0.875rem' }} value={l.grammage} onChange={e => { changer(l.cle, { grammage: e.target.value }); }} />
+            <input className="fi2" type="text" placeholder={portions === 'deux' ? 'Carte' : 'Grammage'} aria-label={`${portions === 'deux' ? 'Grammage Carte' : 'Grammage'} — ${nomLigne(l)}`}
+              style={{ padding: '0.3rem 0.5rem', fontSize: '0.875rem' }} value={l.grammage} onChange={e => { changer(l.cle, { grammage: e.target.value }); }} />
+            {portions === 'deux' && (
+              <input className="fi2" type="text" placeholder={l.grammage || 'Menu'} aria-label={`Grammage Menu — ${nomLigne(l)}`}
+                style={{ padding: '0.3rem 0.5rem', fontSize: '0.875rem' }} value={l.grammageMenu ?? ''} onChange={e => { changer(l.cle, { grammageMenu: e.target.value }); }} />
+            )}
             <button type="button" className="btn-rm" aria-label="Retirer" onClick={() => { setLignes(x => x.filter(y => y.cle !== l.cle)); }}><Icone nom="x" /></button>
           </div>
         ))}
