@@ -2,6 +2,7 @@
 // les fiches recette du Hub et comparaison des grammages. Règles pures : rien n'est écrit ici.
 import type { Element, Fiche, FicheRecette, Portion } from './types';
 import { avecGrammage, elementsResolus, grammageDe } from './fichesRecette';
+import { compareFr } from './texte';
 
 export interface IngredientYk {
   id: string;
@@ -194,3 +195,24 @@ export function reprendreGrammages(fr: FicheRecette, lignes: readonly LigneCompa
   for (const l of lignesAReprendre(lignes)) if (l.index !== null && l.ingredient) nouveaux.set(l.index, grammageYk(l.ingredient));
   return fr.elements.map((e, k) => { const g = nouveaux.get(k); return g === undefined ? e : avecGrammage(e, portion, g); });
 }
+
+/** Tri de la liste « Reliés » de Config > Yokitup. */
+export type TriRelies = 'ecarts' | 'identiques' | 'nom';
+/** Ligne de la liste « Reliés » : `ecarts` = null quand la fiche recette reliée a été supprimée (rien à comparer). */
+export interface Relie { nom: string; ecarts: number | null }
+
+/** Liste « Reliés » triée (copie) :
+ *  - « ecarts » : fiches avec écarts d'abord, du plus grand nombre au plus petit, puis les identiques ;
+ *  - « identiques » : identiques d'abord, puis les écarts du plus petit nombre au plus grand ;
+ *  - « nom » : par nom seulement.
+ *  À égalité, par nom ; fiches supprimées toujours en dernier (sauf tri par nom). */
+export function trierRelies<T extends Relie>(liste: readonly T[], tri: TriRelies): T[] {
+  const rang = (x: Relie): number => x.ecarts === null ? Infinity : tri === 'ecarts' ? -x.ecarts : x.ecarts;
+  return [...liste].sort((a, b) => (tri === 'nom' ? 0 : rang(a) === rang(b) ? 0 : rang(a) < rang(b) ? -1 : 1) || compareFr(a.nom, b.nom));
+}
+
+/** Nombre de fiches reliées avec écarts et identiques (fiches supprimées non comptées). */
+export const compteRelies = (liste: readonly Relie[]): { ecarts: number; identiques: number } => ({
+  ecarts: liste.filter(x => x.ecarts !== null && x.ecarts > 0).length,
+  identiques: liste.filter(x => x.ecarts === 0).length,
+});

@@ -622,6 +622,8 @@ scenario('Catégories et sauvegardes', {}, async (a) => {
 });
 
 scenario('Yokitup', {}, async (a, page, base) => {
+  // tarte : un élément absent de Yokitup en plus du grammage vide → 2 écarts (pour le tri de la liste « Reliés »)
+  base.db.fiches_recette[1].sous_recettes.push({ text: 'Zeste de citron', grammage: '5g' });
   await a.connexion('Cuisine', 'Alexandre RAVASIO');
   await a.onglet('Config'); await a.clic('Yokitup');
   check('avant toute lecture : rien à relier', await a.attend('Aucune lecture pour le moment') && await a.voit('Aucun plat relié'));
@@ -655,6 +657,18 @@ scenario('Yokitup', {}, async (a, page, base) => {
   check('reprise Menu inscrite au journal', a.ecritures('audit_log', 'POST').some(e => JSON.stringify(e.corps.detail).includes('(Menu) : — → 60G')));
   check('Menu : plus rien à reprendre', await a.attend('Rien à reprendre'));
   await a.clic('Fermer');
+  // Tri de la liste « Reliés » : la cassolette garde 1 écart (herbes absentes de Yokitup), la tarte en a 2
+  await a.clicLigne('TARTE CITRON', 'Relier');
+  check('deux plats reliés, nombre de fiches par état', await a.attend('Reliés (2)') && await a.voit('2 fiches avec écarts · 0 identique'));
+  check('« Écarts d\'abord » par défaut : le plus d\'écarts en premier', await a.estActif('Écarts d\'abord')
+    && await a.enOrdre(['Reliés (2)', 'TARTE AU CITRON', '2 écarts', 'CASSOLETTE DE SAINT-JACQUES', '1 écart']));
+  await a.clic('Identiques d\'abord');
+  check('« Identiques d\'abord » : le moins d\'écarts en premier', await a.estActif('Identiques d\'abord')
+    && await a.enOrdre(['Reliés (2)', 'CASSOLETTE DE SAINT-JACQUES', '1 écart', 'TARTE AU CITRON', '2 écarts']));
+  await a.clic('Écarts d\'abord');
+  check('retour à « Écarts d\'abord »', await a.enOrdre(['Reliés (2)', 'TARTE AU CITRON', 'CASSOLETTE DE SAINT-JACQUES']));
+  await a.clic('Par nom');
+  check('« Par nom » : ordre alphabétique', await a.estActif('Par nom') && await a.enOrdre(['Reliés (2)', 'CASSOLETTE DE SAINT-JACQUES', 'TARTE AU CITRON']));
   await a.onglet('Fiche Recette'); await a.clic('CASSOLETTE DE SAINT-JACQUES');
   check('fiche recette : choix Carte / Menu, Carte d\'abord', await a.attendClic('Menu') && await a.existe('Carte') && await a.voit('Portion Carte') && await a.voit('90G') && !(await a.voit('60G')));
   await a.clic('Menu');

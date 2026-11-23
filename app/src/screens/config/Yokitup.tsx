@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { FicheRecette } from '../../domain/types';
-import { comparer, grammageYk, libelleVersion, lignesAReprendre, nbEcarts, platsYokitup, portionDeVersion, proposerLiens, reprendreGrammages, versionDeReference, type LigneComparaison, type PlatYk } from '../../domain/yokitup';
+import { comparer, grammageYk, libelleVersion, lignesAReprendre, nbEcarts, platsYokitup, portionDeVersion, proposerLiens, reprendreGrammages, compteRelies, trierRelies, versionDeReference, type LigneComparaison, type PlatYk, type TriRelies } from '../../domain/yokitup';
 import { diffFicheRecette } from '../../domain/fichesRecette';
 import { compareFr, heureFr, pluriel } from '../../domain/texte';
 import { chargerYokitup, delier, enregistrerElements, lireYokitup, relier, type DonneesYokitup } from '../../db/yokitup';
@@ -22,6 +22,7 @@ export function Yokitup() {
   const [lecture, setLecture] = useState(false);
   const [choixPlat, setChoixPlat] = useState<PlatYk | null>(null);
   const [comparaison, setComparaison] = useState<{ plat: PlatYk; fr: FicheRecette } | null>(null);
+  const [tri, setTri] = useState<TriRelies>('ecarts');
 
   const charger = useCallback(async () => { setD(await chargerYokitup()); }, []);
   // Lecture initiale de la copie Yokitup (système externe) : les données arrivent de façon asynchrone.
@@ -52,8 +53,13 @@ export function Yokitup() {
   if (!d) return <div className="spinner" />;
   const plats = platsYokitup(d.recettes);
   const propositions = new Map(proposerLiens(plats, fichesRecette, fiches, d.liens).map(p => [p.plat, p]));
-  const relies = plats.filter(p => d.liens.has(p.plat)), libres = plats.filter(p => !d.liens.has(p.plat));
-  const frDe = (p: PlatYk) => fichesRecette.find(f => f.id === d.liens.get(p.plat));
+  const libres = plats.filter(p => !d.liens.has(p.plat));
+  // Plats reliés avec leur fiche et leur nombre d'écarts (null = fiche supprimée), triés selon le choix de l'admin.
+  const relies = trierRelies(plats.filter(p => d.liens.has(p.plat)).map(p => {
+    const fr = fichesRecette.find(f => f.id === d.liens.get(p.plat));
+    return { p, fr, nom: fr?.nom ?? p.plat, ecarts: fr ? nbEcarts(comparer(fr, versionDeReference(p, fr), fiches)) : null };
+  }), tri);
+  const compte = compteRelies(relies);
 
   return (
     <>
@@ -99,25 +105,28 @@ export function Yokitup() {
 
       <div className="cs">
         <div className="cs-title">Reliés ({relies.length})</div>
+        {relies.length > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 1rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+            <Choix libelle="Trier les plats reliés" valeur={tri} onChange={setTri}
+              options={[{ valeur: 'ecarts', libelle: "Écarts d'abord" }, { valeur: 'identiques', libelle: "Identiques d'abord" }, { valeur: 'nom', libelle: 'Par nom' }]} />
+            <span className="ph-sub">{pluriel(compte.ecarts, 'fiche')} avec écarts · {pluriel(compte.identiques, 'identique')}</span>
+          </div>
+        )}
         <div className="cl">
           {!relies.length && <div className="ci-label">Aucun plat relié pour le moment.</div>}
-          {relies.map(p => {
-            const fr = frDe(p);
-            const ecarts = fr ? nbEcarts(comparer(fr, versionDeReference(p, fr), fiches)) : 0;
-            return (
-              <div key={p.plat} className="ci" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
-                <span className="ci-label" style={{ flex: '1 1 260px' }}>
-                  {fr?.nom ?? 'Fiche supprimée'}
-                  <span style={{ display: 'block', fontSize: 13, color: 'var(--ink2)' }}>Yokitup : {p.plat} · {p.versions.map(v => libelleVersion(v.version)).join(', ')}</span>
-                </span>
-                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                  {fr && <span className={`tag ${ecarts ? 'tag-danger' : 'tag-accent'}`}>{ecarts ? pluriel(ecarts, 'écart') : 'Identique'}</span>}
-                  {fr && <button type="button" className="btn btn-g btn-sm" onClick={() => { setComparaison({ plat: p, fr }); }}>Comparer</button>}
-                  <button type="button" className="btn btn-g btn-sm" aria-label={`Délier ${p.plat}`} onClick={() => void delierPlat(p.plat)}>Délier</button>
-                </span>
-              </div>
-            );
-          })}
+          {relies.map(({ p, fr, ecarts }) => (
+            <div key={p.plat} className="ci" style={{ flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span className="ci-label" style={{ flex: '1 1 260px' }}>
+                {fr?.nom ?? 'Fiche supprimée'}
+                <span style={{ display: 'block', fontSize: 13, color: 'var(--ink2)' }}>Yokitup : {p.plat} · {p.versions.map(v => libelleVersion(v.version)).join(', ')}</span>
+              </span>
+              <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                {fr && <span className={`tag ${ecarts ? 'tag-danger' : 'tag-accent'}`}>{ecarts ? pluriel(ecarts, 'écart') : 'Identique'}</span>}
+                {fr && <button type="button" className="btn btn-g btn-sm" onClick={() => { setComparaison({ plat: p, fr }); }}>Comparer</button>}
+                <button type="button" className="btn btn-g btn-sm" aria-label={`Délier ${p.plat}`} onClick={() => void delierPlat(p.plat)}>Délier</button>
+              </span>
+            </div>
+          ))}
         </div>
       </div>
 

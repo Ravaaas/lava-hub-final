@@ -10,7 +10,7 @@ import { contactsUniques, csvContacts, erreurGroupe, profilsAEnregistrer, profil
 import { normNom } from './texte';
 import { cleProduit, erreurPerte, joursSemaine, lireQuantite, lundi, parCategorie, peutSupprimerPerte, quantiteFr, recapSemaine, type Perte, type ProduitPerso } from './pertesPerso';
 import { scriptPrincipal } from './version';
-import { comparer, grammageYk, libelleVersion, nbEcarts, normaliser, platsYokitup, portionDeVersion, proposerLiens, reprendreGrammages, ressemblance, versionDeReference, type RecetteYk } from './yokitup';
+import { comparer, grammageYk, libelleVersion, nbEcarts, normaliser, platsYokitup, portionDeVersion, proposerLiens, reprendreGrammages, ressemblance, trierRelies, compteRelies, versionDeReference, type RecetteYk } from './yokitup';
 import type { Fiche, FicheRecette, Groupe, Membre, Menu, ProfilConnexion } from './types';
 
 const fiche = (id: string, nom: string, allergenes: string[] = [], extra: Partial<Fiche> = {}): Fiche =>
@@ -495,5 +495,18 @@ describe('yokitup', () => {
     const l = comparer(plat, r, fiches);
     expect(l[0]?.etat).toBe('unites');
     expect(reprendreGrammages(plat, l, 'carte')[0]?.grammage).toBe('50G');
+  });
+
+  it('liste « Reliés » : tri par état (écarts d\'abord, identiques d\'abord) ou par nom', () => {
+    const liste = [
+      { nom: 'TARTE', ecarts: 1 }, { nom: 'ANCIENNE', ecarts: null }, { nom: 'CASSOLETTE', ecarts: 0 },
+      { nom: 'BŒUF', ecarts: 4 }, { nom: 'AGNEAU', ecarts: 0 }, { nom: 'DAURADE', ecarts: 1 },
+    ];
+    const noms = (t: 'ecarts' | 'identiques' | 'nom') => trierRelies(liste, t).map(x => x.nom);
+    expect(noms('ecarts')).toEqual(['BŒUF', 'DAURADE', 'TARTE', 'AGNEAU', 'CASSOLETTE', 'ANCIENNE']);
+    expect(noms('identiques')).toEqual(['AGNEAU', 'CASSOLETTE', 'DAURADE', 'TARTE', 'BŒUF', 'ANCIENNE']);
+    expect(noms('nom')).toEqual(['AGNEAU', 'ANCIENNE', 'BŒUF', 'CASSOLETTE', 'DAURADE', 'TARTE']);
+    expect(liste[0]?.nom).toBe('TARTE');   // la liste d'origine n'est pas modifiée
+    expect(compteRelies(liste)).toEqual({ ecarts: 3, identiques: 2 });
   });
 });
