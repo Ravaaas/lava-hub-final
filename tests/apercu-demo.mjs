@@ -14,13 +14,17 @@ try {
 // Copie des vraies données (facultative) : si tests/donnees-reelles.json existe (une sauvegarde téléchargée dans
 // Config > Sauvegarde, jamais poussée sur GitHub), ses tables remplacent celles de la base simulée.
 let reelles = false;
-const pret = import(/* @vite-ignore */ '/@fs' + new URL('./donnees-reelles.json', import.meta.url).pathname)
+const pret = import(/* @vite-ignore */ new URL('./donnees-reelles.json', import.meta.url).href)
   .then(({ default: d }) => {
     for (const [table, lignes] of [['fiches', d.fiches], ['fiches_recette', d.fiches_recette], ['groupes', d.groupes], ['membres', d.membres], ['lava_config', d.config]]) {
       if (Array.isArray(lignes)) { base.db[table] = lignes; reelles = true; }
     }
   })
-  .catch(() => { /* pas de fichier : données fictives */ });
+  .catch(() => { /* pas de fichier : données fictives */ })
+  // Recettes Yokitup réelles (facultatif, jamais poussé) : « Mettre à jour depuis Yokitup » les lit au lieu des recettes fictives.
+  .then(() => import(/* @vite-ignore */ new URL('./yokitup-reel.json', import.meta.url).href))
+  .then(({ default: r }) => { if (Array.isArray(r)) base.yokitup.recettes = r; })
+  .catch(() => { /* pas de fichier : recettes fictives */ });
 
 // Les appels vers Supabase sont traités par la base simulée, les autres passent normalement.
 const natif = window.fetch.bind(window);

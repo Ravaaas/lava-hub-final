@@ -12,7 +12,7 @@ export function lireElement(v: unknown): Element {
   const grammage = texte(o.grammage);
   return texte(o.id) ? { type: 'fiche', id: texte(o.id), grammage } : { type: 'libre', texte: texte(o.text), grammage };
 }
-const ecrireElement = (e: Element) => (e.type === 'fiche' ? { id: e.id, grammage: e.grammage } : { text: e.texte, grammage: e.grammage });
+export const ecrireElement = (e: Element) => (e.type === 'fiche' ? { id: e.id, grammage: e.grammage } : { text: e.texte, grammage: e.grammage });
 
 // La photo (base64, lourde) n'est pas chargée avec la liste : voir chargerPhoto.
 const COLONNES = 'id,nom,statut,allergenes,sous_recettes';

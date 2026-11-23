@@ -10,6 +10,7 @@ import { contactsUniques, csvContacts, erreurGroupe, profilsAEnregistrer, profil
 import { normNom } from './texte';
 import { cleProduit, erreurPerte, joursSemaine, lireQuantite, lundi, parCategorie, peutSupprimerPerte, quantiteFr, recapSemaine, type Perte, type ProduitPerso } from './pertesPerso';
 import { scriptPrincipal } from './version';
+import { comparer, grammageYk, grammagesVersion, libelleVersion, nbEcarts, normaliser, platsYokitup, proposerLiens, reprendreGrammages, ressemblance, versionDeReference, type RecetteYk } from './yokitup';
 import type { Fiche, FicheRecette, Groupe, Membre, Menu, ProfilConnexion } from './types';
 
 const fiche = (id: string, nom: string, allergenes: string[] = [], extra: Partial<Fiche> = {}): Fiche =>
@@ -337,5 +338,83 @@ describe('pertes & perso', () => {
     expect(peutSupprimerPerte(p, 'ines@lava-hub.local', false)).toBe(true);
     expect(peutSupprimerPerte(p, 'hugo@lava-hub.local', false)).toBe(false);
     expect(peutSupprimerPerte(p, 'hugo@lava-hub.local', true)).toBe(true);
+  });
+});
+
+describe('yokitup', () => {
+  const ing = (id: string, nom: string, quantite: string, unite = 'g') => ({ id, nom, quantite, unite, sousRecette: false, allergenes: [], traces: [] });
+  const rec = (id: string, nom: string, ingredients: RecetteYk['ingredients']): RecetteYk => {
+    const m = /^(.*?)\s*\(([^)]*)\)$/.exec(nom);
+    return { id, nom, plat: m?.[1]?.trim() ?? nom, version: m?.[2] ?? '', etiquettes: [], ingredients };
+  };
+  const fiches = [fiche('jus', 'JUS DE BOEUF AU CURRY VERT'), fiche('cond', 'CONDIMENT CHAMPIGNON'), fiche('satay', 'RAGOÛT DE POIS CHICHE AU SATAY')];
+  const boeuf = fr('b', 'BŒUF AXURIA, PLEUROTES, OIGNON NOIR, JUS CURRY VERT', { elements: [
+    { type: 'libre', texte: 'FAUX FILET DE BŒUF AXURIA', grammage: '90G' }, { type: 'libre', texte: 'PLEUROTES', grammage: '100G' },
+    { type: 'fiche', id: 'jus', grammage: '10G' }, { type: 'fiche', id: 'cond', grammage: '' }] });
+  const carte = rec('y1', 'BŒUF/PLEUROTE/JUS CURRY VERT (CARTE)', [ing('a', 'FAUX FILET NET', '90'), ing('b', 'CHAMPIGNON - PLEUROTE', '100'),
+    ing('c', 'JUS DE BŒUF AU CURRY VERT', '10'), ing('d', 'CONDIMENT CHAMPIGNON', '6'), ing('e', 'SAUCE TARTARE', '8'), ing('f', 'SEL FIN', '1')]);
+  const menu = rec('y2', 'BŒUF/PLEUROTE/JUS CURRY VERT (MENU)', [ing('a', 'FAUX FILET NET', '60'), ing('b', 'CHAMPIGNON - PLEUROTE', '70'), ing('c', 'JUS DE BŒUF AU CURRY VERT', '10')]);
+
+  it('regroupe Carte, Menu et Lunch sous un même plat, Carte en premier', () => {
+    const p = platsYokitup([menu, carte, rec('y3', 'CHEESECAKE (LUNCH)', [])]);
+    expect(p.map(x => x.plat)).toEqual(['BŒUF/PLEUROTE/JUS CURRY VERT', 'CHEESECAKE']);
+    const boeufYk = p[0];
+    expect(boeufYk?.versions.map(v => v.version)).toEqual(['CARTE', 'MENU']);
+    if (boeufYk) expect(versionDeReference(boeufYk).version).toBe('CARTE');
+    expect(libelleVersion('MENU ENFANT')).toBe('Menu enfant');
+  });
+  it('compare les noms sans accents, casse ni abréviations', () => {
+    expect(normaliser('Bœuf, pleurotes')).toBe('BOEUF PLEUROTES');
+    expect(ressemblance('JUS DE BOEUF AU CURRY VERT', 'JUS DE BŒUF AU CURRY VERT')).toBe(1);
+    expect(ressemblance('ST JACK/CHOU FLEUR/ KUMQUAT', 'SAINT-JACQUES, CHOU-FLEUR, PONZU')).toBeGreaterThan(0.5);
+    expect(ressemblance('CHEESECAKE', 'SAINT-JACQUES')).toBe(0);
+  });
+  it('propose une fiche par plat, une seule fois, sans les archives ni les liens existants', () => {
+    const plats = platsYokitup([carte, menu, rec('c1', 'CANARD/PATATE DOUCE CURRY/POIS CHICHE/SATAY (CARTE)', [ing('s', 'RAGOÛT POIS CHICHES SATAY', '1', 'pièce')])]);
+    const magret = fr('m', 'MAGRET DE CANARD, PURÉE PATATE DOUCE, POIS CHICHE AU SATAY', { elements: [{ type: 'fiche', id: 'satay', grammage: '50G' }] });
+    const vieux = fr('v', 'BŒUF AXURIA ANCIEN', { statut: 'archive' });
+    const p = proposerLiens(plats, [boeuf, magret, vieux], fiches, new Map());
+    expect(p.map(x => [x.plat, x.fiche.id])).toEqual(expect.arrayContaining([['BŒUF/PLEUROTE/JUS CURRY VERT', 'b'], ['CANARD/PATATE DOUCE CURRY/POIS CHICHE/SATAY', 'm']]));
+    expect(p).toHaveLength(2);
+    expect(proposerLiens(plats, [boeuf, magret], fiches, new Map([['BŒUF/PLEUROTE/JUS CURRY VERT', 'b']])).map(x => x.plat)).toEqual(['CANARD/PATATE DOUCE CURRY/POIS CHICHE/SATAY']);
+  });
+  it('compare les grammages élément par élément', () => {
+    const l = comparer(boeuf, carte, fiches);
+    const etat = (nom: string) => l.find(x => x.nom === nom)?.etat;
+    expect(etat('FAUX FILET DE BŒUF AXURIA')).toBe('identique');
+    expect(etat('PLEUROTES')).toBe('identique');
+    expect(etat('JUS DE BOEUF AU CURRY VERT')).toBe('identique');
+    expect(etat('CONDIMENT CHAMPIGNON')).toBe('vide');
+    expect(etat('SAUCE TARTARE')).toBe('seulementYokitup');
+    expect(etat('SEL FIN')).toBe('assaisonnement');
+    expect(nbEcarts(l)).toBe(2);
+  });
+  it('reprend les grammages Yokitup sans ajouter ni retirer d\'élément', () => {
+    const l = comparer(boeuf, menu, fiches);
+    const el = reprendreGrammages(boeuf, l);
+    expect(el.map(e => e.grammage)).toEqual(['60G', '70G', '10G', '']);
+    expect(el).toHaveLength(boeuf.elements.length);
+    expect(grammageYk({ quantite: '0.5', unite: 'g' })).toBe('0,5G');
+    expect(grammageYk({ quantite: '3', unite: 'pièce' })).toBe('3PCE');
+    expect(grammageYk({ quantite: '2', unite: 'mL' })).toBe('2ML');
+  });
+  it('donne les grammages de la version Menu pour la fiche', () => {
+    const g = grammagesVersion(boeuf, menu, fiches);
+    expect([g.get(0), g.get(1), g.get(2), g.get(3)]).toEqual(['60G', '70G', '10G', undefined]);
+  });
+  it('nom seulement proche : signalé, jamais repris ni affiché en grammage Menu', () => {
+    const riz = fr('r', 'RIZ AU LAIT COCO', { elements: [{ type: 'libre', texte: 'RIZ AU LAIT COCO', grammage: '70g' }, { type: 'libre', texte: 'NOUGATINE COCO', grammage: '10g' }] });
+    const r = rec('x', 'RIZ AU LAIT COCO/SORBET (LUNCH)', [ing('a', 'RIZ AU LAIT COCO', '125'), ing('b', 'NOIX DE COCO RAPÉE', '3')]);
+    const l = comparer(riz, r, []);
+    expect(l[1]?.approx).toBe(true);
+    expect(reprendreGrammages(riz, l).map(e => e.grammage)).toEqual(['125G', '10g']);
+    expect(grammagesVersion(riz, r, []).get(1)).toBeUndefined();
+  });
+  it('unités différentes : signalées, jamais reprises', () => {
+    const plat = fr('p', 'POIS', { elements: [{ type: 'fiche', id: 'satay', grammage: '50G' }] });
+    const r = rec('x', 'POIS (CARTE)', [ing('s', 'RAGOÛT DE POIS CHICHE AU SATAY', '1', 'pièce')]);
+    const l = comparer(plat, r, fiches);
+    expect(l[0]?.etat).toBe('unites');
+    expect(reprendreGrammages(plat, l)[0]?.grammage).toBe('50G');
   });
 });

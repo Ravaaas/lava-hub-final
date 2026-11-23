@@ -607,6 +607,54 @@ scenario('Journal', {}, async (a) => {
 });
 
 scenario('Nouvelle version', {}, async (a, page, base) => {
+scenario('Yokitup', {}, async (a, page, base) => {
+  await a.connexion('Cuisine', 'Alexandre RAVASIO');
+  await a.onglet('Config'); await a.clic('Yokitup');
+  check('avant toute lecture : rien à relier', await a.attend('Aucune lecture pour le moment') && await a.voit('Aucun plat relié'));
+  let m = await a.marque();
+  await a.clic('Mettre à jour depuis Yokitup');
+  check('lecture Yokitup : recettes lues, aucune fiche modifiée', await a.notif(m, /3 recettes lues dans yokitup/i) && a.ecritures('fonction yokitup').length === 1 && !a.ecritures('fiches_recette').length);
+  check('plats regroupés (Carte, Menu) et fiches proposées', await a.attend('CASSOLETTE ST JACQUES') && await a.voit('Carte, Menu')
+    && await a.voit('Proposé : CASSOLETTE DE SAINT-JACQUES') && await a.voit('Proposé : TARTE AU CITRON'));
+  await a.clicLigne('CASSOLETTE ST JACQUES', 'Relier');
+  const lien = await a.attendEcriture('yokitup_liens', 'POST');
+  check('lien plat Yokitup ↔ fiche recette enregistré', lien && lien.corps.plat === 'CASSOLETTE ST JACQUES' && lien.corps.fiche_recette_id === 'r1', JSON.stringify(lien && lien.corps));
+  check('écarts comptés sur la version Carte', await a.attend('2 écarts'));
+  await a.clicLigne('CASSOLETTE DE SAINT-JACQUES', 'Comparer');
+  check('comparaison : différent, absent, assaisonnement', await a.attend('Différent') && await a.voit('90G') && await a.voit('Absent de Yokitup') && await a.voit('Assaisonnement'));
+  await a.clic('Menu');
+  check('comparaison avec la version Menu', await a.attend('60G') && await a.voit('CASSOLETTE ST JACQUES (MENU)'));
+  await a.clic('Carte');
+  await a.clic('Reprendre 1 grammage de Yokitup'); await a.clic('Remplacer');
+  const p = await a.attendEcriture('fiches_recette', 'PATCH');
+  const sr = p && p.corps.sous_recettes;
+  check('grammage repris de Yokitup : seuls les éléments changent (ni nom, ni photo)', p && p.filtre.id === 'eq.r1' && sr[0].grammage === '90G' && sr[1].grammage === '20g'
+    && sr[2].text === 'Herbes fraîches' && !('photo' in p.corps) && !('nom' in p.corps), JSON.stringify(p && p.corps));
+  check('reprise inscrite au journal', a.ecritures('audit_log', 'POST').some(e => e.corps.action === 'grammages repris de Yokitup' && JSON.stringify(e.corps.detail).includes('80g → 90G')));
+  check('plus rien à reprendre', await a.attend('Rien à reprendre'));
+  await a.clic('Fermer');
+  await a.onglet('Fiche Recette'); await a.clic('CASSOLETTE DE SAINT-JACQUES');
+  check('fiche recette : choix Fiche / Carte / Menu', await a.attendClic('Menu') && await a.existe('Fiche'));
+  await a.clic('Menu');
+  check('fiche recette : grammages de la version Menu', await a.attend('Grammages Yokitup : Menu') && await a.voit('60G') && await a.voit('15G'));
+  const imp = await a.imprime('Imprimer');
+  check('impression : grammages Menu, sans les boutons de choix', imp.texte.includes('60g') && imp.texte.includes('grammages yokitup : menu') && !/fiche\s*carte\s*menu/.test(imp.texte), imp.texte.slice(0, 300));
+  await a.clic('Retour');
+  await a.deconnexion();
+  check('connexion cuisine', await a.connexion('Cuisine', 'Hugo PETIT'));
+  await a.onglet('Fiche Recette'); await a.clic('CASSOLETTE DE SAINT-JACQUES');
+  check('cuisine : voit les grammages Menu', await a.attendClic('Menu'));
+  check('cuisine : pas de Config', !(await a.existe('Config')));
+});
+
+scenario('Yokitup sans clé', { yokitupSansCle: true }, async (a) => {
+  await a.connexion('Cuisine', 'Alexandre RAVASIO');
+  await a.onglet('Config'); await a.clic('Yokitup');
+  const m = await a.marque();
+  await a.clic('Mettre à jour depuis Yokitup');
+  check('clé absente : message clair, rien de lu', await a.notif(m, /clé yokitup absente/i) && await a.attend('échec') && !a.ecritures('yokitup_liens').length);
+});
+
   const relire = () => page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   await relire(); await sleep(800);
   check('pas de bandeau sans nouvelle publication', !(await a.voit('Nouvelle version disponible')));

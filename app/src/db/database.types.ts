@@ -101,6 +101,10 @@ export interface Database {
       perso_validations: Table<{ date: string; valide_le: string; valide_par: string }, 'date'>;
       pertes: Table<{ id: string; date: string; produit: string; quantite: number | string; unite: string; raison: string; precision: string; saisi_par: string; saisi_email: string; cree_le: string }, 'date' | 'produit' | 'quantite' | 'unite' | 'raison'>;
       perso_recaps: Table<{ semaine: string; envoye_le: string; destinataire: string }, 'semaine'>;
+      // Yokitup (supabase/sql/yokitup.sql) : copie des recettes remplie par la fonction « yokitup », liens posés par l'admin.
+      yokitup_recettes: Table<{ id: string; nom: string; plat: string; version: string; etiquettes: string[]; ingredients: Json; lu_le: string }, 'id' | 'nom' | 'plat'>;
+      yokitup_liens: Table<{ plat: string; fiche_recette_id: string; relie_par: string | null; relie_le: string }, 'plat' | 'fiche_recette_id'>;
+      yokitup_synchros: Table<{ id: number; le: string; par: string | null; recettes: number; ok: boolean; message: string | null }>;
     };
     Views: { [_ in never]: never };
     Functions: {

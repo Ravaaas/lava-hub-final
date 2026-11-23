@@ -1,7 +1,7 @@
 // Base Supabase SIMULÉE pour les tests (aucun accès à la vraie base).
 // Reproduit ce dont l'app dépend : connexion par compte, profils de connexion, fonction « equipe »,
 // lecture/écriture des tables avec les mêmes droits que la RLS de la vraie base
-// (écriture = admin ; groupes = admin ou salle ; coordonnées des référents = admin ou salle, lecture comprise ; journal = tout membre connecté ;
+// (écriture = admin ; copie Yokitup = fonction seulement ; groupes = admin ou salle ; coordonnées des référents = admin ou salle, lecture comprise ; journal = tout membre connecté ;
 //  Pertes & Perso = cuisine + admin, journée validée verrouillée, chacun ses commentaires et ses pertes).
 export const HOST = 'qmvxmxzsmpigvseuidcd.supabase.co';
 export const MOT_DE_PASSE = 'bon-mot-de-passe';
@@ -52,8 +52,23 @@ function donneesDeDepart() {
     perso_validations: [],
     pertes: [],
     perso_recaps: [],
+    // Yokitup : copie vide au départ, remplie par la fonction « yokitup » (voir RECETTES_YOKITUP)
+    yokitup_recettes: [],
+    yokitup_liens: [],
+    yokitup_synchros: [],
   };
 }
+
+// Recettes que la fonction « yokitup » simulée « lit » dans Yokitup : la cassolette en version Carte et Menu.
+const ing = (id, nom, quantite, unite = 'g', autres = {}) => ({ id, nom, quantite, unite, sous_recette: true, allergenes: [], traces: [], ...autres });
+const RECETTES_YOKITUP = [
+  { id: 'yk1', nom: 'CASSOLETTE ST JACQUES (CARTE)', plat: 'CASSOLETTE ST JACQUES', version: 'CARTE', etiquettes: ['RECETTE CARTE'],
+    ingredients: [ing('p1', 'VELOUTÉ CURRY', '90'), ing('p2', 'CROUSTILLANT SARRASIN', '20'), ing('p3', 'SEL FIN', '1', 'g', { sous_recette: false })] },
+  { id: 'yk2', nom: 'CASSOLETTE ST JACQUES (MENU)', plat: 'CASSOLETTE ST JACQUES', version: 'MENU', etiquettes: ['RECETTE MENU'],
+    ingredients: [ing('p1', 'VELOUTÉ CURRY', '60'), ing('p2', 'CROUSTILLANT SARRASIN', '15')] },
+  { id: 'yk3', nom: 'TARTE CITRON (LUNCH)', plat: 'TARTE CITRON', version: 'LUNCH', etiquettes: ['RECETTE LUNCH'],
+    ingredients: [ing('p4', 'GANACHE CHOCOLAT', '30')] },
+];
 
 // Menus enregistrés par une ancienne version : « 3 temps » avec des noms de temps périmés.
 const ANCIENS_MENUS = { id: 'menus', data: { items: [
@@ -62,7 +77,7 @@ const ANCIENS_MENUS = { id: 'menus', data: { items: [
 ] } };
 
 // Clé de chaque table (insertion = remplacement si la clé existe déjà, comme un upsert PostgREST).
-const CLES = { groupes_contacts: ['groupe_id'], membres: ['email'], perso_produits: ['cle'], perso_saisies: ['date', 'produit_cle'], perso_commentaires: ['date', 'email'], perso_validations: ['date'], perso_recaps: ['semaine'] };
+const CLES = { yokitup_liens: ['plat'], groupes_contacts: ['groupe_id'], membres: ['email'], perso_produits: ['cle'], perso_saisies: ['date', 'produit_cle'], perso_commentaires: ['date', 'email'], perso_validations: ['date'], perso_recaps: ['semaine'] };
 const PERSO = ['perso_produits', 'perso_saisies', 'perso_commentaires', 'perso_validations', 'pertes', 'perso_recaps'];
 
 const b64 = o => btoa(JSON.stringify(o)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
@@ -72,6 +87,7 @@ export function creerBase(options = {}) {
   if (options.anciensMenus) db.lava_config.push(JSON.parse(JSON.stringify(ANCIENS_MENUS)));
   const mdp = {};   // mots de passe créés à la première connexion
   const etat = { session: null, ecritures: [], inconnus: [], refuserTout: !!options.refuserEcritures };
+  const yokitup = { recettes: RECETTES_YOKITUP };   // remplaçable (aperçu démo : tests/yokitup-reel.json)
 
   const membre = email => db.membres.find(m => m.email === email);
   const role = () => { const m = etat.session && membre(etat.session); return m && m.actif ? m.role : null; };
@@ -82,6 +98,7 @@ export function creerBase(options = {}) {
     const r = role();
     if (!r) return false;
     if (table === 'audit_log') return true;
+    if (table === 'yokitup_recettes' || table === 'yokitup_synchros') return false;   // remplies par la fonction « yokitup » seulement
     if (table === 'groupes' || table === 'groupes_contacts') return r === 'admin' || r === 'salle';
     if (table === 'perso_saisies') return r === 'admin' || (r === 'cuisine' && !valide(ligne.date));
     if (table === 'perso_commentaires') return r === 'admin' || (r === 'cuisine' && ligne.email === etat.session && !valide(ligne.date));
@@ -150,6 +167,19 @@ export function creerBase(options = {}) {
       db.perso_recaps = db.perso_recaps.filter(x => x.semaine !== b.semaine).concat([{ semaine: b.semaine, envoye_le: new Date().toISOString(), destinataire: 'chef@exemple.fr' }]);
       return repondre(req, 200, { ok: true, destinataire: 'chef@exemple.fr' });
     }
+    // ── Fonction « yokitup » (lecture des recettes Yokitup ; sans clé : message « clé absente ») ──
+    if (p === '/functions/v1/yokitup') {
+      etat.ecritures.push({ methode: m, table: 'fonction yokitup', corps: corps(req) });
+      if (role() !== 'admin') return repondre(req, 200, { ok: false, message: "Réservé à l'administrateur" });
+      if (options.yokitupSansCle) {
+        db.yokitup_synchros.unshift({ id: db.yokitup_synchros.length + 1, le: new Date().toISOString(), par: 'Alexandre', recettes: 0, ok: false, message: 'Clé Yokitup absente' });
+        return repondre(req, 200, { ok: false, message: 'Clé Yokitup absente : à coller dans Supabase > Edge Functions > Secrets (YOKITUP_API_KEY)' });
+      }
+      db.yokitup_recettes = JSON.parse(JSON.stringify(yokitup.recettes));
+      const plats = new Set(yokitup.recettes.map(r => r.plat)).size;
+      db.yokitup_synchros.unshift({ id: db.yokitup_synchros.length + 1, le: new Date().toISOString(), par: 'Alexandre', recettes: yokitup.recettes.length, ok: true, message: `${plats} plats` });
+      return repondre(req, 200, { ok: true, recettes: yokitup.recettes.length, plats });
+    }
     if (p === '/rest/v1/rpc/sauvegarder_maintenant') { etat.ecritures.push({ methode: m, table: 'sauvegardes', corps: {} }); db.sauvegardes.unshift({ id: db.sauvegardes.length + 1, cree_le: new Date().toISOString(), contenu: {} }); return repondre(req, 200, null); }
 
     // ── Tables ──
@@ -168,6 +198,7 @@ export function creerBase(options = {}) {
         if (PERSO.includes(t) && role() === 'salle') return repondre(req, 200, []);   // Pertes & Perso : cuisine + admin
         if (t === 'perso_recaps' && role() !== 'admin') return repondre(req, 200, []);
         if (t === 'groupes_contacts' && role() === 'cuisine') return repondre(req, 200, []);   // coordonnées : admin et salle
+        if (t === 'yokitup_synchros' && role() !== 'admin') return repondre(req, 200, []);   // historique Yokitup : admin
         const rows = filtre(db[t].slice());
         if (/vnd\.pgrst\.object/.test(req.headers()['accept'] || '')) return rows.length ? repondre(req, 200, rows[0]) : repondre(req, 406, { code: 'PGRST116', message: 'no rows' });
         return repondre(req, 200, rows);
@@ -197,7 +228,7 @@ export function creerBase(options = {}) {
     return req.continue();
   }
 
-  return { db, etat, gerer, jeton, HOST };
+  return { db, etat, yokitup, gerer, jeton, HOST };
 }
 
 

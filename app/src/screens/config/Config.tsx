@@ -14,8 +14,9 @@ import { reduireImage, telecharger } from '../../lib/image';
 import { ouvrirPdf } from '../../pdf/commun';
 import { pdfFiches } from '../../pdf/fiche';
 import { MembreFormulaire } from './MembreFormulaire';
+import { Yokitup } from './Yokitup';
 
-type Partie = 'equipe' | 'categories' | 'sauvegarde';
+type Partie = 'equipe' | 'categories' | 'yokitup' | 'sauvegarde';
 
 export function Config() {
   const [partie, setPartie] = useState<Partie>('equipe');
@@ -23,12 +24,13 @@ export function Config() {
     <>
       <div className="ph"><div><div className="ph-title">Configuration</div><div className="ph-sub">Admin uniquement</div></div></div>
       <div className="log-filters" role="tablist">
-        {([['equipe', 'Équipe'], ['categories', 'Catégories'], ['sauvegarde', 'Sauvegarde']] as const).map(([v, l]) => (
+        {([['equipe', 'Équipe'], ['categories', 'Catégories'], ['yokitup', 'Yokitup'], ['sauvegarde', 'Sauvegarde']] as const).map(([v, l]) => (
           <button key={v} type="button" role="tab" aria-selected={partie === v} className={`log-filter${partie === v ? ' active' : ''}`} onClick={() => { setPartie(v); }}>{l}</button>
         ))}
       </div>
       {partie === 'equipe' && <Equipe />}
       {partie === 'categories' && <Categories />}
+      {partie === 'yokitup' && <Yokitup />}
       {partie === 'sauvegarde' && <Sauvegardes />}
     </>
   );

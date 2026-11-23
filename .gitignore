@@ -5,3 +5,4 @@ apercu-design.html
 .env.local
 .env*
 tests/donnees-reelles.json
+tests/yokitup-reel.json

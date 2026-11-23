@@ -13,6 +13,11 @@ export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string 
   },
   {
     date: "2026-11-22",
+    titre: "Grammages Carte et Menu depuis Yokitup",
+    desc: "Une fiche recette reliée à son plat Yokitup affiche, au choix, ses propres grammages ou ceux des versions Carte, Menu ou Lunch de Yokitup, à l'écran comme à l'impression. L'admin relit les recettes Yokitup (chaque nuit, ou avec un bouton dans Config > Yokitup), relie chaque plat à sa fiche, voit les écarts de grammage et choisit de les reprendre. Rien n'est jamais écrit dans Yokitup."
+  },
+  {
+    date: "2026-11-22",
     titre: "Fiche groupe : règlement et boissons",
     desc: "La fiche groupe indique où en est le paiement (rien reçu, empreinte bancaire, acompte versé ou réglé en totalité) et les boissons précommandées, écrites librement. Les deux apparaissent sur la fiche imprimée."
   },
