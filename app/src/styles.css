@@ -510,6 +510,7 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .alerte-menu-titre{display:flex;align-items:center;gap:0.4rem;margin-bottom:0.25rem;color:#B5433C;font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
 .alerte-menu-plat{font-weight:600}
 .alerte-menu-adapte{color:#6B5C5C}
+.alerte-menu-choix{margin:0.3rem 0 0.5rem;max-width:26rem}
 .alerte-menu.alerte-menu-ok{border-color:#CFC6C6;background:#F6F3F3}
 .alerte-menu-ok .alerte-menu-titre{color:#6B5C5C}
 .fdoc-remplace{font-size:0.8125rem;color:#6B5C5C}

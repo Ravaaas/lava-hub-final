@@ -482,6 +482,11 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.clic('Remplace un plat — Cassolette sans gluten');
   await a.remplir('Remplace — Cassolette sans gluten', 'CASSOLETTE DE SAINT-JACQUES');
   check('remplacement : conflit adapté dans l\'encadré', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY) · 4 pers. → remplacé par Cassolette sans gluten', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*plats à adapter/, '').slice(0, 300));
+  // depuis l'encadré : choisir le plat adapté sur la ligne en conflit (et le retirer)
+  await a.remplir('Adapté avec — CASSOLETTE DE SAINT-JACQUES', 'Adapté avec : choisir le plat');
+  check('encadré : retrait du plat adapté', !(await a.voit('remplacé par Cassolette sans gluten')) && await a.voit('Plats à adapter'));
+  await a.remplir('Adapté avec — CASSOLETTE DE SAINT-JACQUES', 'Cassolette sans gluten');
+  check('encadré : plat adapté choisi depuis la ligne en conflit', await a.voit('remplacé par Cassolette sans gluten') && await a.voit('à la place de'));
   // montant de l'acompte (champ affiché dès que quelque chose est reçu) et référent du groupe
   await a.remplir("Montant de l'acompte (€)", 'trois cents');
   m = await a.marque(); await a.clic('Enregistrer');

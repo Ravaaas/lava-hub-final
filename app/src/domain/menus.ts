@@ -53,6 +53,19 @@ export function platAffiche(p: Plat, frs: readonly FicheRecette[], fiches: reado
 /** Clé d'un plat dans son niveau (lien « remplace ») : id de la fiche recette, ou texte du plat libre. */
 export const clePlat = (p: Plat): string => ('frId' in p ? p.frId : p.texte);
 
+/**
+ * Lie un plat de remplacement au plat en conflit (même niveau) : le plat `remplacant` sert à la place de `conflit`,
+ * et les autres liens vers `conflit` sont retirés. `remplacant` vide = plus aucun remplaçant.
+ */
+export function lierRemplacant(niveaux: readonly Niveau[], conflit: string, remplacant: string): Niveau[] {
+  const n = niveaux.findIndex(x => x.plats.some(p => clePlat(p) === conflit));
+  return niveaux.map((x, i) => (i !== n ? x : {
+    ...x,
+    plats: x.plats.map(p => (p.remplace === conflit ? sansRemplace(p) : p))
+      .map(p => (remplacant && clePlat(p) === remplacant && remplacant !== conflit ? { ...p, remplace: conflit } : p)),
+  }));
+}
+
 /** Plat sans lien « remplace » (lien vers un plat qui n'est plus dans le niveau). */
 export const sansRemplace = (p: PlatCompte): PlatCompte => ('frId' in p ? { frId: p.frId, qte: p.qte } : { texte: p.texte, qte: p.qte });
 

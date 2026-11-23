@@ -3,7 +3,7 @@ import type { ContactGroupe, Groupe, Niveau } from '../../domain/types';
 import type { Alerte } from '../../domain/menus';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
 import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit, libelleMontant, montantSaisi, profilsAEnregistrer, resumeProfils } from '../../domain/groupes';
-import { alertesMenu, allergieSaisie, clePlat, estAllergieLibre, niveauxAEnregistrer, sansRemplace, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
+import { alertesMenu, allergieSaisie, clePlat, estAllergieLibre, lierRemplacant, niveauxAEnregistrer, sansRemplace, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
 import { creerGroupe, enregistrerContact, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
@@ -119,7 +119,7 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
       <Niveaux niveaux={niveaux} pax={Number(pax) || 0} onChange={setNiveaux} />
       <div className="fg2"><label className="fl" htmlFor={id.boissons}>Boissons précommandées</label>
         <textarea className="fta" id={id.boissons} placeholder="ex: 3 magnums de Chablis, 2 bouteilles de Saint-Joseph, eaux et cafés" value={boissons} onChange={e => { setBoissons(e.target.value); }} /></div>
-      <Profils profils={profils} onChange={setProfils}
+      <Profils profils={profils} onChange={setProfils} niveaux={niveaux} onNiveaux={setNiveaux}
         alertes={alertesMenu(niveaux, profils.map(p => ({ ...p, nb: Number(p.nb) || 1 })), fichesRecette, fiches)} />
       <div className="fg2" style={{ marginTop: '1.25rem' }}><span className="fl">Règlement</span>
         <Choix libelle="Règlement" options={REGLEMENTS} valeur={reglement} onChange={setReglement} /></div>
@@ -137,7 +137,8 @@ type ProfilSaisi = { nb: string; allergenes: string[]; regimes: string[] };
  * Allergies et régimes : une ligne par personne, ou par personnes qui ont exactement les mêmes
  * (ex. 1 personne Œuf + Moutarde, 1 personne Œuf seul). Une seule ligne ouverte à la fois ; les autres sont résumées.
  */
-function Profils({ profils, alertes, onChange }: { profils: ProfilSaisi[]; alertes: Alerte[]; onChange: (p: ProfilSaisi[]) => void }) {
+function Profils({ profils, alertes, niveaux, onNiveaux, onChange }: { profils: ProfilSaisi[]; alertes: Alerte[]; niveaux: Niveau[]; onNiveaux: (n: Niveau[]) => void; onChange: (p: ProfilSaisi[]) => void }) {
+  const { fichesRecette, fiches } = useDonnees();
   const [ouvert, setOuvert] = useState<number | null>(null);
   const [autre, setAutre] = useState('');
   const ouvrir = (i: number | null) => { setOuvert(i); setAutre(''); };
@@ -183,7 +184,18 @@ function Profils({ profils, alertes, onChange }: { profils: ProfilSaisi[]; alert
       })}
       <button type="button" className="btn-ar" style={{ marginBottom: '1rem' }} onClick={() => { onChange([...profils, { nb: '1', allergenes: [], regimes: [] }]); ouvrir(profils.length); }}>
         <Icone nom="plus" />Ajouter une personne</button>
-      <AlertesMenu alertes={alertes} />
+      <AlertesMenu alertes={alertes} adapter={a => {
+        // autres plats du niveau où se trouve le plat en conflit : l'un d'eux peut être servi à sa place
+        const niveau = niveaux.find(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
+        const conflit = niveau?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
+        if (!niveau || !conflit) return null;
+        const cle = clePlat(conflit);
+        const autres = niveau.plats.filter(p => clePlat(p) !== cle).map(p => ({ valeur: clePlat(p), libelle: platAffiche(p, fichesRecette, fiches).nom }));
+        if (!autres.length) return null;
+        const choisi = niveau.plats.find(p => p.remplace === cle);
+        return <Selecteur className="alerte-menu-choix" libelle={`Adapté avec — ${a.plat}`} vide="Adapté avec : choisir le plat" options={autres}
+          valeur={choisi ? clePlat(choisi) : ''} onChange={v => { onNiveaux(lierRemplacant(niveaux, cle, v)); }} />;
+      }} />
     </>
   );
 }

@@ -4,7 +4,7 @@ import { identifiantPour, profilsClasses, verifierMotDePasse, postesProposes, et
 import { diffFiche, lireConditionnement, quantiteAffichee, quantitePour } from './fiches';
 import { aPortionMenu, allergenesDesElements, diffFicheRecette, elementsResolus, grammageDe } from './fichesRecette';
 import { lignesJournal, libelleJour } from './journal';
-import { alertesGroupe, alertesMenu, allergieSaisie, estAllergieLibre, resumeAlertes, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
+import { alertesGroupe, alertesMenu, allergieSaisie, estAllergieLibre, lierRemplacant, resumeAlertes, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
 import { contactsUniques, csvContacts, erreurGroupe, profilsAEnregistrer, profilsDepuisAnciens, resumeProfils, euros, groupesEnConflit, groupesFiltres, libelleMontant, libelleReglement, lireMontant, lireReglement, montantSaisi } from './groupes';
 import { normNom } from './texte';
@@ -215,6 +215,12 @@ describe('groupes', () => {
     expect(alertesMenu(niveaux(null), profils, frs, [])[0]?.adapte).toBe(true);
     expect(alertesMenu(niveaux(1), profils, frs, [])[0]?.adapte).toBe(false);
     expect(resumeAlertes(alertesMenu(niveaux(1), profils, frs, []))).toBe('Conflit : BŒUF AXURIA (Gluten) +1');
+    // choix depuis l'encadré : un seul remplaçant à la fois, retirable
+    const lie = lierRemplacant(niveaux(null), 'b', 'b');
+    expect(lie[0]?.plats.map(p => p.remplace)).toEqual([undefined, undefined]);
+    const base = [{ nom: 'T', plats: [{ frId: 'b', qte: 9 }, { texte: 'X', qte: 2 }, { texte: 'Y', qte: 1, remplace: 'b' }] }];
+    expect(lierRemplacant(base, 'b', 'X')[0]?.plats.map(p => p.remplace)).toEqual([undefined, 'b', undefined]);
+    expect(lierRemplacant(base, 'b', '')[0]?.plats.map(p => p.remplace)).toEqual([undefined, undefined, undefined]);
     // lien vers un plat retiré du niveau, ou vers lui-même : effacé à l'enregistrement
     const propres = niveauxAEnregistrer([{ nom: 'T', plats: [{ texte: 'A', qte: null, remplace: 'b' }, { texte: 'B', qte: null, remplace: 'B' }, { texte: 'C', qte: 1, remplace: 'A' }] }], frs);
     expect(propres).toEqual([{ nom: 'T', plats: [{ texte: 'A', qte: null }, { texte: 'B', qte: null }, { texte: 'C', qte: 1, remplace: 'A' }] }]);
