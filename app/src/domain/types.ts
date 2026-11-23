@@ -52,6 +52,8 @@ export type PlatCompte = Plat & {
   qte: number | null;
   /** Plat du même niveau qu'il remplace pour les personnes allergiques (clé : id de la fiche recette ou texte du plat libre). */
   remplace?: string;
+  /** Personnes (id des lignes d'allergies et régimes) servies avec ce plat : écrites en face du plat sur la fiche. */
+  pour?: string[];
 };
 /** Niveau du menu d'un groupe (Entrée, Plat, Dessert…), copié du menu choisi ou composé pour le groupe. */
 export interface Niveau { nom: string; plats: PlatCompte[] }
@@ -88,7 +90,8 @@ export interface Groupe {
 }
 
 /** nb personnes qui ont toutes ces allergies et ces régimes (ex. 1 personne Œuf + Moutarde). */
-export interface Profil { nb: number; allergenes: string[]; regimes: string[] }
+/** `id` : identifie la ligne pour la relier à un plat (absent sur les profils tirés des anciennes colonnes texte avant enregistrement). */
+export interface Profil { id?: string; nb: number; allergenes: string[]; regimes: string[] }
 
 /** Coordonnées du référent d'un groupe (table groupes_contacts : admin et salle seulement). groupe_id null = groupe supprimé. */
 export interface ContactGroupe {

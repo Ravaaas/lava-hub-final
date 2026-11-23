@@ -495,6 +495,10 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.remplir('Plat libre (Plat)', 'Cassolette sans gluten'); await a.clic('Libre', 1);
   await a.clic('Remplace un plat — Cassolette sans gluten');
   await a.remplir('Remplace — Cassolette sans gluten', 'CASSOLETTE DE SAINT-JACQUES');
+  // personne servie avec ce plat : la personne allergique au curry mange la cassolette sans gluten
+  await a.clic('Pour qui — Cassolette sans gluten');
+  await a.clic('1 pers. — Curry');
+  check('pour qui : personne reliée au plat', JSON.stringify(await puce('1 pers. — Curry')) === '["true"]' && !(await puce('2 pers. — Gluten · Végétarien')).includes('true'));
   check('remplacement : conflit adapté dans l\'encadré', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY) · 4 pers. → remplacé par Cassolette sans gluten', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*plats à adapter/, '').slice(0, 300));
   // depuis l'encadré : choisir le plat adapté sur la ligne en conflit (et le retirer)
   await a.remplir('Adapté avec — CASSOLETTE DE SAINT-JACQUES', 'Adapté avec : choisir le plat');
@@ -518,10 +522,10 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
     && contact.corps.email === 'sophie.leroy@exemple.fr' && contact.corps.telephone === '06 11 22 33 44' && contact.corps.groupe === 'Anniversaire Leroy', JSON.stringify(contact && contact.corps));
   check('groupe enregistré', cree && cree.corps.nom === 'Anniversaire Leroy' && cree.corps.pax === 8 && cree.corps.menu_id === 'm1' && cree.corps.menu_nom === 'Carte du soir'
     && cree.corps.allergenes === 'Gluten (3), Moutarde (1), Curry (1)' && cree.corps.regimes === 'Végétarien (2)' && cree.corps.notes === '2 enfants'
-    && JSON.stringify(cree.corps.profils) === JSON.stringify([{ nb: 1, allergenes: ['Gluten', 'Moutarde'], regimes: [] }, { nb: 2, allergenes: ['Gluten'], regimes: ['Végétarien'] }, { nb: 1, allergenes: ['Curry'], regimes: [] }])
+    && JSON.stringify(cree.corps.profils.map(({ id, ...p }) => p)) === JSON.stringify([{ nb: 1, allergenes: ['Gluten', 'Moutarde'], regimes: [] }, { nb: 2, allergenes: ['Gluten'], regimes: ['Végétarien'] }, { nb: 1, allergenes: ['Curry'], regimes: [] }])
     && cree.corps.boissons === '3 magnums de Chablis\nEaux et cafés' && cree.corps.reglement === 'acompte', JSON.stringify(cree && cree.corps));
   check('niveaux et quantités enregistrés', cree && JSON.stringify(cree.corps.niveaux) === JSON.stringify([
-    { nom: 'Plat', plats: [{ frId: 'r1', qte: 8 }, { text: 'Cassolette sans gluten', qte: null, remplace: 'r1' }] }, { nom: 'Dessert', plats: [{ frId: 'r2', qte: 6 }, { text: 'Sorbet maison', qte: null }] }, { nom: 'Mignardises', plats: [{ text: 'Café gourmand', qte: 2 }] },
+    { nom: 'Plat', plats: [{ frId: 'r1', qte: 8 }, { text: 'Cassolette sans gluten', qte: null, remplace: 'r1', pour: [cree.corps.profils[2].id] }] }, { nom: 'Dessert', plats: [{ frId: 'r2', qte: 6 }, { text: 'Sorbet maison', qte: null }] }, { nom: 'Mignardises', plats: [{ text: 'Café gourmand', qte: 2 }] },
   ]), JSON.stringify(cree && cree.corps.niveaux));
   check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit : TARTE AU CITRON (Gluten)') && !(await a.voit('Conflit : CASSOLETTE')));
   await a.clic('Anniversaire Leroy');
@@ -532,6 +536,7 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   check('fiche groupe : référent, coordonnées et montant à l\'écran', await a.enOrdre(['Référent et règlement', 'Référent', 'Sophie Leroy', 'Règlement', 'Acompte versé · 250,50 €', 'Coordonnées du référent', 'sophie.leroy@exemple.fr', '06 11 22 33 44', 'Notes']));
   check('fiche groupe : salle et menu en tête', await a.voit('Menu Carte du soir') && await a.voit('Salle principale'));
   check('fiche groupe : niveaux, quantités et totaux', await a.enOrdre(['Plat', '8 / 8 pers.', '8', 'CASSOLETTE DE SAINT-JACQUES', 'Dessert', '6 / 8 pers. · il manque 2', '6', 'TARTE AU CITRON', 'Mignardises', '2', 'Café gourmand']), (await a.texte()).slice(0, 600));
+  check('fiche groupe : personnes servies écrites en face du plat', await a.enOrdre(['Cassolette sans gluten', 'à la place de CASSOLETTE DE SAINT-JACQUES', 'Pour', 'Curry · 1 pers.', 'Dessert']));
   check('fiche groupe : plat sans nombre non affiché', !(await a.voit('Sorbet maison')));
   check('fiche groupe : pas de « modifié par »', !(await a.voit('modifié par')));
   // Impression : la fiche telle qu'à l'écran, sans les boutons ni le reste de l'app

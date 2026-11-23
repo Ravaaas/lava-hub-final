@@ -67,7 +67,7 @@ export function lierRemplacant(niveaux: readonly Niveau[], conflit: string, remp
 }
 
 /** Plat sans lien « remplace » (lien vers un plat qui n'est plus dans le niveau). */
-export const sansRemplace = (p: PlatCompte): PlatCompte => ('frId' in p ? { frId: p.frId, qte: p.qte } : { texte: p.texte, qte: p.qte });
+export const sansRemplace = (p: PlatCompte): PlatCompte => { const c = { ...p }; delete c.remplace; return c; };
 
 export const platsDuMenu = (m: Menu, frs: readonly FicheRecette[], fiches: readonly Fiche[]): PlatAffiche[] =>
   servicesAffiches(m).flatMap(s => s.plats).map(p => platAffiche(p, frs, fiches));
@@ -93,7 +93,14 @@ export function totalNiveau(n: Niveau, pax: number): { total: number; ecart: num
  * (et les plats de remplacement, même sans nombre) ; un niveau sans aucun nombre montre tous ses plats.
  */
 export const platsCommandes = (n: Niveau): PlatCompte[] =>
-  n.plats.some(p => p.qte !== null) ? n.plats.filter(p => p.qte !== null || p.remplace !== undefined) : n.plats;
+  n.plats.some(p => p.qte !== null) ? n.plats.filter(p => p.qte !== null || p.remplace !== undefined || (p.pour?.length ?? 0) > 0) : n.plats;
+
+/** « Gluten · Moutarde » : les allergies puis les régimes d'une ligne de personnes. */
+export const libelleProfil = (p: Profil): string => [...p.allergenes, ...p.regimes].join(' · ');
+
+/** Lignes de personnes servies avec ce plat (écrites en face du plat sur la fiche). */
+export const personnesDuPlat = (p: PlatCompte, profils: readonly Profil[]): Profil[] =>
+  profils.filter(x => x.id !== undefined && p.pour?.includes(x.id));
 
 /** Texte comparé sans accents ni majuscules (« Céleri » = « celeri »). */
 const sansAccents = (t: string): string => t.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
@@ -188,14 +195,24 @@ export const resumeAlertes = (toutes: readonly Alerte[]): string => {
   return a[0] ? `Conflit : ${a[0].plat} (${a[0].allergenes.join(', ')})${a.length > 1 ? ` +${a.length - 1}` : ''}` : '';
 };
 
+/** Personnes liées au plat : celles qui n'existent plus (`profils` connus) sont retirées. */
+function pourNettoye(p: PlatCompte, profils: readonly Profil[]): PlatCompte {
+  if (!p.pour) return p;
+  const c = { ...p };
+  const ids = p.pour.filter(i => profils.some(x => x.id === i));
+  if (ids.length) c.pour = ids; else delete c.pour;
+  return c;
+}
+
 /**
  * Niveaux nettoyés avant enregistrement : plats vers des fiches supprimées et plats libres vides retirés, puis niveaux sans plat retirés ;
- * lien « remplace » retiré s'il ne désigne plus un autre plat du niveau.
+ * lien « remplace » retiré s'il ne désigne plus un autre plat du niveau ; personnes liées retirées si leur ligne n'existe plus (`profils` donnés).
  */
-export function niveauxAEnregistrer(niveaux: readonly Niveau[], frs: readonly FicheRecette[]): Niveau[] {
+export function niveauxAEnregistrer(niveaux: readonly Niveau[], frs: readonly FicheRecette[], profils?: readonly Profil[]): Niveau[] {
   return niveaux
     .map(n => ({ nom: n.nom.trim(), plats: n.plats.filter(p => ('frId' in p ? frs.some(f => f.id === p.frId) : p.texte.trim() !== '')).map(p => ('texte' in p ? { ...p, texte: p.texte.trim() } : p)) }))
     .map(n => ({ ...n, plats: n.plats.map(p => (p.remplace === undefined || (p.remplace !== clePlat(p) && n.plats.some(q => clePlat(q) === p.remplace)) ? p : sansRemplace(p))) }))
+    .map(n => (profils ? { ...n, plats: n.plats.map(p => pourNettoye(p, profils)) } : n))
     .filter(n => n.plats.length);
 }
 

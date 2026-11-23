@@ -4,14 +4,14 @@ import { identifiantPour, profilsClasses, verifierMotDePasse, postesProposes, et
 import { diffFiche, lireConditionnement, quantiteAffichee, quantitePour } from './fiches';
 import { aPortionMenu, allergenesDesElements, diffFicheRecette, elementsResolus, grammageDe } from './fichesRecette';
 import { lignesJournal, libelleJour } from './journal';
-import { alertesGroupe, alertesMenu, allergieSaisie, estAllergieLibre, lierRemplacant, platsCommandes, resumeAlertes, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
+import { alertesGroupe, alertesMenu, allergieSaisie, estAllergieLibre, lierRemplacant, libelleProfil, personnesDuPlat, platsCommandes, resumeAlertes, niveauxAEnregistrer, niveauxDuGroupe, niveauxDuMenu, platsDuMenu, servicesAffiches, servicesAEnregistrer, totalNiveau } from './menus';
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
 import { contactsUniques, csvContacts, erreurGroupe, profilsAEnregistrer, profilsDepuisAnciens, resumeProfils, euros, groupesEnConflit, groupesFiltres, libelleMontant, libelleReglement, lireMontant, lireReglement, montantSaisi } from './groupes';
 import { normNom } from './texte';
 import { cleProduit, erreurPerte, joursSemaine, lireQuantite, lundi, parCategorie, peutSupprimerPerte, quantiteFr, recapSemaine, type Perte, type ProduitPerso } from './pertesPerso';
 import { scriptPrincipal } from './version';
 import { comparer, grammageYk, libelleVersion, nbEcarts, normaliser, platsYokitup, portionDeVersion, proposerLiens, reprendreGrammages, ressemblance, trierRelies, compteRelies, versionDeReference, type RecetteYk } from './yokitup';
-import type { Fiche, FicheRecette, Groupe, Membre, Menu, ProfilConnexion } from './types';
+import type { Fiche, FicheRecette, Groupe, Membre, Menu, Profil, ProfilConnexion } from './types';
 
 const fiche = (id: string, nom: string, allergenes: string[] = [], extra: Partial<Fiche> = {}): Fiche =>
   ({ id, nom, categorie: '', quantite_nette: '', conditionnement: [], allergenes, ingredients: [], process: [], ...extra });
@@ -198,6 +198,18 @@ describe('groupes', () => {
     expect(niveauxDuGroupe({ ...g, niveaux: [], menu_id: 'm1' }, menus)).toEqual([{ nom: 'Entrée', plats: [{ frId: 'r1', qte: null }] }]);
     expect(niveauxDuGroupe({ ...g, niveaux: [] }, menus)).toEqual([]);
     expect(alertesGroupe(g, [], frs, [])).toEqual([{ plat: 'CASSOLETTE', allergenes: ['Gluten'], personnes: 1 }]);
+  });
+  it('personnes servies avec un plat : lien par id, nettoyé si la ligne disparaît, plat gardé sur la fiche', () => {
+    const profils = [{ id: 'a', nb: 1, allergenes: [], regimes: ['Végétalien'] }, { id: 'b', nb: 2, allergenes: ['Gluten'], regimes: [] }];
+    const risotto = { texte: 'Risotto', qte: null, pour: ['a'] };
+    const niveau = { nom: 'Plat', plats: [{ texte: 'Volaille', qte: 24 }, risotto, { texte: 'Autre', qte: null }] };
+    expect(platsCommandes(niveau).map(p => ('texte' in p ? p.texte : ''))).toEqual(['Volaille', 'Risotto']);
+    expect(personnesDuPlat(risotto, profils)).toEqual([profils[0]]);
+    expect(libelleProfil(profils[1] as Profil)).toBe('Gluten');
+    expect(personnesDuPlat({ texte: 'X', qte: null }, profils)).toEqual([]);
+    expect(niveauxAEnregistrer([{ nom: 'P', plats: [{ texte: 'R', qte: 1, pour: ['a', 'zz'] }, { texte: 'S', qte: 1, pour: ['zz'] }] }], [], [profils[0] as Profil])).toEqual([{ nom: 'P', plats: [{ texte: 'R', qte: 1, pour: ['a'] }, { texte: 'S', qte: 1 }] }]);
+    // le lien « remplace » retiré garde les personnes liées
+    expect(lierRemplacant([{ nom: 'P', plats: [{ texte: 'A', qte: 1 }, { texte: 'B', qte: 1, remplace: 'A', pour: ['a'] }] }], 'A', '')[0]?.plats[1]).toEqual({ texte: 'B', qte: 1, pour: ['a'] });
   });
   it('brouillon : seuls nom et date exigés, plats sans nombre masqués sur la fiche', () => {
     const base = { nom: 'Cocktail', date: '2026-12-01', pax: 0 };

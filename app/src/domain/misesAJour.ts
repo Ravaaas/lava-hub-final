@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-23",
+    titre: "Fiche groupe : relier une personne à son plat",
+    desc: "Dans le formulaire du groupe, le bouton « Pour qui » d'un plat permet de cocher les lignes de personnes (allergies et régimes) servies avec ce plat. La fiche écrit « Pour Végétalien · 1 pers. » en face du plat, par exemple en face du risotto. Un plat relié à une personne reste affiché même sans nombre."
+  },
+  {
+    date: "2026-11-23",
     titre: "Fiche groupe : brouillon, et seulement les plats commandés",
     desc: "Un groupe peut s'enregistrer en brouillon (« Enregistrer en brouillon », seuls le nom et la date sont exigés) : sa carte est orange avec l'étiquette « Brouillon », la fiche porte le bandeau « Brouillon — fiche non validée », imprimé aussi, et le bouton « Valider la fiche » la confirme. Un brouillon ne bloque pas la salle. Sur la fiche, dès qu'un nombre est saisi dans un niveau, seuls les plats qui ont un nombre sont affichés (les plats de remplacement restent) ; le formulaire montre toujours tous les plats."
   },
