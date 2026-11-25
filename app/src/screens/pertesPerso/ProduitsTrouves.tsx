@@ -8,6 +8,9 @@ import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 import { Selecteur } from '../../ui/Selecteur';
 
+/** Rattrapage : l'admin voit les produits écrits dans les commentaires des 2 dernières semaines (Repas perso et Produits). */
+export const JOURS_RATTRAPAGE = 14;
+
 // Propositions écartées : gardées dans ce navigateur (identifiants « date|clé »), sans rien écrire dans la base.
 const CLE_IGNORES = 'lava_perso_ignores';
 const lireIgnores = (): Set<string> => {
@@ -19,10 +22,11 @@ const garderIgnores = (s: Set<string>) => {
 };
 
 /** Encadré « Produits trouvés dans les commentaires » : chaque produit écrit avec une quantité dans un commentaire est proposé ;
- *  « Ajouter » crée la case si elle manque (admin) et reporte la quantité du jour, « Ignorer » écarte la proposition.
- *  Rien n'est enregistré sans ce clic. `modifiable(date)` : la saisie de ce jour est ouverte pour moi. */
-export function ProduitsTrouves({ donnees, modifiable, avecDate = false, recharger }: {
-  donnees: Periode; modifiable: (date: string) => boolean; avecDate?: boolean; recharger: () => Promise<void>;
+ *  « Ajouter » crée la case si elle manque (admin) et reporte la quantité de ce jour-là, « Ignorer » écarte la proposition.
+ *  Rien n'est enregistré sans ce clic. `modifiable(date)` : la saisie de ce jour est ouverte pour moi.
+ *  `jour` = jour affiché, proposé en premier et sans sa date ; les autres jours de la période suivent, du plus récent au plus ancien. */
+export function ProduitsTrouves({ donnees, modifiable, jour, recharger }: {
+  donnees: Periode; modifiable: (date: string) => boolean; jour?: string; recharger: () => Promise<void>;
 }) {
   const { moi, admin } = useMoi();
   const { journal } = useDonnees();
@@ -31,7 +35,8 @@ export function ProduitsTrouves({ donnees, modifiable, avecDate = false, recharg
   const [ignores, setIgnores] = useState(lireIgnores);
   const [categories, setCategories] = useState<Record<string, string>>({});
   const [enCours, setEnCours] = useState('');
-  const propositions = propositionsDesCommentaires(donnees.commentaires, donnees.produits, donnees.saisies, ignores);
+  const propositions = propositionsDesCommentaires(donnees.commentaires, donnees.produits, donnees.saisies, ignores)
+    .sort((a, b) => Number(b.date === jour) - Number(a.date === jour) || b.date.localeCompare(a.date));
   if (!propositions.length) return null;
   const valides = new Set(donnees.validations.map(v => v.date));
   const listeCategories = [...new Set([...donnees.produits.map(p => p.categorie), ...propositions.map(p => p.categorie), 'Autres'])].sort((a, b) => a.localeCompare(b, 'fr'));
@@ -61,18 +66,19 @@ export function ProduitsTrouves({ donnees, modifiable, avecDate = false, recharg
     <section className="cl pp-trouves" aria-labelledby={idTitre}>
       <div className="fsect" id={idTitre}>Produits trouvés dans les commentaires</div>
       <div className="ci pp-trouves-aide">
-        {pluriel(propositions.length, 'produit écrit', 'produits écrits')} avec une quantité. Vérifie avant d'ajouter : le texte peut être mal lu.
+        {pluriel(propositions.length, 'produit écrit', 'produits écrits')} avec une quantité{propositions.some(p => p.date !== jour) ? ' dans les commentaires des 2 dernières semaines' : ''}. Vérifie avant d'ajouter : le texte peut être mal lu.
         {' '}Un produit ajouté devient une case de la liste pour les jours suivants.
       </div>
       {propositions.map(p => {
         const nouveau = !p.produit || !p.produit.actif;
         const ouvert = modifiable(p.date);
+        const autreJour = p.date !== jour;
         const raison = p.conflit || (!ouvert ? 'Journée validée : seul un admin peut corriger.' : nouveau && !admin ? 'Pas encore dans la liste : un admin peut l\'ajouter.' : '');
         return (
           <div key={p.id} className="ci pp-trouve">
             <div className="pp-nom">
               <span className="ci-label">{p.nom} <span className="pp-trouve-qte">{quantiteFr(p.quantite)} {p.unite}</span></span>
-              <small>{[avecDate ? jourLong(p.date) : '', `écrit par ${p.auteur}`, nouveau ? (p.produit ? 'produit retiré, à remettre' : 'nouveau produit') : 'déjà dans la liste', avecDate && valides.has(p.date) ? 'journée validée' : ''].filter(Boolean).join(' · ')}</small>
+              <small>{[autreJour ? jourLong(p.date) : '', `écrit par ${p.auteur}`, nouveau ? (p.produit ? 'produit retiré, à remettre' : 'nouveau produit') : 'déjà dans la liste', autreJour && valides.has(p.date) ? 'journée validée' : ''].filter(Boolean).join(' · ')}</small>
               {raison && <small className="pp-message">{raison}</small>}
             </div>
             <div className="pp-trouve-actions">

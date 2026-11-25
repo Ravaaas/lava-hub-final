@@ -8,7 +8,8 @@ import { useConfirmer } from '../../ui/Confirmation';
 import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 import { BarreJour, usePeriode } from './PertesPerso';
-import { ProduitsTrouves } from './ProduitsTrouves';
+import { JOURS_RATTRAPAGE, ProduitsTrouves } from './ProduitsTrouves';
+import { aujourdhui } from '../../domain/groupes';
 
 const sans = <T,>(o: Record<string, T>, cles: readonly string[]): Record<string, T> => Object.fromEntries(Object.entries(o).filter(([k]) => !cles.includes(k)));
 
@@ -29,7 +30,11 @@ export function RepasPerso({ jour, setJour }: { jour: string; setJour: (d: strin
   const [cmt, setCmt] = useState<string | null>(null);
   const enAttente = useRef<Record<string, number | null>>({});
   const minuterie = useRef<number | undefined>(undefined);
-  const { donnees: d, erreur, recharger } = usePeriode(jour, jour, () => Object.keys(enAttente.current).length > 0 || cmt !== null);
+  // L'admin reçoit aussi les produits écrits dans les commentaires des 2 dernières semaines, pour créer les cases qui manquent.
+  // Tout le reste de l'écran ne lit que le jour choisi.
+  const debutRattrapage = decaler(aujourdhui(), -(JOURS_RATTRAPAGE - 1));
+  const large = admin && jour >= debutRattrapage;
+  const { donnees: d, erreur, recharger } = usePeriode(large ? debutRattrapage : jour, large ? aujourdhui() : jour, () => Object.keys(enAttente.current).length > 0 || cmt !== null);
 
   const validation = d?.validations.find(v => v.date === jour);
   const verrouille = !!validation && !(admin && correction);
@@ -127,7 +132,7 @@ export function RepasPerso({ jour, setJour }: { jour: string; setJour: (d: strin
         </>}
         {validation && correction && <button type="button" className="btn btn-p" onClick={() => { void envoyer().then(() => { setCorrection(false); }); }}>Terminer la correction</button>}
       </div>}
-      {d && <ProduitsTrouves donnees={d} modifiable={() => !verrouille} recharger={recharger} />}
+      {d && <ProduitsTrouves donnees={d} jour={jour} modifiable={date => (date === jour ? !verrouille : admin)} recharger={recharger} />}
       <div className="sb"><div className="si-wrap"><Icone nom="search" />
         <input className="si" type="search" placeholder="Rechercher un produit…" value={q} onChange={e => { setQ(e.target.value); }} /></div></div>
       {!d && !erreur && <div className="ph-sub" style={{ padding: '8px 0' }}>Chargement…</div>}

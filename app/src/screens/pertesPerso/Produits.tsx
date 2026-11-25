@@ -10,7 +10,7 @@ import { aujourdhui } from '../../domain/groupes';
 import { usePeriode } from './PertesPerso';
 import { ProduitsTrouves } from './ProduitsTrouves';
 
-const JOURS_RATTRAPAGE = 14;   // rattrapage : commentaires des 2 dernières semaines relus pour proposer les produits écrits à la main
+import { JOURS_RATTRAPAGE } from './ProduitsTrouves';
 
 
 /** Liste des produits du repas du personnel (admin). Retirer masque de la saisie sans effacer l'historique. */
@@ -75,7 +75,7 @@ export function Produits() {
           <button type="button" className="btn btn-p" onClick={() => void ajouter()}><Icone nom="plus" />Ajouter</button>
         </div>
       </div>
-      {d && <ProduitsTrouves donnees={d} avecDate modifiable={() => true} recharger={recharger} />}
+      {d && <ProduitsTrouves donnees={d} modifiable={() => true} recharger={recharger} />}
       {!d && <div className="ph-sub">Chargement…</div>}
       {parCategorie(actifs).map(([cat, liste]) => (
         <div key={cat} className="cl">

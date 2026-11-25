@@ -4,7 +4,7 @@ export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string 
   {
     date: "2026-11-25",
     titre: "Repas perso : les produits écrits dans les commentaires deviennent des cases",
-    desc: "Quand un commentaire du repas du personnel contient des produits avec une quantité (par exemple « Poireau 260g Poitrine fumée 2.6kg »), l'encadré « Produits trouvés dans les commentaires » les propose avec la quantité convertie dans l'unité de la liste (260 g → 0,26 kg, 50 cl → 0,5 L) et une catégorie. « Ajouter » reporte la quantité du jour, comptée dans le récap ; pour un produit absent de la liste, un admin choisit sa catégorie et le produit devient une case pour les jours suivants. « Ignorer » écarte la proposition. Rien n'est enregistré sans ce clic. Dans « Produits », l'admin retrouve les propositions des commentaires des 14 derniers jours."
+    desc: "Quand un commentaire du repas du personnel contient des produits avec une quantité (par exemple « Poireau 260g Poitrine fumée 2.6kg »), l'encadré « Produits trouvés dans les commentaires » les propose avec la quantité convertie dans l'unité de la liste (260 g → 0,26 kg, 50 cl → 0,5 L) et une catégorie. « Ajouter » reporte la quantité du jour, comptée dans le récap ; pour un produit absent de la liste, un admin choisit sa catégorie et le produit devient une case pour les jours suivants. « Ignorer » écarte la proposition. Rien n'est enregistré sans ce clic. L'admin voit d'office, en ouvrant Repas perso, les produits écrits dans les commentaires des 14 derniers jours (le jour affiché d'abord, puis les autres avec leur date), et les retrouve aussi dans « Produits »."
   },
   {
     date: "2026-11-25",

@@ -1012,6 +1012,7 @@ scenario('Pertes & Perso — produits écrits dans les commentaires', {}, async 
   check('encadré des produits trouvés', await a.attend('Produits trouvés dans les commentaires'));
   check('exemple de Shi-kang : 5 produits, quantités converties en kg', await a.enOrdre(['POIREAU', '0,26 kg', 'POITRINE FUMÉE', '2,6 kg', 'FOND BLANC', '0,4 kg', 'CEBETTE', '0,093 kg', 'OIGNON FRIT', '0,046 kg']));
   check('catégorie proposée', await a.existe('Catégorie de POIREAU') && await a.enOrdre(['POIREAU', 'Légumes', 'POITRINE FUMÉE', 'Charcuterie', 'FOND BLANC', 'Épicerie']));
+  check('admin : produits des commentaires des 2 dernières semaines proposés d\'office, jour affiché en premier', await a.enOrdre(['OIGNON FRIT', 'CRÈME', '0,5 L', 'écrit par Hugo']));
   check('rien n\'est écrit sans un clic', !a.ecritures('perso_produits').length && !a.ecritures('perso_saisies').length);
   await a.clic('Ignorer CEBETTE');
   check('« Ignorer » écarte la proposition sans rien écrire', await a.attendPlus('0,093 kg') && !a.ecritures('perso_produits').length);
@@ -1023,7 +1024,8 @@ scenario('Pertes & Perso — produits écrits dans les commentaires', {}, async 
   check('la proposition disparaît, la case est remplie', !(await a.existe('Ajouter FOND BLANC')) && await a.existe('Ajouter POIREAU') && (await a.champ('Quantité FOND BLANC'))?.valeur === '0,4');
   await a.clic('Jour précédent');
   await sleep(800);
-  check('le produit ajouté est une case des autres jours', await a.attend('En attente de validation') && (await a.champ('Quantité FOND BLANC'))?.valeur === '' && !(await a.voit('Produits trouvés dans les commentaires')));
+  check('le produit ajouté est une case des autres jours', await a.attend('En attente de validation') && (await a.champ('Quantité FOND BLANC'))?.valeur === '' && !(await a.existe('Ajouter FOND BLANC')));
+  check('autre jour : les propositions restent, avec leur date', await a.voit('Produits trouvés dans les commentaires') && await a.existe('Ajouter POIREAU'));
   // rattrapage : commentaires des 2 dernières semaines, depuis « Produits »
   await a.clic('Produits');
   check('rattrapage : commentaire d\'il y a 5 jours proposé, avec sa date', await a.attend('Produits trouvés dans les commentaires') && await a.voit('0,5 L') && await a.voit('écrit par Hugo'));
