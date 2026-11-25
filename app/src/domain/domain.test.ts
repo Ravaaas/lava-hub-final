@@ -8,7 +8,7 @@ import { alertesGroupe, alertesMenu, allergieSaisie, estAllergieLibre, lierRempl
 import { deplacer, zoneCadree, dejaCadree, CADRAGE_CENTRE } from './photo';
 import { contactsUniques, csvContacts, erreurGroupe, profilsAEnregistrer, profilsDepuisAnciens, resumeProfils, euros, groupesEnConflit, groupesFiltres, libelleMontant, libelleReglement, lireMontant, lireReglement, montantSaisi } from './groupes';
 import { normNom } from './texte';
-import { cleProduit, erreurPerte, joursSemaine, lireQuantite, lundi, parCategorie, peutSupprimerPerte, quantiteFr, recapSemaine, type Perte, type ProduitPerso } from './pertesPerso';
+import { categorieProposee, cleProduit, erreurPerte, produitDuNom, produitsDuCommentaire, propositionsDesCommentaires, joursSemaine, lireQuantite, lundi, parCategorie, peutSupprimerPerte, quantiteFr, recapSemaine, type Perte, type ProduitPerso } from './pertesPerso';
 import { scriptPrincipal } from './version';
 import { comparer, grammageYk, libelleVersion, nbEcarts, normaliser, platsYokitup, portionDeVersion, proposerLiens, reprendreGrammages, ressemblance, trierRelies, compteRelies, versionDeReference, type RecetteYk } from './yokitup';
 import type { Fiche, FicheRecette, Groupe, Membre, Menu, Profil, ProfilConnexion } from './types';
@@ -422,6 +422,60 @@ describe('pertes & perso', () => {
     expect(peutSupprimerPerte(p, 'ines@lava-hub.local', false)).toBe(true);
     expect(peutSupprimerPerte(p, 'hugo@lava-hub.local', false)).toBe(false);
     expect(peutSupprimerPerte(p, 'hugo@lava-hub.local', true)).toBe(true);
+  });
+});
+
+describe('pertes & perso : produits écrits dans les commentaires', () => {
+  const lus = (t: string) => produitsDuCommentaire(t).produits.map(p => [p.nom, p.quantite, p.unite]);
+  it('l\'exemple de Shi-kang donne 5 produits convertis en kg', () => {
+    expect(lus('Poireau 260g Poitrine fumée 2.6kg Fond blanc 400g Cebette 93g Oignon frit 46g')).toEqual([
+      ['POIREAU', 0.26, 'kg'], ['POITRINE FUMÉE', 2.6, 'kg'], ['FOND BLANC', 0.4, 'kg'], ['CEBETTE', 0.093, 'kg'], ['OIGNON FRIT', 0.046, 'kg'],
+    ]);
+  });
+  it('formats : 2,6 kg, 400 g, 1L, 50cl, 3 pièces, 4 pcs, quantité avant le nom', () => {
+    expect(lus('Poulet 2,6 kg, riz 400 g')).toEqual([['POULET', 2.6, 'kg'], ['RIZ', 0.4, 'kg']]);
+    expect(lus('Lait 1L ; crème 50cl ; huile 20 ml')).toEqual([['LAIT', 1, 'L'], ['CRÈME', 0.5, 'L'], ['HUILE', 0.02, 'L']]);
+    expect(lus('Oeufs 3 pièces et citron 4 pcs')).toEqual([['OEUFS', 3, 'pièce'], ['CITRON', 4, 'pièce']]);
+    expect(lus('260 g de poireau')).toEqual([['POIREAU', 0.26, 'kg']]);
+  });
+  it('le texte sans quantité reste un commentaire', () => {
+    const r = produitsDuCommentaire('Reste de la veille. Poireau 260g, merci');
+    expect(r.produits.map(p => p.nom)).toEqual(['POIREAU']);
+    expect(r.reste).toBe('Reste de la veille · merci');
+    expect(produitsDuCommentaire('Produit abîmé, 3 caisses').produits).toEqual([]);
+    expect(produitsDuCommentaire('Rien à signaler').reste).toBe('Rien à signaler');
+  });
+  const produits: ProduitPerso[] = [
+    { cle: 'poireau', nom: 'POIREAU', unite: 'kg', categorie: 'Légumes', actif: true },
+    { cle: 'creme', nom: 'CRÈME', unite: 'L', categorie: 'Fromages & crèmerie', actif: true },
+    { cle: 'oignon_rouge', nom: 'OIGNON ROUGE', unite: 'kg', categorie: 'Légumes', actif: true },
+    { cle: 'vieux', nom: 'VIEUX', unite: 'kg', categorie: 'Épicerie', actif: false },
+  ];
+  it('rapproche les noms sans casse, accents ni pluriel', () => {
+    expect(produitDuNom('poireaux', produits)?.cle).toBe('poireau');
+    expect(produitDuNom('Creme', produits)?.cle).toBe('creme');
+    expect(produitDuNom('vieux', produits)?.actif).toBe(false);
+    expect(produitDuNom('cebette', produits)).toBeNull();
+  });
+  it('propose une catégorie', () => {
+    expect(categorieProposee('OIGNON FRIT', produits)).toBe('Légumes');
+    expect(categorieProposee('POITRINE FUMÉE', [])).toBe('Charcuterie');
+    expect(categorieProposee('FOND BLANC', [])).toBe('Épicerie');
+    expect(categorieProposee('CEBETTE', [])).toBe('Légumes');
+    expect(categorieProposee('TRUC', [])).toBe('Autres');
+  });
+  it('propositions : une par produit et par jour, sauf déjà saisi ou écarté ; unité différente signalée', () => {
+    const c = (date: string, nom: string, texte: string) => ({ date, email: nom, nom, texte, heure: '' });
+    const s = (date: string, cle: string, quantite: number) => ({ date, cle, quantite, par: 'Hugo', email: 'h' });
+    const r = propositionsDesCommentaires([
+      c('2026-11-24', 'Shi-kang', 'Poireau 260g Cebette 93g Crème 300 g'),
+      c('2026-11-24', 'Hugo', 'cebette 50g'),
+      c('2026-11-23', 'Hugo', 'Poireau 1kg Oignon frit 46g'),
+    ], produits, [s('2026-11-23', 'poireau', 1)], new Set(['2026-11-23|oignon_frit']));
+    expect(r.map(p => [p.id, p.quantite, p.auteur])).toEqual([['2026-11-24|poireau', 0.26, 'Shi-kang'], ['2026-11-24|cebette', 0.093, 'Shi-kang'], ['2026-11-24|creme', 0.3, 'Shi-kang']]);
+    expect(r[0]?.produit?.cle).toBe('poireau');
+    expect(r[1]).toMatchObject({ produit: null, nom: 'CEBETTE', categorie: 'Légumes', conflit: '' });
+    expect(r[2]?.conflit).toMatch(/en L/);
   });
 });
 

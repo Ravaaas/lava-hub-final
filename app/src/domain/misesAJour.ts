@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-25",
+    titre: "Repas perso : les produits écrits dans les commentaires deviennent des cases",
+    desc: "Quand un commentaire du repas du personnel contient des produits avec une quantité (par exemple « Poireau 260g Poitrine fumée 2.6kg »), l'encadré « Produits trouvés dans les commentaires » les propose avec la quantité convertie dans l'unité de la liste (260 g → 0,26 kg, 50 cl → 0,5 L) et une catégorie. « Ajouter » reporte la quantité du jour, comptée dans le récap ; pour un produit absent de la liste, un admin choisit sa catégorie et le produit devient une case pour les jours suivants. « Ignorer » écarte la proposition. Rien n'est enregistré sans ce clic. Dans « Produits », l'admin retrouve les propositions des commentaires des 14 derniers jours."
+  },
+  {
+    date: "2026-11-25",
     titre: "Fiche groupe : allergies avant le menu, fiche plus nette à l'impression",
     desc: "Dans le formulaire d'un groupe, les allergies et régimes se renseignent maintenant avant le menu ; l'encadré « Plats à adapter » et les alternatives restent sous le menu. Sur la fiche, un plat adapté n'a plus de cadre : « 1 sans viande » s'écrit en gras sur la ligne du plat de remplacement, et seul le cadre des plats pas encore adaptés reste. À l'impression, la date et le titre que le navigateur ajoutait en haut de la page ont disparu."
   },

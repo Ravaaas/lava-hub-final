@@ -8,6 +8,7 @@ import { useConfirmer } from '../../ui/Confirmation';
 import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 import { BarreJour, usePeriode } from './PertesPerso';
+import { ProduitsTrouves } from './ProduitsTrouves';
 
 const sans = <T,>(o: Record<string, T>, cles: readonly string[]): Record<string, T> => Object.fromEntries(Object.entries(o).filter(([k]) => !cles.includes(k)));
 
@@ -126,6 +127,7 @@ export function RepasPerso({ jour, setJour }: { jour: string; setJour: (d: strin
         </>}
         {validation && correction && <button type="button" className="btn btn-p" onClick={() => { void envoyer().then(() => { setCorrection(false); }); }}>Terminer la correction</button>}
       </div>}
+      {d && <ProduitsTrouves donnees={d} modifiable={() => !verrouille} recharger={recharger} />}
       <div className="sb"><div className="si-wrap"><Icone nom="search" />
         <input className="si" type="search" placeholder="Rechercher un produit…" value={q} onChange={e => { setQ(e.target.value); }} /></div></div>
       {!d && !erreur && <div className="ph-sub" style={{ padding: '8px 0' }}>Chargement…</div>}

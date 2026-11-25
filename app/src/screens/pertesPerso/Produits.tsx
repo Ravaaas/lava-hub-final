@@ -1,14 +1,17 @@
 import { useId, useState } from 'react';
-import { UNITES_PRODUIT, cleProduit, parCategorie, type ProduitPerso, type UniteProduit } from '../../domain/pertesPerso';
+import { UNITES_PRODUIT, cleProduit, decaler, parCategorie, type ProduitPerso, type UniteProduit } from '../../domain/pertesPerso';
 import { enregistrerProduit, retirerProduit } from '../../db/pertesPerso';
 import { useDonnees } from '../../etat/Donnees';
 import { Choix } from '../../ui/Choix';
 import { useConfirmer } from '../../ui/Confirmation';
 import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
+import { aujourdhui } from '../../domain/groupes';
 import { usePeriode } from './PertesPerso';
+import { ProduitsTrouves } from './ProduitsTrouves';
 
-const AUCUN_JOUR = '0001-01-01';   // seule la liste des produits est utile ici
+const JOURS_RATTRAPAGE = 14;   // rattrapage : commentaires des 2 dernières semaines relus pour proposer les produits écrits à la main
+
 
 /** Liste des produits du repas du personnel (admin). Retirer masque de la saisie sans effacer l'historique. */
 export function Produits() {
@@ -19,7 +22,9 @@ export function Produits() {
   const [nom, setNom] = useState('');
   const [unite, setUnite] = useState<UniteProduit>('kg');
   const [categorie, setCategorie] = useState('');
-  const { donnees: d, recharger } = usePeriode(AUCUN_JOUR, AUCUN_JOUR);
+  // la liste des produits vient avec chaque période : les 14 derniers jours servent au rattrapage des commentaires
+  const fin = aujourdhui();
+  const { donnees: d, recharger } = usePeriode(decaler(fin, -(JOURS_RATTRAPAGE - 1)), fin);
   const produits = d?.produits ?? [];
   const actifs = produits.filter(p => p.actif);
   const retires = produits.filter(p => !p.actif);
@@ -70,6 +75,7 @@ export function Produits() {
           <button type="button" className="btn btn-p" onClick={() => void ajouter()}><Icone nom="plus" />Ajouter</button>
         </div>
       </div>
+      {d && <ProduitsTrouves donnees={d} avecDate modifiable={() => true} recharger={recharger} />}
       {!d && <div className="ph-sub">Chargement…</div>}
       {parCategorie(actifs).map(([cat, liste]) => (
         <div key={cat} className="cl">

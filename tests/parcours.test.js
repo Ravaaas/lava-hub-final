@@ -1003,6 +1003,47 @@ scenario('Pertes & Perso — admin', {}, async (a, page, base) => {
   check('semaine en cours incomplète : envoi impossible', await a.attend("L'envoi par email est possible quand les 7 jours sont validés"));
 });
 
+scenario('Pertes & Perso — produits écrits dans les commentaires', {}, async (a, page, base) => {
+  const cmt = (date, nom, texte) => ({ date, email: nom.toLowerCase() + '@lava-hub.local', nom, texte, modifie_le: new Date().toISOString() });
+  base.db.perso_commentaires.push(cmt(jourLocal(), 'Shi-kang', 'Poireau 260g Poitrine fumée 2.6kg Fond blanc 400g Cebette 93g Oignon frit 46g'));
+  base.db.perso_commentaires.push(cmt(jourLocal(-5), 'Hugo', 'Reste de la veille. Crème 50cl'));
+  check('connexion admin', await a.connexion('Cuisine', 'Alexandre RAVASIO'));
+  await a.onglet('Pertes & Perso');
+  check('encadré des produits trouvés', await a.attend('Produits trouvés dans les commentaires'));
+  check('exemple de Shi-kang : 5 produits, quantités converties en kg', await a.enOrdre(['POIREAU', '0,26 kg', 'POITRINE FUMÉE', '2,6 kg', 'FOND BLANC', '0,4 kg', 'CEBETTE', '0,093 kg', 'OIGNON FRIT', '0,046 kg']));
+  check('catégorie proposée', await a.existe('Catégorie de POIREAU') && await a.enOrdre(['POIREAU', 'Légumes', 'POITRINE FUMÉE', 'Charcuterie', 'FOND BLANC', 'Épicerie']));
+  check('rien n\'est écrit sans un clic', !a.ecritures('perso_produits').length && !a.ecritures('perso_saisies').length);
+  await a.clic('Ignorer CEBETTE');
+  check('« Ignorer » écarte la proposition sans rien écrire', await a.attendPlus('0,093 kg') && !a.ecritures('perso_produits').length);
+  await a.remplir('Catégorie de FOND BLANC', 'Autres');
+  await a.clic('Ajouter FOND BLANC');
+  check('« Ajouter » crée la case dans la catégorie choisie', !!(await a.attendEcriture('perso_produits', 'POST')) && base.db.perso_produits.some(x => x.cle === 'fond_blanc' && x.nom === 'FOND BLANC' && x.unite === 'kg' && x.categorie === 'Autres' && x.actif));
+  check('… et reporte la quantité du jour', !!(await a.attendEcriture('perso_saisies', 'POST')) && base.db.perso_saisies.some(x => x.produit_cle === 'fond_blanc' && x.quantite === 0.4 && x.date === jourLocal()));
+  for (let i = 0; i < 50 && (await a.existe('Ajouter FOND BLANC')); i++) await sleep(100);
+  check('la proposition disparaît, la case est remplie', !(await a.existe('Ajouter FOND BLANC')) && await a.existe('Ajouter POIREAU') && (await a.champ('Quantité FOND BLANC'))?.valeur === '0,4');
+  await a.clic('Jour précédent');
+  await sleep(800);
+  check('le produit ajouté est une case des autres jours', await a.attend('En attente de validation') && (await a.champ('Quantité FOND BLANC'))?.valeur === '' && !(await a.voit('Produits trouvés dans les commentaires')));
+  // rattrapage : commentaires des 2 dernières semaines, depuis « Produits »
+  await a.clic('Produits');
+  check('rattrapage : commentaire d\'il y a 5 jours proposé, avec sa date', await a.attend('Produits trouvés dans les commentaires') && await a.voit('0,5 L') && await a.voit('écrit par Hugo'));
+  check('rattrapage : produit déjà dans la liste reconnu', await a.voit('déjà dans la liste'));
+  await a.clic('Ajouter CRÈME');
+  const creme = () => base.db.perso_saisies.some(x => x.produit_cle === 'creme' && x.quantite === 0.5 && x.date === jourLocal(-5));
+  for (let i = 0; i < 50 && !creme(); i++) await sleep(100);
+  for (let i = 0; i < 50 && (await a.existe('Ajouter CRÈME')); i++) await sleep(100);
+  check('rattrapage : quantité reportée au bon jour, proposition soldée', creme() && !(await a.existe('Ajouter CRÈME')));
+});
+
+scenario('Pertes & Perso — produits trouvés, cuisinier', {}, async (a, page, base) => {
+  base.db.perso_commentaires.push({ date: jourLocal(), email: 'julie.martin@lava-hub.local', nom: 'Julie', texte: 'Crème 50cl et cebette 93g', modifie_le: new Date().toISOString() });
+  check('connexion cuisine', await a.connexion('Cuisine', 'Hugo PETIT'));
+  await a.onglet('Pertes & Perso');
+  check('cuisine : produit absent à ajouter par un admin', await a.attend('CEBETTE') && await a.voit('un admin peut l\'ajouter') && !(await a.existe('Ajouter CEBETTE')) && !(await a.existe('Catégorie de CEBETTE')));
+  await a.clic('Ajouter CRÈME');
+  check('cuisine : quantité d\'un produit de la liste reportée', !!(await a.attendEcriture('perso_saisies', 'POST')) && base.db.perso_saisies.some(x => x.produit_cle === 'creme' && x.quantite === 0.5));
+});
+
 scenario('Téléphone', { mobile: true }, async (a, page) => {
   check('connexion sur téléphone', await a.connexion('Cuisine', 'Alexandre RAVASIO'));
   const debords = [];
