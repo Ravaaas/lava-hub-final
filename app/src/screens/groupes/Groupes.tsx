@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import type { ContactGroupe, Groupe } from '../../domain/types';
-import { alertesGroupe, clePlat, libelleProfil, niveauxDuGroupe, personnesDuPlat, platAffiche, platsCommandes, resumeAlertes, totalNiveau } from '../../domain/menus';
+import { alertesGroupe, clePlat, libelleProfil, niveauxDuGroupe, personnesDuPlat, platAffiche, platsCommandes, restrictionsServies, resumeAlertes, totalNiveau } from '../../domain/menus';
 import { AlertesMenu } from './AlertesMenu';
 import { contactsUniques, csvContacts, dateCourte, dateLongue, erreurGroupe, euros, groupesFiltres, libelleReglement } from '../../domain/groupes';
 import { contient, heureFr, pluriel } from '../../domain/texte';
@@ -150,13 +150,15 @@ function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Gr
                   const d = platAffiche(p, fichesRecette, fiches);
                   const risques = d.allergenes.filter(a => g.allergenes.includes(a));
                   const pour = personnesDuPlat(p, g.profils);
-                  const remplace = p.remplace === undefined ? undefined : n.plats.filter(q => clePlat(q) === p.remplace).map(q => platAffiche(q, fichesRecette, fiches).nom)[0];
+                  // plat de remplacement : « 1 sans viande » (qui le mange) ; à défaut, le plat qu'il remplace
+                  const remplace = p.remplace === undefined ? undefined : n.plats.find(q => clePlat(q) === p.remplace);
+                  const servi = remplace ? restrictionsServies(remplace, g.profils, fichesRecette, fiches) || `à la place de ${platAffiche(remplace, fichesRecette, fiches).nom}` : '';
                   return (
                     <div key={k} className="fdoc-step">
                       {avecQte
                         ? <div className="fdoc-snum fdoc-qte" aria-label={p.qte === null ? 'Nombre non précisé' : `${p.qte} ×`}>{p.qte ?? '–'}</div>
                         : <div className="fdoc-snum">{(debuts[i] ?? 0) + k + 1}</div>}
-                      <div className="fdoc-stxt">{d.nom}{remplace && <span className="fdoc-remplace"> · à la place de {remplace}</span>}{pour.length > 0 && <div className="fdoc-pour"><span className="fdoc-pour-lib">Pour</span>{pour.map(x => <span key={x.id} className="fdoc-pour-tag">{libelleProfil(x)} · {x.nb} pers.</span>)}</div>}{risques.length > 0 && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={risques} effectifs={g.effectifs} /></div>}</div>
+                      <div className="fdoc-stxt">{d.nom}{servi && <span className="fdoc-remplace"> · {servi}</span>}{pour.length > 0 && <div className="fdoc-pour"><span className="fdoc-pour-lib">Pour</span>{pour.map(x => <span key={x.id} className="fdoc-pour-tag">{libelleProfil(x)} · {x.nb} pers.</span>)}</div>}{risques.length > 0 && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={risques} effectifs={g.effectifs} /></div>}</div>
                     </div>
                   );
                 })}</div>

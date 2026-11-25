@@ -81,7 +81,7 @@ describe('fiche groupe du lundi : mêmes règles que l\'app', () => {
     expect(f.niveaux[0]?.total).toBe('11 / 11 pers.');
     expect(f.niveaux[0]?.plats.map(p => p.nom)).toEqual(['BŒUF AXURIA', 'Bœuf sans tempura']);
     expect(f.niveaux[0]?.plats.map(p => p.numero)).toEqual(['9', '2']);
-    expect(f.niveaux[0]?.plats[1]).toMatchObject({ remplace: 'BŒUF AXURIA', pour: ['Gluten · Végétalien · 1 pers.'] });
+    expect(f.niveaux[0]?.plats[1]).toMatchObject({ remplace: '1 gluten · végétalien, 2 kiwi · ail · pomme de terre, 1 curry', pour: ['Gluten · Végétalien · 1 pers.'] });
     expect(f.niveaux[0]?.plats[0]?.risques).toEqual(['Gluten × 1']);
     // 4 personnes concernées (gluten, pomme de terre, curry) : le remplaçant prévu pour 2 ne suffit pas
     expect(f.alertes.find(a => a.plat === 'BŒUF AXURIA')).toMatchObject({ adapte: false, texte: expect.stringContaining('Bœuf sans tempura : pas assez pour 4 pers.') as unknown });

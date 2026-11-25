@@ -1,6 +1,6 @@
 // Plats à adapter : régimes (végétarien, végétalien, sans viande, sans porc, sans alcool, halal) et mots généraux écrits à la main (fromage, viande…).
 import { describe, expect, it } from 'vitest';
-import { alertesMenu, propositionsPour } from './menus';
+import { alertesMenu, propositionsPour, restrictionsServies } from './menus';
 import { familleDuMot, trouverPourRegime, trouverTerme, FAMILLES } from '../../../supabase/functions/recap-groupes/aliments';
 import * as srv from '../../../supabase/functions/recap-groupes/domaine';
 import type { Fiche, FicheRecette, Niveau, Profil } from './types';
@@ -107,6 +107,16 @@ describe('plats à adapter avec régimes et mots généraux', () => {
     const solo = alertesMenu([{ nom: 'Plat', plats: [{ texte: 'Magret de canard', qte: 4 }, { texte: 'Risotto aux cèpes', qte: 6 }] }], [{ nb: 1, allergenes: [], regimes: ['Végétalien'] }], [], []);
     expect(solo).toEqual([{ plat: 'Magret de canard', allergenes: ['Végétalien'], personnes: 1, indices: { Végétalien: 'canard' } }]);
     expect(alertesMenu(niveaux, [{ nb: 1, allergenes: [], regimes: ['Casher'] }], frs, fiches)).toEqual([]);
+  });
+
+  it('plat de remplacement : pour qui il est servi (« 1 sans viande »)', () => {
+    const qui = (plat: { frId: string } | { texte: string }, p: Profil[]) => restrictionsServies(plat, p, frs, fiches);
+    expect(qui({ texte: 'Tartare de veau' }, [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }])).toBe('1 sans viande');
+    // seule la restriction contredite est écrite, pour chaque ligne de personnes concernée
+    expect(qui({ texte: 'Tartare de veau' }, [{ nb: 2, allergenes: ['Gluten'], regimes: ['Végétarien', 'Halal'] }, { nb: 1, allergenes: [], regimes: ['Sans viande'] }, { nb: 3, allergenes: [], regimes: ['Sans porc'] }]))
+      .toBe('2 végétarien, 1 sans viande');
+    expect(qui({ frId: 'a' }, [{ nb: 1, allergenes: ['Fromage'], regimes: [] }])).toBe('');   // plus personne n'est concerné
+    expect(srv.restrictionsServies({ texte: 'Tartare de veau' }, [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }], [], [])).toBe('1 sans viande');
   });
 
   it('même résultat dans la fonction d\'envoi du lundi', () => {

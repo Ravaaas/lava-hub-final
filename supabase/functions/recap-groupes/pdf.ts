@@ -123,9 +123,9 @@ export async function fichePdf(g: FicheGroupe, fichier: string): Promise<Uint8Ar
       let rempl = "";
       const derniere = nom[nom.length - 1] ?? [];
       const wDerniere = derniere.reduce((t, m) => t + (m.sp ? R.widthOfTextAtSize(" ", 9) : 0) + m.f.widthOfTextAtSize(m.t, 9), 0);
-      const suffixe = p.remplace ? ` · à la place de ${p.remplace}` : "";
+      const suffixe = p.remplace ? ` · ${p.remplace}` : "";   // « 1 sans viande » ou « à la place de … »
       const inline = !!suffixe && wDerniere + R.widthOfTextAtSize(net(suffixe), 8) <= TX;
-      const apres = !!suffixe && !inline ? couper([{ t: `à la place de ${p.remplace}`, f: R }], TX, 8) : [];
+      const apres = !!suffixe && !inline ? couper([{ t: p.remplace, f: R }], TX, 8) : [];
       rempl = inline ? suffixe : "";
       const pastilles = [...p.pour.map((t) => ({ t, pour: true })), ...p.risques.map((t) => ({ t, pour: false }))];
       const h = Math.max(17, 3 + nom.length * 11.5 + apres.length * 10 + (pastilles.length ? 14 : 0) + 3);

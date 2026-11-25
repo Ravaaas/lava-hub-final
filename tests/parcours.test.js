@@ -583,13 +583,13 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   check('alerte de conflit sur la carte du groupe', await a.attend('Anniversaire Leroy') && await a.voit('Conflit : TARTE AU CITRON (Gluten)') && !(await a.voit('Conflit : CASSOLETTE')));
   await a.clic('Anniversaire Leroy');
   check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques[\s\S]*gluten/.test(await a.texte()));
-  check('fiche groupe : encadré des plats à adapter avant le menu', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY), Végétarien (saint-jacques) · 4 pers. → remplacé par Cassolette sans gluten', 'TARTE AU CITRON — Gluten · 3 pers.', 'Plat', '8 / 8 pers.', 'CASSOLETTE DE SAINT-JACQUES', 'Cassolette sans gluten · à la place de CASSOLETTE DE SAINT-JACQUES', 'Dessert']));
+  check('fiche groupe : encadré des plats à adapter avant le menu', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY), Végétarien (saint-jacques) · 4 pers. → remplacé par Cassolette sans gluten', 'TARTE AU CITRON — Gluten · 3 pers.', 'Plat', '8 / 8 pers.', 'CASSOLETTE DE SAINT-JACQUES', 'Cassolette sans gluten · 1 gluten, 2 gluten · végétarien, 1 curry', 'Dessert']));
   check('fiche groupe : une ligne par personne', await a.enOrdre(['Restrictions', '1 pers.', 'Gluten', 'Moutarde', '2 pers.', 'Gluten', 'Végétarien', '1 pers.', 'Curry', 'Référent et règlement']));
   check('fiche groupe : boissons précommandées et règlement', await a.enOrdre(['Boissons précommandées', '3 magnums de Chablis', 'Eaux et cafés', 'Restrictions', 'Règlement', 'Acompte versé']));
   check('fiche groupe : référent, coordonnées et montant à l\'écran', await a.enOrdre(['Référent et règlement', 'Référent', 'Sophie Leroy', 'Règlement', 'Acompte versé · 250,50 €', 'Coordonnées du référent', 'sophie.leroy@exemple.fr', '06 11 22 33 44', 'Notes']));
   check('fiche groupe : salle et menu en tête', await a.voit('Menu Carte du soir') && await a.voit('Salle principale'));
   check('fiche groupe : niveaux, quantités et totaux', await a.enOrdre(['Plat', '8 / 8 pers.', '8', 'CASSOLETTE DE SAINT-JACQUES', 'Dessert', '6 / 8 pers. · il manque 2', '6', 'TARTE AU CITRON', 'Mignardises', '2', 'Café gourmand']), (await a.texte()).slice(0, 600));
-  check('fiche groupe : personnes servies écrites en face du plat', await a.enOrdre(['Cassolette sans gluten', 'à la place de CASSOLETTE DE SAINT-JACQUES', 'Pour', 'Curry · 1 pers.', 'Dessert']));
+  check('fiche groupe : personnes servies écrites en face du plat', await a.enOrdre(['Cassolette sans gluten', '1 gluten, 2 gluten · végétarien, 1 curry', 'Pour', 'Curry · 1 pers.', 'Dessert']) && !(await a.voit('à la place de CASSOLETTE')));
   check('fiche groupe : plat sans nombre non affiché', !(await a.voit('Sorbet maison')));
   check('fiche groupe : pas de « modifié par »', !(await a.voit('modifié par')));
   // Impression : la fiche telle qu'à l'écran, sans les boutons ni le reste de l'app
@@ -832,6 +832,8 @@ scenario('Groupes alternatives', {}, async (a) => {
   check('conflit réglé : remplacé par l\'alternative', await a.voit('remplacé par CASSOLETTE DE SAINT-JACQUES'));
   await a.clic('Enregistrer');
   const cree = await a.attendEcriture('groupes', 'POST');
+  await a.clic('Déjeuner Roux');
+  check('fiche : « 1 sans viande » en face du plat de remplacement', await a.enOrdre(['CASSOLETTE DE SAINT-JACQUES', '1 sans viande']) && !(await a.voit('à la place de')), (await a.texte()).slice(0, 400));
   check('alternative enregistrée, liée au plat remplacé', cree && JSON.stringify(cree.corps.niveaux[0]) === JSON.stringify({ nom: 'Entrée', plats: [{ text: 'Tartare de veau', qte: 7 }, { frId: 'r1', qte: 1, remplace: 'Tartare de veau' }] }), JSON.stringify(cree && cree.corps.niveaux));
 });
 

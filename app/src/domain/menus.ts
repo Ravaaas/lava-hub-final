@@ -204,6 +204,16 @@ export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil
   });
 }
 
+/**
+ * Pour qui est servi un plat de remplacement : les personnes concernées par le plat remplacé et ce qui y est contredit pour elles,
+ * par exemple « 1 sans viande » ou « 2 gluten · végétarien, 1 curry » ; vide si le plat remplacé ne contredit plus personne.
+ */
+export function restrictionsServies(remplace: Plat, profils: readonly Profil[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): string {
+  const { regimes, libres } = exigences(profils);
+  const { contenus, touches } = contredit(remplace, platAffiche(remplace, frs, fiches).allergenes, profils, regimes, libres, frs, fiches);
+  return touches.map(x => `${x.nb} ${[...x.allergenes, ...x.regimes].filter(a => contenus.includes(a)).join(' · ').toLowerCase()}`).join(', ');
+}
+
 /** Plat proposé à la place d'un plat en conflit, et d'où il vient : autre plat du niveau ou fiche recette de la carte. */
 export interface Proposition { plat: Plat; nom: string; origine: 'niveau' | 'fiches' }
 

@@ -212,29 +212,41 @@ function chercherMot(mot: string, textes: readonly string[]): string | undefined
   return textes.find((t) => re.test(sansAccents(t)));
 }
 export interface Alerte { plat: string; allergenes: string[]; personnes: number; indices?: Record<string, string>; remplacants?: string[]; adapte?: boolean }
+
+/** Allergies, mots libres et régimes que ce plat contredit, où ils ont été trouvés, et les lignes de personnes concernées. */
+function contredit(p: Plat, allergenes: readonly string[], profils: readonly Profil[], regimes: readonly string[], libres: readonly string[], frs: readonly FicheRecette[], fiches: readonly Fiche[]) {
+  const indices: Record<string, string> = {};
+  if (libres.length || regimes.length) {
+    const textes = textesDuPlat(p, frs, fiches);
+    for (const a of libres) {
+      const famille = familleDuMot(a);
+      if (famille) { const t = trouverTerme(famille.termes, textes, famille.sans); if (t) indices[a] = t.terme; }
+      else { const t = chercherMot(a, textes); if (t !== undefined) indices[a] = t; }
+    }
+    for (const r of regimes) { const t = trouverPourRegime(r, textes, allergenes); if (t) indices[r] = t.terme; }
+  }
+  const contenus = [...allergenes, ...Object.keys(indices)];
+  const touches = profils.filter((x) => [...x.allergenes, ...x.regimes].some((a) => contenus.includes(a)));
+  return { indices, contenus, touches };
+}
+
+/** Régimes suivis (avec une règle) et allergies libres (hors des 13 allergènes) de ces personnes. */
+const exigences = (profils: readonly Profil[]) => ({
+  regimes: [...new Set(profils.flatMap((p) => p.regimes))].filter((r) => r in REGLES_REGIMES),
+  libres: [...new Set(profils.flatMap((p) => p.allergenes).filter(estAllergieLibre))],
+});
+
 export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): Alerte[] {
-  const regimes = [...new Set(profils.flatMap(p => p.regimes))].filter(r => r in REGLES_REGIMES);
-  if (!profils.some(p => p.allergenes.length) && !regimes.length) return [];
-  const libres = [...new Set(profils.flatMap(p => p.allergenes).filter(estAllergieLibre))];
+  const { regimes, libres } = exigences(profils);
+  if (!profils.some((p) => p.allergenes.length) && !regimes.length) return [];
   const vus = new Set<string>();
-  return niveaux.flatMap(platsCommandes).flatMap(p => {
+  return niveaux.flatMap(platsCommandes).flatMap((p) => {
     const d = platAffiche(p, frs);
     if (vus.has(d.nom)) return [];
     vus.add(d.nom);
-    const indices: Record<string, string> = {};
-    if (libres.length || regimes.length) {
-      const textes = textesDuPlat(p, frs, fiches);
-      for (const a of libres) {
-        const famille = familleDuMot(a);
-        if (famille) { const t = trouverTerme(famille.termes, textes, famille.sans); if (t) indices[a] = t.terme; }
-        else { const t = chercherMot(a, textes); if (t !== undefined) indices[a] = t; }
-      }
-      for (const r of regimes) { const t = trouverPourRegime(r, textes, d.allergenes); if (t) indices[r] = t.terme; }
-    }
-    const contenus = [...d.allergenes, ...Object.keys(indices)];
-    const touches = profils.filter(x => [...x.allergenes, ...x.regimes].some(a => contenus.includes(a)));
+    const { indices, contenus, touches } = contredit(p, d.allergenes, profils, regimes, libres, frs, fiches);
     if (!touches.length) return [];
-    const allergenes = contenus.filter(a => touches.some(x => x.allergenes.includes(a) || x.regimes.includes(a)));
+    const allergenes = contenus.filter((a) => touches.some((x) => x.allergenes.includes(a) || x.regimes.includes(a)));
     const visibles = Object.fromEntries(Object.entries(indices).filter(([, t]) => sansAccents(t) !== sansAccents(d.nom)));
     const personnes = touches.reduce((t, x) => t + x.nb, 0);
     const cle = clePlat(p);
@@ -247,6 +259,13 @@ export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil
       ...(remplacants.length ? { remplacants: remplacants.map((q) => platAffiche(q, frs).nom), adapte } : {}),
     }];
   });
+}
+
+/** Pour qui est servi un plat de remplacement : « 1 sans viande », « 2 gluten · végétarien, 1 curry » ; vide si le plat remplacé ne contredit plus personne. */
+export function restrictionsServies(remplace: Plat, profils: readonly Profil[], frs: readonly FicheRecette[], fiches: readonly Fiche[]): string {
+  const { regimes, libres } = exigences(profils);
+  const { contenus, touches } = contredit(remplace, platAffiche(remplace, frs).allergenes, profils, regimes, libres, frs, fiches);
+  return touches.map((x) => `${x.nb} ${[...x.allergenes, ...x.regimes].filter((a) => contenus.includes(a)).join(" · ").toLowerCase()}`).join(", ");
 }
 
 // ── Fiche à dessiner (même contenu que la fiche de l'app) ──
@@ -299,10 +318,12 @@ export function construireFiche(g: Groupe, menus: readonly Menu[], frs: readonly
         ecart: ecart !== 0,
         plats: platsCommandes(n).map((p, k) => {
           const d = platAffiche(p, frs);
-          const remplace = p.remplace === undefined ? undefined : n.plats.filter((q) => clePlat(q) === p.remplace).map((q) => platAffiche(q, frs).nom)[0];
+          // plat de remplacement : « 1 sans viande » (qui le mange) ; à défaut, le plat qu'il remplace
+          const remplacePlat = p.remplace === undefined ? undefined : n.plats.find((q) => clePlat(q) === p.remplace);
+          const remplace = remplacePlat ? restrictionsServies(remplacePlat, g.profils, frs, fiches) || `à la place de ${platAffiche(remplacePlat, frs).nom}` : "";
           return {
             numero: avecQte ? (p.qte === null ? "–" : String(p.qte)) : String((debuts[i] ?? 0) + k + 1),
-            nom: d.nom, remplace: remplace ?? "",
+            nom: d.nom, remplace,
             pour: personnesDuPlat(p, g.profils).map((x) => `${libelleProfil(x)} · ${x.nb} pers.`),
             risques: d.allergenes.filter((a) => g.allergenes.includes(a)).map((a) => `${a} × ${g.effectifs[a] ?? 1}`),
           };
