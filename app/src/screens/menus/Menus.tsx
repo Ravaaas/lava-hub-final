@@ -38,7 +38,7 @@ export function Menus() {
   const [choisi, setChoisi] = useState('');
   const [vue, setVue] = useState<Vue>('menus');
   const [edition, setEdition] = useState<{ menu: Menu | null } | null>(null);
-  const fiche = etatFiche(fichesRecette, fichesImprimees);
+  const fiche = etatFiche(fichesRecette, menus, fichesImprimees);
 
   /** Retient la fiche allergènes telle qu'elle est maintenant : « À réimprimer » disparaît jusqu'au prochain changement. */
   const marquerImprimee = async (apresImpression: boolean) => {

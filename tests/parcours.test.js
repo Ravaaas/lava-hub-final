@@ -443,8 +443,8 @@ scenario('Fiche allergènes', { anciensMenus: true, ficheImprimee: true }, async
   check('carte changée depuis l\'impression : pastille « À réimprimer » et détail', await a.attend('À réimprimer') && await a.voit('Fiche allergènes à réimprimer')
     && await a.voit('TARTE AU CITRON : + Lactose') && await a.voit('par Alexandre'));
   await a.clic('Voir la fiche allergènes');
-  check('une seule fiche : tous les plats de la carte, par section, sans les menus ni les archives', await a.attend('Édition du')
-    && await a.enOrdre(['Fiche allergènes', 'La carte', 'Plat', 'Gluten', 'Mollusque', 'Partages', 'HOUMOUS BETTERAVE', 'Carte du soir', 'CASSOLETTE DE SAINT-JACQUES', 'TARTE AU CITRON'])
+  check('une seule fiche : tous les plats de la carte, dans l\'ordre du repas, sans les menus ni les archives', await a.attend('Édition du')
+    && await a.enOrdre(['Fiche allergènes', 'La carte', 'Plat', 'Gluten', 'Mollusque', 'Partages', 'HOUMOUS BETTERAVE', 'Plats', 'CASSOLETTE DE SAINT-JACQUES', 'Desserts', 'TARTE AU CITRON'])
     && !(await a.voit('ANCIEN PLAT')) && !(await a.existe('3 temps')));
   const ronds = await page.evaluate(() => [...document.querySelectorAll('.alg-table tbody tr')].filter(r => r.querySelector('.alg-plat'))
     .map(r => r.querySelector('.alg-plat').innerText.trim().split('\n')[0] + ':' + [...r.querySelectorAll('.alg-x')].map(x => x.getAttribute('aria-label')).join(',')));

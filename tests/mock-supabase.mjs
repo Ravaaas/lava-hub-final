@@ -82,8 +82,8 @@ const ANCIENS_MENUS = { id: 'menus', data: { items: [
 // Fiche allergènes de la carte imprimée avant un changement : la tarte n'avait que du Gluten (la base lui compte aussi le Lactose).
 const FICHE_IMPRIMEE = { menu_id: 'carte', menu_nom: 'La carte', imprime_le: '2026-11-20T09:00:00Z', imprime_par: 'Alexandre', lignes: [
   { cle: 'r3', temps: 'Partages', nom: 'HOUMOUS BETTERAVE', allergenes: ['Sésame'] },
-  { cle: 'r1', temps: 'Carte du soir', nom: 'CASSOLETTE DE SAINT-JACQUES', allergenes: ['Céleri', 'Gluten', 'Lactose'] },
-  { cle: 'r2', temps: 'Carte du soir', nom: 'TARTE AU CITRON', allergenes: ['Gluten'] },
+  { cle: 'r1', temps: 'Plats', nom: 'CASSOLETTE DE SAINT-JACQUES', allergenes: ['Céleri', 'Gluten', 'Lactose'] },
+  { cle: 'r2', temps: 'Desserts', nom: 'TARTE AU CITRON', allergenes: ['Gluten'] },
 ] };
 
 // Clé de chaque table (insertion = remplacement si la clé existe déjà, comme un upsert PostgREST).

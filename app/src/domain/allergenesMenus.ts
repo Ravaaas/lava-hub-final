@@ -1,10 +1,10 @@
 // Fiche allergènes unique de la carte (onglet Menus > Fiche allergènes) et alerte « À réimprimer ».
 // Les règles sont dans supabase/functions/allergenes-menus/regles.ts, partagé avec la fonction qui envoie l'email :
 // l'écran et l'email disent la même chose.
-import type { FicheRecette } from './types';
+import type { FicheRecette, Menu } from './types';
 import { comparer, ecartVide, FICHE_CARTE, ficheCarte, libellesEcart, type Ecart, type LigneAllergenes } from '../../../supabase/functions/allergenes-menus/regles';
 
-export { colonne, comparer, ecartVide, FICHE_CARTE, ficheCarte, libellesEcart, lireLignes, repartir, SECTIONS_CARTE, signatureEcart } from '../../../supabase/functions/allergenes-menus/regles';
+export { colonne, comparer, ecartVide, FICHE_CARTE, ficheCarte, libellesEcart, lireLignes, repartir, SECTIONS, sectionsDesPlats, signatureEcart, STATUTS_FICHE } from '../../../supabase/functions/allergenes-menus/regles';
 export type { Ecart, LigneAllergenes } from '../../../supabase/functions/allergenes-menus/regles';
 
 /** Dernière fiche allergènes imprimée (table allergenes_imprimes ; la carte a la clé « carte »). */
@@ -20,9 +20,9 @@ export interface EtatFiche {
   changements: string[];
 }
 
-/** État de la fiche allergènes de la carte : ses lignes actuelles et ce qui a changé depuis la dernière impression. */
-export function etatFiche(frs: readonly FicheRecette[], imprimees: readonly FicheImprimee[]): EtatFiche {
-  const lignes = ficheCarte(frs);
+/** État de la fiche allergènes de la carte (sections Partages, Entrées, Plats, Desserts tirées des menus) : ses lignes actuelles et ce qui a changé depuis la dernière impression. */
+export function etatFiche(frs: readonly FicheRecette[], menus: readonly Menu[], imprimees: readonly FicheImprimee[]): EtatFiche {
+  const lignes = ficheCarte(frs, menus);
   const imprimee = imprimees.find(i => i.menuId === FICHE_CARTE.id) ?? null;
   if (!imprimee) return { lignes, imprimee, ecart: null, changements: [] };
   const e = comparer(imprimee.lignes, lignes);

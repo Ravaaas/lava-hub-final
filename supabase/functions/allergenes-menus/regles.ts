@@ -1,7 +1,7 @@
 // Fiche allergènes de la carte : tableau plats × allergènes, et comparaison avec la dernière fiche imprimée.
 // Fichier PARTAGÉ : la fonction « allergenes-menus » l'utilise, et l'app l'importe (app/src/domain/allergenesMenus.ts),
 // pour que l'écran et l'email disent exactement la même chose. Aucun import : il se déploie tel quel avec la fonction.
-// ALLERGENES et SECTIONS_CARTE sont comparés à ceux de l'app par app/src/domain/allergenesMenus.test.ts.
+// ALLERGENES et STATUTS_FICHE sont comparés à ceux de l'app par app/src/domain/allergenesMenus.test.ts.
 
 // ── Lecture prudente (valeur inattendue → valeur vide) ──
 const texte = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
@@ -20,13 +20,11 @@ export function listeAllergenes(v: unknown): string[] {
 /** Ce qu'il faut d'une fiche recette : son nom, son statut et ses allergènes (calculés par la base). */
 export interface FicheAllergenes { id: string; nom: string; statut: string; allergenes: readonly string[] }
 
-/** La fiche allergènes unique : tous les plats de la carte actuelle, par section (même liste de statuts que l'app, STATUTS_CARTE). */
+/** La fiche allergènes unique : tous les plats de la carte actuelle (même liste de statuts que l'app, STATUTS_CARTE). */
 export const FICHE_CARTE = { id: "carte", nom: "La carte" };
-export const SECTIONS_CARTE: readonly { statut: string; nom: string }[] = [
-  { statut: "partages", nom: "Partages" },
-  { statut: "carte", nom: "Carte du soir" },
-  { statut: "lunch", nom: "Lunch" },
-];
+export const STATUTS_FICHE: readonly string[] = ["partages", "carte", "lunch"];
+/** Sections de la fiche, dans l'ordre du repas. */
+export const SECTIONS: readonly string[] = ["Partages", "Entrées", "Plats", "Desserts"];
 
 // ── Tableau de la fiche allergènes ──
 
@@ -36,11 +34,52 @@ export interface LigneAllergenes { cle: string; temps: string; nom: string; alle
 const sansAccents = (t: string): string => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/œ/g, "oe").trim();
 const trier = (l: readonly string[]): string[] => [...new Set(l)].sort((a, b) => a.localeCompare(b, "fr"));
 
-/** Lignes de la fiche allergènes de la carte : Partages, Carte du soir, Lunch ; dans chaque section, par ordre alphabétique. */
-export function ficheCarte(frs: readonly FicheAllergenes[]): LigneAllergenes[] {
-  return SECTIONS_CARTE.flatMap((s) => frs.filter((f) => f.statut === s.statut)
-    .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }))
-    .map((f) => ({ cle: f.id, temps: s.nom, nom: f.nom, allergenes: trier(f.allergenes) })));
+/** Un menu tel qu'écrit (lava_config, ligne « menus ») ou lu par l'app : seuls le nom, les temps et l'id des fiches servent. */
+export interface MenuTemps { nom: string; services: readonly { nom: string; plats: readonly unknown[] }[] }
+
+/** Section d'un temps de menu : « Entrée », « Plat », « Dessert », « Partages » ; dans un menu à temps numérotés, Temps 1 = entrée, dernier temps = dessert. */
+function sectionDuTemps(temps: string, rang: number, nbTemps: number): string | null {
+  const t = sansAccents(temps).replace(/s$/, "");
+  if (t === "partage") return "Partages";
+  if (t === "entree") return "Entrées";
+  if (t === "dessert") return "Desserts";
+  if (t === "plat") return "Plats";
+  if (/^temps \d+$/.test(t)) return rang === 0 ? "Entrées" : rang === nbTemps - 1 ? "Desserts" : "Plats";
+  return null;
+}
+
+/**
+ * Section de chaque plat (id de fiche recette), d'après les temps où il est servi dans les menus.
+ * Un plat servi à plusieurs places : Partages, puis Entrées, puis Desserts l'emportent sur Plats (la Carte du soir range tout le salé en « Plat »).
+ */
+export function sectionsDesPlats(menus: readonly MenuTemps[]): Map<string, string> {
+  const priorite = ["Partages", "Entrées", "Desserts", "Plats"];
+  const r = new Map<string, string>();
+  for (const m of menus) {
+    m.services.forEach((s, rang) => {
+      const sec = sectionDuTemps(s.nom, rang, m.services.length);
+      if (!sec) return;
+      for (const p of s.plats) {
+        const id = texte(objet(p).frId);
+        if (!id) continue;
+        const avant = r.get(id);
+        if (!avant || priorite.indexOf(sec) < priorite.indexOf(avant)) r.set(id, sec);
+      }
+    });
+  }
+  return r;
+}
+
+/**
+ * Lignes de la fiche allergènes de la carte, dans l'ordre du repas : Partages, Entrées, Plats, Desserts ;
+ * dans chaque section, par ordre alphabétique. Section tirée des menus ; plat de statut Partages = Partages ; plat absent des menus = Plats.
+ */
+export function ficheCarte(frs: readonly FicheAllergenes[], menus: readonly MenuTemps[]): LigneAllergenes[] {
+  const sections = sectionsDesPlats(menus);
+  const section = (f: FicheAllergenes) => (f.statut === "partages" ? "Partages" : sections.get(f.id) ?? "Plats");
+  return frs.filter((f) => STATUTS_FICHE.includes(f.statut))
+    .map((f) => ({ cle: f.id, temps: section(f), nom: f.nom, allergenes: trier(f.allergenes) }))
+    .sort((a, b) => SECTIONS.indexOf(a.temps) - SECTIONS.indexOf(b.temps) || a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }));
 }
 
 /** Colonne de l'allergène (une des 13), ou null s'il n'est pas dans la liste (écrit autrement : il va dans « Autres »). */

@@ -6,7 +6,8 @@
 //   ALLERGENES_DESTINATAIRE  facultatif : adresse(s) séparées par des virgules (par défaut restaurant@lava-paris.com)
 //   Envoi : les mêmes secrets que « recap-pertes » (GMAIL_USER et GMAIL_APP_PASSWORD, ou RESEND_API_KEY et RECAP_EXPEDITEUR).
 //
-// Principe : une seule fiche allergènes, pour tous les plats de la carte actuelle (fiches recette Partages, Carte du soir, Lunch).
+// Principe : une seule fiche allergènes, pour tous les plats de la carte actuelle (fiches recette Partages, Carte du soir, Lunch),
+// rangés Partages, Entrées, Plats, Desserts d'après les temps des menus où ils sont servis.
 // L'app retient la fiche imprimée (table allergenes_imprimes, ligne « carte » : plat → allergènes). Toutes les 15 minutes
 // (pg_cron, supabase/sql/allergenes-menus.sql), la fonction compare la carte actuelle à la fiche imprimée. Un écart doit rester le même
 // 30 minutes (personne n'est en train de modifier) avant l'email ; un seul email par écart (table allergenes_alertes) ; l'écart
@@ -106,15 +107,25 @@ Deno.serve(async (req) => {
     const apercu = corps.apercu === true, essai = corps.essai === true;
     if (!apercu && !essai && !(jeton && corps.auto === true)) return reply({ ok: false, message: "Appel inconnu" });
 
-    const [fr, imp, al] = await Promise.all([
+    const [fr, cfg, imp, al] = await Promise.all([
       admin.from("fiches_recette").select("id,nom,statut,allergenes"),   // sans les photos
+      admin.from("lava_config").select("data").eq("id", "menus").maybeSingle(),   // sections (entrée, plat, dessert) tirées des menus
       admin.from("allergenes_imprimes").select("lignes,imprime_le,imprime_par").eq("menu_id", FICHE_CARTE.id).maybeSingle(),
       admin.from("allergenes_alertes").select("ecart,ecart_le,prevenu").eq("menu_id", FICHE_CARTE.id).maybeSingle(),
     ]);
-    const err = [fr, imp, al].find((r) => r.error)?.error;
+    const err = [fr, cfg, imp, al].find((r) => r.error)?.error;
     if (err) return reply({ ok: false, message: err.message });
     const frs = (fr.data ?? []).map((l) => ({ id: String(l.id), nom: String(l.nom ?? ""), statut: String(l.statut ?? ""), allergenes: listeAllergenes(l.allergenes) }));
-    const lignes = ficheCarte(frs);
+    const items = (cfg.data?.data as { items?: unknown[] } | null)?.items;
+    const menus = (Array.isArray(items) ? items : []).map((m) => {
+      const o = (m ?? {}) as { nom?: unknown; services?: unknown };
+      const services = (Array.isArray(o.services) ? o.services : []).map((sv) => {
+        const x = (sv ?? {}) as { nom?: unknown; plats?: unknown };
+        return { nom: String(x.nom ?? ""), plats: Array.isArray(x.plats) ? x.plats : [] };
+      });
+      return { nom: String(o.nom ?? ""), services };
+    });
+    const lignes = ficheCarte(frs, menus);
     const i = imp.data, a = al.data;
     const e = i ? comparer(lireLignes(i.lignes), lignes) : null;
     const ecart = e && !ecartVide(e) ? e : null;
