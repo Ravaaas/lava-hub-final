@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { useEchap } from './Fenetre';
 import { Icone } from './Icone';
 
-export type OptionSelecteur = { valeur: string; libelle: string };
+export type OptionSelecteur = { valeur: string; libelle: string; /** titre de section affiché avant la 1re option d'un groupe */ groupe?: string };
 
 /** Choix dans une liste (à la place du menu déroulant du navigateur) : liste flottante sur ordinateur, feuille en bas sur téléphone,
  *  recherche au-delà de 8 options. `vide` = texte gris du choix vide, proposé en tête de liste. */
@@ -61,11 +61,14 @@ export function Selecteur({ id, libelle, options, valeur, onChange, vide, classN
         <div className="sel-pop" style={pos} role="listbox" aria-label={libelle} onKeyDown={fleches}>
           {liste.length > 8 && <input className="fi2 sel-cherche" type="search" placeholder="Rechercher…" aria-label="Rechercher dans la liste" value={filtre} onChange={e => { setFiltre(e.target.value); }} />}
           <div className="sel-liste">
-            {visibles.map(o => (
-              <button key={o.valeur} type="button" role="option" aria-selected={o.valeur === valeur} className={`sel-opt${o.valeur === '' && vide !== undefined ? ' sel-vide' : ''}`}
+            {visibles.map((o, i) => (
+              <Fragment key={o.valeur}>
+              {o.groupe && o.groupe !== visibles[i - 1]?.groupe && <div className="sel-groupe" role="presentation">{o.groupe}</div>}
+              <button type="button" role="option" aria-selected={o.valeur === valeur} className={`sel-opt${o.valeur === '' && vide !== undefined ? ' sel-vide' : ''}`}
                 onClick={() => { choisir(o.valeur); }}>
                 <span>{o.libelle}</span>{o.valeur === valeur && <Icone nom="check" taille={16} />}
               </button>
+              </Fragment>
             ))}
             {!visibles.length && <div className="sel-rien">Aucun résultat</div>}
           </div>
