@@ -2,6 +2,11 @@
 // Chaque ajout visible par l'équipe reçoit une entrée ici.
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
+    date: "2026-11-25",
+    titre: "Fiche groupe : les plats de remplacement viennent de la carte actuelle",
+    desc: "Les plats proposés à la place d'un plat en conflit (allergie ou régime) sont désormais uniquement des fiches recette de la carte actuelle : statuts Carte, Partages et Lunch. Les plats libres, les fiches Best of et les fiches archivées ne sont plus proposés, et les menus ne sont plus consultés. Les autres plats du niveau passent en premier s'ils sont à la carte."
+  },
+  {
     date: "2026-11-24",
     titre: "Fiche groupe : l'app propose un plat de remplacement",
     desc: "Sous chaque plat en conflit de l'encadré « Plats à adapter » du formulaire, jusqu'à quatre plats compatibles avec toutes les restrictions des personnes concernées sont proposés : d'abord les autres plats du niveau, puis les plats du même temps dans vos menus (les autres entrées pour une entrée), puis toutes les fiches recette. Un clic sur une proposition l'ajoute au niveau pour le nombre de personnes concernées, retire ce nombre du plat en conflit (un tartare de veau à 8 passe à 7) et lie les deux plats : la ligne passe en gris « remplacé par… »."

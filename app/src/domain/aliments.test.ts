@@ -116,7 +116,7 @@ describe('plats à adapter avec régimes et mots généraux', () => {
   });
 });
 
-describe('alternatives proposées à la place d\'un plat en conflit', () => {
+describe('alternatives proposées à la place d\'un plat en conflit : la carte actuelle seulement', () => {
   const frs = [
     { id: 't', nom: 'TARTARE DE VEAU, GARUM ANCHOIS', statut: 'carte', allergenes: [], elements: [] },
     { id: 'r', nom: 'RISOTTO DE CÈPES', statut: 'carte', allergenes: [], elements: [] },
@@ -124,38 +124,37 @@ describe('alternatives proposées à la place d\'un plat en conflit', () => {
     { id: 'p', nom: 'POULET RÔTI', statut: 'carte', allergenes: [], elements: [] },
     { id: 'c', nom: 'COURGE RÔTIE, CHÈVRE', statut: 'carte', allergenes: ['Lactose'], elements: [] },
     { id: 'a', nom: 'ANCIEN PLAT VÉGÉTAL', statut: 'archive', allergenes: [], elements: [] },
-    { id: 'z', nom: 'ZUCCHINI GRILLÉ', statut: 'lunch', allergenes: [], elements: [] },
+    { id: 'b', nom: 'BEST OF VÉGÉTAL', statut: 'bestof', allergenes: [], elements: [] },
+    { id: 'l', nom: 'LENTILLES DU LUNCH', statut: 'lunch', allergenes: [], elements: [] },
+    { id: 'z', nom: 'ZUCCHINI GRILLÉ', statut: 'partages', allergenes: [], elements: [] },
   ] as unknown as FicheRecette[];
-  const menus = [{ id: 'm', nom: 'Carte', services: [{ nom: 'Entrée', plats: [{ frId: 'h' }, { texte: 'Velouté de potimarron' }, { frId: 'supprimee' }] }, { nom: 'Plat', plats: [{ frId: 'p' }] }] }];
-  const niveaux: Niveau[] = [{ nom: 'Entrée', plats: [{ frId: 't', qte: 8 }, { frId: 'r', qte: null }] }, { nom: 'Plat', plats: [{ frId: 'p', qte: 8 }] }];
+  // « Velouté de potimarron » est un plat libre du niveau, « BEST OF VÉGÉTAL » est hors carte : ni l'un ni l'autre n'est proposé
+  const niveaux: Niveau[] = [{ nom: 'Entrée', plats: [{ frId: 't', qte: 8 }, { frId: 'r', qte: null }, { texte: 'Velouté de potimarron', qte: null }, { frId: 'b', qte: null }] }];
   const noms = (l: ReturnType<typeof propositionsPour>) => l.map(x => `${x.origine}:${x.nom}`);
+  const conflit = niveaux[0]?.plats[0];
 
-  it('autres plats du niveau, puis plats du même temps dans les menus, puis toutes les fiches', () => {
-    const profils: Profil[] = [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }];
-    const conflit = niveaux[0]?.plats[0];
+  it('autres plats du niveau à la carte, puis toutes les fiches de la carte (Carte, Partages, Lunch)', () => {
     if (!conflit) throw new Error('plat absent');
-    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm'))).toEqual([
-      'niveau:RISOTTO DE CÈPES', 'menu:HOUMOUS BETTERAVE', 'menu:Velouté de potimarron', 'fiches:COURGE RÔTIE, CHÈVRE']);
-    // le plat en conflit, les plats d'un autre temps (Plat), les fiches archivées et les fiches supprimées ne sont jamais proposés
-    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm', 10)).join('|')).not.toMatch(/TARTARE|POULET|ANCIEN|supprim/);
-    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm', 10)).at(-1)).toBe('fiches:ZUCCHINI GRILLÉ');
-    expect(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm', 2)).toHaveLength(2);
+    const profils: Profil[] = [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }];
+    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], 10))).toEqual([
+      'niveau:RISOTTO DE CÈPES', 'fiches:COURGE RÔTIE, CHÈVRE', 'fiches:HOUMOUS BETTERAVE', 'fiches:LENTILLES DU LUNCH', 'fiches:ZUCCHINI GRILLÉ']);
+    // jamais : le plat en conflit, une viande, une fiche archivée, un Best of, un plat libre
+    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], 10)).join('|')).not.toMatch(/TARTARE|POULET|ANCIEN|BEST OF|potimarron/);
+    expect(propositionsPour(niveaux, 0, conflit, profils, frs, [], 2)).toHaveLength(2);
   });
 
   it('compatible avec TOUTES les restrictions des personnes concernées', () => {
-    const profils: Profil[] = [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }, { nb: 1, allergenes: ['Sésame'], regimes: ['Végétalien'] }];
-    const conflit = niveaux[0]?.plats[0];
     if (!conflit) throw new Error('plat absent');
-    // sésame (houmous), lactose déclaré (courge au chèvre : végétalien) exclus ; le risotto, le velouté et le zucchini restent
-    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], menus, 'm', 10))).toEqual(['niveau:RISOTTO DE CÈPES', 'menu:Velouté de potimarron', 'fiches:ZUCCHINI GRILLÉ']);
+    const profils: Profil[] = [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }, { nb: 1, allergenes: ['Sésame'], regimes: ['Végétalien'] }];
+    // sésame (houmous), lactose déclaré (courge au chèvre : végétalien) exclus
+    expect(noms(propositionsPour(niveaux, 0, conflit, profils, frs, [], 10))).toEqual(['niveau:RISOTTO DE CÈPES', 'fiches:LENTILLES DU LUNCH', 'fiches:ZUCCHINI GRILLÉ']);
   });
 
-  it('aucune proposition quand rien n\'est contredit, ou quand rien ne convient', () => {
-    const conflit = niveaux[0]?.plats[0];
+  it('aucune proposition quand rien n\'est contredit, ou quand rien ne convient à la carte', () => {
     if (!conflit) throw new Error('plat absent');
-    expect(propositionsPour(niveaux, 0, conflit, [{ nb: 1, allergenes: ['Gluten'], regimes: [] }], frs, [], menus, 'm')).toEqual([]);
-    expect(propositionsPour(niveaux, 5, conflit, [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }], frs, [], menus, 'm')).toEqual([]);
-    const toutViande = frs.map(f => ({ ...f, nom: `${f.nom} AU POULET` })) as unknown as FicheRecette[];
-    expect(propositionsPour(niveaux, 0, conflit, [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }], toutViande, [], [], null)).toEqual([]);
+    expect(propositionsPour(niveaux, 0, conflit, [{ nb: 1, allergenes: ['Gluten'], regimes: [] }], frs, [])).toEqual([]);
+    expect(propositionsPour(niveaux, 5, conflit, [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }], frs, [])).toEqual([]);
+    const horsCarte = frs.map(f => ({ ...f, statut: f.id === 't' ? 'carte' : 'archive' })) as unknown as FicheRecette[];
+    expect(propositionsPour(niveaux, 0, conflit, [{ nb: 1, allergenes: [], regimes: ['Sans viande'] }], horsCarte, [])).toEqual([]);
   });
 });

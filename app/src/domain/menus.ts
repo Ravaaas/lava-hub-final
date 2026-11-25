@@ -204,17 +204,20 @@ export function alertesMenu(niveaux: readonly Niveau[], profils: readonly Profil
   });
 }
 
-/** Plat proposé à la place d'un plat en conflit, et d'où il vient : autre plat du niveau, plat du même temps d'un menu, fiche recette. */
-export interface Proposition { plat: Plat; nom: string; origine: 'niveau' | 'menu' | 'fiches' }
+/** Plat proposé à la place d'un plat en conflit, et d'où il vient : autre plat du niveau ou fiche recette de la carte. */
+export interface Proposition { plat: Plat; nom: string; origine: 'niveau' | 'fiches' }
+
+/** Statuts des fiches recette qui forment la carte actuelle (Best of et archivées n'en font pas partie). */
+export const STATUTS_CARTE: readonly string[] = ['carte', 'partages', 'lunch'];
 
 /**
- * Alternatives au plat en conflit du niveau `iNiveau` : des plats qui ne contredisent AUCUNE restriction des personnes concernées
- * (régimes, allergies, mots libres), au plus `max`. On cherche d'abord les autres plats du niveau, puis les plats du même temps dans les menus
- * (le menu choisi en premier ; le temps se reconnaît à son nom : « Entrée »), puis toutes les fiches recette non archivées.
+ * Alternatives au plat en conflit du niveau `iNiveau` : des plats de la CARTE ACTUELLE (fiches recette Carte, Partages et Lunch)
+ * qui ne contredisent AUCUNE restriction des personnes concernées (régimes, allergies, mots libres), au plus `max`.
+ * On cherche d'abord les autres plats du niveau qui sont à la carte (jamais un plat libre), puis toutes les autres fiches de la carte.
  */
 export function propositionsPour(
   niveaux: readonly Niveau[], iNiveau: number, conflit: PlatCompte, profils: readonly Profil[],
-  frs: readonly FicheRecette[], fiches: readonly Fiche[], menus: readonly Menu[], menuId: string | null, max = 4,
+  frs: readonly FicheRecette[], fiches: readonly Fiche[], max = 4,
 ): Proposition[] {
   const niveau = niveaux[iNiveau];
   if (!niveau) return [];
@@ -223,25 +226,17 @@ export function propositionsPour(
   if (!concernes.length) return [];
   const ex = exigences(concernes);
   const compatible = (p: Plat) => contredit(p, platAffiche(p, frs, fiches).allergenes, concernes, ex.regimes, ex.libres, frs, fiches).touches.length === 0;
+  const alaCarte = new Set(frs.filter(f => STATUTS_CARTE.includes(f.statut)).map(f => f.id));
   const vues = new Set<string>([clePlat(conflit)]);
   const out: Proposition[] = [];
   const essayer = (p: Plat, origine: Proposition['origine']) => {
-    if (out.length >= max) return;
-    const cle = clePlat(p);
-    if (vues.has(cle)) return;
-    vues.add(cle);
-    const { nom } = platAffiche(p, frs, fiches);
-    const supprime = 'frId' in p && !frs.some(f => f.id === p.frId);   // plat d'un menu dont la fiche n'existe plus
-    if (nom.trim() && !supprime && compatible(p)) out.push({ plat: p, nom, origine });
+    if (out.length >= max || !('frId' in p) || !alaCarte.has(p.frId)) return;
+    if (vues.has(p.frId)) return;
+    vues.add(p.frId);
+    if (compatible(p)) out.push({ plat: p, nom: platAffiche(p, frs, fiches).nom, origine });
   };
-  for (const q of niveau.plats) if (q.remplace === undefined) essayer('frId' in q ? { frId: q.frId } : { texte: q.texte }, 'niveau');
-  const temps = sansAccents(niveau.nom);
-  if (temps) {
-    for (const m of [...menus.filter(x => x.id === menuId), ...menus.filter(x => x.id !== menuId)]) {
-      for (const sv of servicesAffiches(m)) if (sansAccents(sv.nom) === temps) for (const p of sv.plats) essayer(p, 'menu');
-    }
-  }
-  for (const f of frs.filter(x => x.statut !== 'archive').sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))) essayer({ frId: f.id }, 'fiches');
+  for (const q of niveau.plats) if (q.remplace === undefined && 'frId' in q) essayer({ frId: q.frId }, 'niveau');
+  for (const f of frs.filter(x => alaCarte.has(x.id)).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))) essayer({ frId: f.id }, 'fiches');
   return out;
 }
 

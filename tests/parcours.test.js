@@ -772,7 +772,7 @@ scenario('Groupes alternatives', {}, async (a) => {
   await a.clic('Ajouter une personne'); await a.clic('Sans viande');
   check('plat à adapter : le régime sans viande trouve le veau', await a.attend('Tartare de veau — Sans viande (veau) · 1 pers.'));
   check('alternatives proposées automatiquement', await a.voit('Proposer') && await a.existe('Servir CASSOLETTE DE SAINT-JACQUES à la place de Tartare de veau')
-    && !(await a.existe('Servir Tartare de veau à la place de Tartare de veau')));
+    && !(await a.existe('Servir Tartare de veau à la place de Tartare de veau')) && !(await a.existe('Servir ANCIEN PLAT à la place de Tartare de veau')));
   await a.clic('Servir CASSOLETTE DE SAINT-JACQUES à la place de Tartare de veau');
   check('un clic : plat ajouté, nombre retiré du plat en conflit, total juste', await a.attend('Plats adaptés') && (await a.champ('Nombre — Tartare de veau'))?.valeur === '7'
     && (await a.champ('Nombre — CASSOLETTE DE SAINT-JACQUES'))?.valeur === '1' && await a.voit('Total : 8 / 8 pers.'));

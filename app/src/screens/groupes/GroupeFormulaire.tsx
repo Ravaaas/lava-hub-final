@@ -123,7 +123,7 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
       <div className="fg2"><label className="fl" htmlFor={id.boissons}>Boissons précommandées</label>
         <textarea className="fta" id={id.boissons} placeholder="ex: 3 magnums de Chablis, 2 bouteilles de Saint-Joseph, eaux et cafés" value={boissons} onChange={e => { setBoissons(e.target.value); }} /></div>
       <Profils profils={profils} onChange={setProfils} niveaux={niveaux} onNiveaux={setNiveaux}
-        menuId={menuId} />
+        />
       <div className="fg2" style={{ marginTop: '1.25rem' }}><span className="fl">Règlement</span>
         <Choix libelle="Règlement" options={REGLEMENTS} valeur={reglement} onChange={setReglement} /></div>
       {reglement !== 'aucun' && <div className="fg2"><label className="fl" htmlFor={id.montant}>{libelleMontant(reglement)}</label>
@@ -140,8 +140,8 @@ type ProfilSaisi = { id: string; nb: string; allergenes: string[]; regimes: stri
  * Allergies et régimes : une ligne par personne, ou par personnes qui ont exactement les mêmes
  * (ex. 1 personne Œuf + Moutarde, 1 personne Œuf seul). Une seule ligne ouverte à la fois ; les autres sont résumées.
  */
-function Profils({ profils, menuId, niveaux, onNiveaux, onChange }: { profils: ProfilSaisi[]; menuId: string; niveaux: Niveau[]; onNiveaux: (n: Niveau[]) => void; onChange: (p: ProfilSaisi[]) => void }) {
-  const { fichesRecette, fiches, menus } = useDonnees();
+function Profils({ profils, niveaux, onNiveaux, onChange }: { profils: ProfilSaisi[]; niveaux: Niveau[]; onNiveaux: (n: Niveau[]) => void; onChange: (p: ProfilSaisi[]) => void }) {
+  const { fichesRecette, fiches } = useDonnees();
   const notifier = useNotifier();
   // plats à adapter et, pour chacun, des alternatives compatibles (cherchées une fois par changement de plats ou de personnes)
   const analyse = useMemo(() => {
@@ -152,10 +152,10 @@ function Profils({ profils, menuId, niveaux, onNiveaux, onChange }: { profils: P
       if (a.adapte) continue;
       const i = niveaux.findIndex(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
       const conflit = niveaux[i]?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
-      if (conflit) propositions.set(a.plat, propositionsPour(niveaux, i, conflit, personnes, fichesRecette, fiches, menus, menuId || null));
+      if (conflit) propositions.set(a.plat, propositionsPour(niveaux, i, conflit, personnes, fichesRecette, fiches));
     }
     return { alertes, propositions };
-  }, [niveaux, profils, fichesRecette, fiches, menus, menuId]);
+  }, [niveaux, profils, fichesRecette, fiches]);
   // un clic sur une proposition : le plat est ajouté au niveau (avec le nombre de personnes concernées, retiré du plat en conflit) et lié « à la place de »
   const accepter = (a: Alerte, pr: Proposition) => {
     const i = niveaux.findIndex(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
@@ -232,8 +232,8 @@ function Profils({ profils, menuId, niveaux, onNiveaux, onChange }: { profils: P
             {propositions && (propositions.length
               ? <div className="alerte-menu-props"><span>Proposer :</span>{propositions.map(pr => (
                 <button key={clePlat(pr.plat)} type="button" className="alerte-menu-prop" aria-label={`Servir ${pr.nom} à la place de ${a.plat}`}
-                  title={pr.origine === 'niveau' ? 'Déjà dans ce niveau' : pr.origine === 'menu' ? 'Plat du même temps dans vos menus' : 'Fiche recette'} onClick={() => { accepter(a, pr); }}>{pr.nom}</button>))}</div>
-              : <div className="alerte-menu-aucune">Aucune alternative compatible dans vos fiches recette et vos menus.</div>)}
+                  title={pr.origine === 'niveau' ? 'Déjà dans ce niveau' : 'Plat de la carte actuelle'} onClick={() => { accepter(a, pr); }}>{pr.nom}</button>))}</div>
+              : <div className="alerte-menu-aucune">Aucune alternative compatible à la carte actuelle.</div>)}
           </>
         );
       }} />
