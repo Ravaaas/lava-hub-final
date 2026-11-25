@@ -1,12 +1,11 @@
 import { Fragment, useState } from 'react';
 import type { Menu } from '../../domain/types';
 import { MENUS_DE_DEPART, platAffiche, servicesAffiches } from '../../domain/menus';
-import { etatFiche, parTemps, repartir, type EtatFiche } from '../../domain/allergenesMenus';
+import { etatFiche, FICHE_CARTE, parTemps, repartir, type EtatFiche } from '../../domain/allergenesMenus';
 import { ALLERGENES } from '../../domain/allergenes';
 import { pluriel } from '../../domain/texte';
 import { enregistrerMenus } from '../../db/config';
 import { enregistrerFicheImprimee } from '../../db/allergenesImprimes';
-import { Choix } from '../../ui/Choix';
 import { useDonnees } from '../../etat/Donnees';
 import { useMoi } from '../../etat/Session';
 import { Icone } from '../../ui/Icone';
@@ -28,7 +27,7 @@ export function useEnregistrerMenus() {
   };
 }
 
-type Vue = 'menu' | 'allergenes';
+type Vue = 'menus' | 'allergenes';
 
 export function Menus() {
   const { menus, fichesRecette, fichesImprimees, recharger, journal } = useDonnees();
@@ -37,34 +36,50 @@ export function Menus() {
   const confirmer = useConfirmer();
   const enregistrer = useEnregistrerMenus();
   const [choisi, setChoisi] = useState('');
-  const [vue, setVue] = useState<Vue>('menu');
+  const [vue, setVue] = useState<Vue>('menus');
   const [edition, setEdition] = useState<{ menu: Menu | null } | null>(null);
-  const etat = (m: Menu) => etatFiche(m, fichesRecette, fichesImprimees);
+  const fiche = etatFiche(fichesRecette, fichesImprimees);
 
   /** Retient la fiche allergènes telle qu'elle est maintenant : « À réimprimer » disparaît jusqu'au prochain changement. */
-  const marquerImprimee = async (m: Menu, e: EtatFiche, apresImpression: boolean) => {
-    const r = await enregistrerFicheImprimee(m.id, m.nom, e.lignes);
+  const marquerImprimee = async (apresImpression: boolean) => {
+    const r = await enregistrerFicheImprimee(FICHE_CARTE.id, FICHE_CARTE.nom, fiche.lignes);
     if (!r.ok) { notifier('Impossible de noter la fiche comme imprimée : ' + r.message, 'err'); return; }
-    await journal('impression fiche allergènes', m.nom);
+    await journal('impression fiche allergènes', FICHE_CARTE.nom);
     await recharger();
     if (!apresImpression) notifier('Fiche allergènes notée comme imprimée');
   };
+  const confirmerMarquer = () => void (async () => {
+    if (await confirmer('Noter la fiche allergènes de la carte comme réimprimée ? Fais-le seulement si la fiche affichée est bien la nouvelle.', 'Marquer comme imprimée')) await marquerImprimee(false);
+  })();
 
   const creerMenusDeDepart = () => enregistrer(
     MENUS_DE_DEPART.map(m => ({ id: crypto.randomUUID(), nom: m.nom, services: m.temps.map(nom => ({ nom, plats: [] })) })), 'création menus', 'menus');
 
   const menu = menus.find(m => m.id === choisi) ?? menus[0];
-  const etatMenu = menu ? etat(menu) : null;
 
   return (
     <>
       <div className="ph">
-        <div><div className="ph-title">Menus</div><div className="ph-sub">Formules et contenu de chaque menu</div></div>
+        <div><div className="ph-title">Menus</div><div className="ph-sub">Formules, contenu de chaque menu et fiche allergènes de la carte</div></div>
         <div className="ph-actions">
-          {admin && <button type="button" className="btn btn-p" onClick={() => { setEdition({ menu: null }); }}><Icone nom="plus" />Nouveau menu</button>}
+          {admin && vue === 'menus' && <button type="button" className="btn btn-p" onClick={() => { setEdition({ menu: null }); }}><Icone nom="plus" />Nouveau menu</button>}
         </div>
       </div>
-      {!menu ? (
+      <div className="choix alg-vues" role="tablist" aria-label="Affichage">
+        <button type="button" role="tab" aria-selected={vue === 'menus'} className={`log-filter${vue === 'menus' ? ' active' : ''}`} onClick={() => { setVue('menus'); }}>Les menus</button>
+        <button type="button" role="tab" aria-selected={vue === 'allergenes'} className={`log-filter${vue === 'allergenes' ? ' active' : ''}`} onClick={() => { setVue('allergenes'); }}>
+          Fiche allergènes{fiche.ecart && <span className="tag tag-danger alg-pastille">À réimprimer</span>}
+        </button>
+      </div>
+      <AlerteReimpression etat={fiche} vue={vue} onVoir={() => { setVue('allergenes'); }} onMarquer={confirmerMarquer} />
+      {vue === 'allergenes' ? (
+        <>
+          <div className="menu-actions">
+            <button type="button" className="btn btn-g btn-sm" onClick={() => { window.print(); void marquerImprimee(true); }}><Icone nom="printer" />Imprimer</button>
+          </div>
+          <FeuilleAllergenes etat={fiche} />
+        </>
+      ) : !menu ? (
         <div className="es">
           <div className="es-icon"><Icone nom="book" taille={20} /></div>
           <h3>Aucun menu</h3>
@@ -75,22 +90,11 @@ export function Menus() {
         <>
           <div className="log-filters" role="tablist" style={{ flexWrap: 'wrap' }}>
             {menus.map(m => (
-              <button key={m.id} type="button" role="tab" aria-selected={m.id === menu.id} className={`log-filter${m.id === menu.id ? ' active' : ''}`} onClick={() => { setChoisi(m.id); }}>
-                {m.nom}{etat(m).ecart && <span className="tag tag-danger alg-pastille">À réimprimer</span>}
-              </button>
+              <button key={m.id} type="button" role="tab" aria-selected={m.id === menu.id} className={`log-filter${m.id === menu.id ? ' active' : ''}`} onClick={() => { setChoisi(m.id); }}>{m.nom}</button>
             ))}
           </div>
-          {etatMenu && <AlerteReimpression etat={etatMenu} vue={vue} onVoir={() => { setVue('allergenes'); }}
-            onMarquer={() => void (async () => {
-              if (await confirmer('Noter la fiche allergènes de « ' + menu.nom + ' » comme réimprimée ? Fais-le seulement si la fiche affichée en salle est bien la nouvelle.', 'Marquer comme imprimée')) await marquerImprimee(menu, etatMenu, false);
-            })()} />}
           <div className="menu-actions">
-            <Choix libelle="Feuille affichée" valeur={vue} onChange={setVue} options={[{ valeur: 'menu', libelle: 'Menu' }, { valeur: 'allergenes', libelle: 'Fiche allergènes' }]} />
-            <span className="menu-actions-espace" />
-            <button type="button" className="btn btn-g btn-sm" onClick={() => {
-              window.print();
-              if (vue === 'allergenes' && etatMenu) void marquerImprimee(menu, etatMenu, true);
-            }}><Icone nom="printer" />Imprimer</button>
+            <button type="button" className="btn btn-g btn-sm" onClick={() => { window.print(); }}><Icone nom="printer" />Imprimer</button>
             {admin && <>
               <button type="button" className="btn btn-g btn-sm" onClick={() => { setEdition({ menu }); }}>Modifier</button>
               <button type="button" className="btn btn-d btn-sm" onClick={() => void (async () => {
@@ -99,10 +103,10 @@ export function Menus() {
               })()}>Supprimer</button>
             </>}
           </div>
-          {vue === 'allergenes' && etatMenu ? <FeuilleAllergenes menu={menu} etat={etatMenu} /> : <FeuilleMenu menu={menu} />}
+          <FeuilleMenu menu={menu} />
         </>
       )}
-      {edition && <MenuFormulaire menu={edition.menu} onFermer={(id?: string) => { setEdition(null); if (id) setChoisi(id); }} />}
+      {edition && <MenuFormulaire menu={edition.menu} onFermer={(id?: string) => { setEdition(null); if (id) { setChoisi(id); setVue('menus'); } }} />}
     </>
   );
 }
@@ -158,7 +162,7 @@ function AlerteReimpression({ etat, vue, onVoir, onMarquer }: { etat: EtatFiche;
     if (vue !== 'allergenes') return null;
     return (
       <div className="alg-etat" role="status">
-        <div>Fiche allergènes jamais imprimée depuis le Hub. Imprime-la (ou note-la comme imprimée si la fiche affichée est déjà à jour) : le Hub préviendra dès qu'un plat ou un allergène change.</div>
+        <div>Fiche allergènes jamais imprimée depuis le Hub. Imprime-la (ou note-la comme imprimée si la fiche affichée est déjà à jour) : le Hub préviendra dès qu'un plat de la carte ou un allergène change.</div>
         <div className="alg-etat-actions"><button type="button" className="btn btn-g btn-sm" onClick={onMarquer}>Marquer comme imprimée</button></div>
       </div>
     );
@@ -176,14 +180,14 @@ function AlerteReimpression({ etat, vue, onVoir, onMarquer }: { etat: EtatFiche;
   );
 }
 
-/** Fiche allergènes du menu : un tableau plats × 13 allergènes, même dessin que les autres feuilles (écran = impression). */
-function FeuilleAllergenes({ menu, etat }: { menu: Menu; etat: EtatFiche }) {
+/** Fiche allergènes de la carte : un tableau plats × 13 allergènes, même dessin que les autres feuilles (écran = impression). */
+function FeuilleAllergenes({ etat }: { etat: EtatFiche }) {
   const groupes = parTemps(etat.lignes);
   const libres = etat.lignes.some(l => l.libre);
   return (
     <div className="fdoc fdoc-allerg">
-      <div className="fdoc-hdr"><div className="fdoc-sur">Fiche allergènes</div><div className="fdoc-nom">{menu.nom}</div>
-        <div className="fdoc-cles"><span>{etat.lignes.length ? pluriel(etat.lignes.length, 'plat') : 'Aucun plat pour le moment'}</span><span>Édition du {dateFr(new Date().toISOString())}</span></div>
+      <div className="fdoc-hdr"><div className="fdoc-sur">Fiche allergènes</div><div className="fdoc-nom">{FICHE_CARTE.nom}</div>
+        <div className="fdoc-cles"><span>{etat.lignes.length ? pluriel(etat.lignes.length, 'plat') : 'Aucun plat à la carte'}</span><span>Édition du {dateFr(new Date().toISOString())}</span></div>
       </div>
       <div className="fdoc-body">
         <hr className="fdoc-sep" />

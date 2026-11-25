@@ -1,7 +1,7 @@
-// Fiche allergènes des menus : tableau plats × allergènes, et comparaison avec la dernière fiche imprimée.
+// Fiche allergènes de la carte : tableau plats × allergènes, et comparaison avec la dernière fiche imprimée.
 // Fichier PARTAGÉ : la fonction « allergenes-menus » l'utilise, et l'app l'importe (app/src/domain/allergenesMenus.ts),
 // pour que l'écran et l'email disent exactement la même chose. Aucun import : il se déploie tel quel avec la fonction.
-// Les copies de servicesAffiches, lireMenu et ALLERGENES sont comparées à celles de l'app par app/src/domain/allergenesMenus.test.ts.
+// ALLERGENES et SECTIONS_CARTE sont comparés à ceux de l'app par app/src/domain/allergenesMenus.test.ts.
 
 // ── Lecture prudente (valeur inattendue → valeur vide) ──
 const texte = (v: unknown): string => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "");
@@ -17,75 +17,31 @@ export function listeAllergenes(v: unknown): string[] {
   return brut.map((s) => s.trim()).filter(Boolean);
 }
 
-export type Plat = { frId: string } | { texte: string };
-export interface Service { nom: string; plats: Plat[] }
-export interface Menu { id: string; nom: string; services: Service[] }
-/** Ce qu'il faut d'une fiche recette : son nom et ses allergènes (calculés par la base). */
-export interface FicheAllergenes { id: string; nom: string; allergenes: readonly string[] }
+/** Ce qu'il faut d'une fiche recette : son nom, son statut et ses allergènes (calculés par la base). */
+export interface FicheAllergenes { id: string; nom: string; statut: string; allergenes: readonly string[] }
 
-const lirePlat = (v: unknown): Plat | null => {
-  const o = objet(v);
-  if (texte(o.frId)) return { frId: texte(o.frId) };
-  return texte(o.text) ? { texte: texte(o.text) } : null;
-};
-const lireService = (v: unknown): Service => ({ nom: texte(objet(v).nom), plats: tableau(objet(v).plats).map(lirePlat).filter((p) => p !== null) });
-/** Un menu tel qu'écrit dans lava_config (ligne « menus ») ; anciens menus = liste plate de plats. */
-export function lireMenu(v: unknown): Menu {
-  const o = objet(v);
-  const services = Array.isArray(o.services) ? o.services.map(lireService) : [{ nom: "", plats: tableau(o.plats).map(lirePlat).filter((p) => p !== null) }];
-  return { id: texte(o.id), nom: texte(o.nom), services };
-}
-
-// Menus à temps fixes (app/src/domain/menus.ts)
-const MENUS_FIXES: Record<string, readonly string[]> = {
-  "carte du soir": ["Partages", "Plat", "Dessert"],
-  "3 temps": ["Temps 1", "Temps 2", "Temps 3"],
-  "5 temps": ["Temps 1", "Temps 2", "Temps 3", "Temps 4", "Temps 5"],
-};
-/** Temps d'un menu tels qu'affichés (copie de la règle de l'app). */
-export function servicesAffiches(m: Menu): Service[] {
-  const noms = MENUS_FIXES[m.nom.trim().toLowerCase()];
-  if (!noms) return m.services;
-  const reste = [...m.services];
-  const cle = (s: Service) => s.nom.trim().toLowerCase();
-  const trouves = noms.map((n) => {
-    const i = reste.findIndex((s) => cle(s) === n.toLowerCase());
-    return i < 0 ? null : (reste.splice(i, 1)[0] ?? null);
-  });
-  const fixes = trouves.map((s, i) => ({ plats: (s ?? reste.shift())?.plats ?? [], nom: noms[i] ?? "" }));
-  return [...fixes, ...reste];
-}
+/** La fiche allergènes unique : tous les plats de la carte actuelle, par section (même liste de statuts que l'app, STATUTS_CARTE). */
+export const FICHE_CARTE = { id: "carte", nom: "La carte" };
+export const SECTIONS_CARTE: readonly { statut: string; nom: string }[] = [
+  { statut: "partages", nom: "Partages" },
+  { statut: "carte", nom: "Carte du soir" },
+  { statut: "lunch", nom: "Lunch" },
+];
 
 // ── Tableau de la fiche allergènes ──
 
-/** Une ligne de la fiche : un plat du menu, son temps, ses allergènes. `libre` = plat écrit à la main, sans fiche (allergènes inconnus). */
+/** Une ligne de la fiche : un plat, sa section, ses allergènes. `libre` = plat sans fiche (allergènes inconnus ; anciennes fiches imprimées). */
 export interface LigneAllergenes { cle: string; temps: string; nom: string; allergenes: string[]; libre?: boolean }
 
 const sansAccents = (t: string): string => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/œ/g, "oe").trim();
 const trier = (l: readonly string[]): string[] => [...new Set(l)].sort((a, b) => a.localeCompare(b, "fr"));
 
-/**
- * Lignes de la fiche allergènes d'un menu (temps déjà mis dans l'ordre affiché) : un plat par ligne, dans l'ordre du menu.
- * Un plat présent deux fois n'a qu'une ligne (la première). Fiche supprimée : « (fiche supprimée) », sans allergènes.
- */
-export function lignesAllergenes(services: readonly Service[], frs: readonly FicheAllergenes[]): LigneAllergenes[] {
-  const vus = new Set<string>();
-  const lignes: LigneAllergenes[] = [];
-  for (const s of services) {
-    for (const p of s.plats) {
-      const cle = "frId" in p ? p.frId : "texte:" + p.texte.trim().toLowerCase();
-      if (vus.has(cle)) continue;
-      vus.add(cle);
-      if ("texte" in p) { lignes.push({ cle, temps: s.nom, nom: p.texte.trim(), allergenes: [], libre: true }); continue; }
-      const fr = frs.find((f) => f.id === p.frId);
-      lignes.push({ cle, temps: s.nom, nom: fr ? fr.nom : "(fiche supprimée)", allergenes: fr ? trier(fr.allergenes) : [] });
-    }
-  }
-  return lignes;
+/** Lignes de la fiche allergènes de la carte : Partages, Carte du soir, Lunch ; dans chaque section, par ordre alphabétique. */
+export function ficheCarte(frs: readonly FicheAllergenes[]): LigneAllergenes[] {
+  return SECTIONS_CARTE.flatMap((s) => frs.filter((f) => f.statut === s.statut)
+    .sort((a, b) => a.nom.localeCompare(b.nom, "fr", { sensitivity: "base" }))
+    .map((f) => ({ cle: f.id, temps: s.nom, nom: f.nom, allergenes: trier(f.allergenes) })));
 }
-
-/** Fiche allergènes d'un menu tel qu'enregistré. */
-export const ficheAllergenes = (m: Menu, frs: readonly FicheAllergenes[]): LigneAllergenes[] => lignesAllergenes(servicesAffiches(m), frs);
 
 /** Colonne de l'allergène (une des 13), ou null s'il n'est pas dans la liste (écrit autrement : il va dans « Autres »). */
 export function colonne(allergene: string): string | null {
@@ -110,9 +66,9 @@ export const lireLignes = (v: unknown): LigneAllergenes[] => tableau(v).map((x) 
 // ── Comparaison avec la fiche imprimée ──
 
 export interface Ecart {
-  /** Plats ajoutés au menu depuis l'impression. */
+  /** Plats ajoutés à la carte depuis l'impression. */
   ajoutes: LigneAllergenes[];
-  /** Plats retirés du menu depuis l'impression. */
+  /** Plats retirés de la carte depuis l'impression. */
   retires: LigneAllergenes[];
   /** Plats dont le nom a changé (la fiche imprimée porte l'ancien nom). */
   renommes: { avant: string; apres: string }[];
@@ -120,7 +76,7 @@ export interface Ecart {
   changes: { nom: string; ajoutes: string[]; retires: string[] }[];
 }
 
-/** Ce qui a changé entre la fiche imprimée et le menu actuel (plats repérés par leur fiche recette, ou le texte d'un plat libre). */
+/** Ce qui a changé entre la fiche imprimée et la carte actuelle (plats repérés par leur fiche recette). */
 export function comparer(imprime: readonly LigneAllergenes[], actuel: readonly LigneAllergenes[]): Ecart {
   const avant = new Map(imprime.map((l) => [l.cle, l]));
   const apres = new Map(actuel.map((l) => [l.cle, l]));
@@ -143,8 +99,8 @@ export function libellesEcart(e: Ecart): string[] {
   const allerg = (l: LigneAllergenes) => (l.libre ? " (plat libre : allergènes non renseignés)" : l.allergenes.length ? ` (${l.allergenes.join(", ")})` : " (aucun allergène)");
   return [
     ...e.changes.map((c) => `${c.nom} : ${[...c.ajoutes.map((a) => `+ ${a}`), ...c.retires.map((a) => `− ${a}`)].join(", ")}`),
-    ...e.ajoutes.map((l) => `Plat ajouté : ${l.nom}${allerg(l)}`),
-    ...e.retires.map((l) => `Plat retiré : ${l.nom}`),
+    ...e.ajoutes.map((l) => `Plat ajouté à la carte : ${l.nom}${allerg(l)}`),
+    ...e.retires.map((l) => `Plat retiré de la carte : ${l.nom}`),
     ...e.renommes.map((r) => `Plat renommé : ${r.avant} → ${r.apres}`),
   ];
 }
