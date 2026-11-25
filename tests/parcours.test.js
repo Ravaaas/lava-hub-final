@@ -436,6 +436,48 @@ scenario('Anciens menus', { anciensMenus: true }, async (a) => {
   check('3 temps d\'avant : affiché en Temps 1, 2, 3', await a.enOrdre(['Temps 1', 'Temps 2', 'CASSOLETTE DE SAINT-JACQUES', 'Temps 3']) && !(await a.voit('Entrée')));
 });
 
+scenario('Fiche allergènes', { anciensMenus: true, ficheImprimee: true }, async (a, page) => {
+  await a.connexion('Cuisine', 'Alexandre RAVASIO');
+  await a.onglet('Menus');
+  // fiche de la Carte du soir imprimée quand la tarte n'avait que du Gluten : la base en compte maintenant aussi le Lactose
+  check('menu changé depuis l\'impression : pastille « À réimprimer » et détail', await a.attend('À réimprimer') && await a.voit('Fiche allergènes à réimprimer')
+    && await a.voit('TARTE AU CITRON : + Lactose') && await a.voit('par Alexandre'));
+  await a.clic('Voir la fiche allergènes');
+  check('fiche allergènes : tableau plats × allergènes, par temps', await a.attend('Édition du') && await a.enOrdre(['Fiche allergènes', 'Carte du soir', 'Plat', 'Gluten', 'Mollusque', 'Plat', 'CASSOLETTE DE SAINT-JACQUES', 'Dessert', 'TARTE AU CITRON']));
+  const ronds = await page.evaluate(() => [...document.querySelectorAll('.alg-table tbody tr')].filter(r => r.querySelector('.alg-plat'))
+    .map(r => r.querySelector('.alg-plat').innerText.trim().split('\n')[0] + ':' + [...r.querySelectorAll('.alg-x')].map(x => x.getAttribute('aria-label')).join(',')));
+  check('fiche allergènes : un rond par allergène du plat', JSON.stringify(ronds) === JSON.stringify(['CASSOLETTE DE SAINT-JACQUES:Gluten,Lactose,Céleri', 'TARTE AU CITRON:Gluten,Lactose']), JSON.stringify(ronds));
+  const imp = await a.imprime('Imprimer');
+  check('fiche allergènes : impression de la feuille seule', imp.n === 1 && imp.texte.includes('fiche allergènes') && imp.texte.includes('tarte au citron') && !imp.texte.includes('à réimprimer') && !imp.texte.includes('nouveau menu'), imp.texte.slice(0, 200));
+  const a4 = await a.feuilleA4();
+  check('fiche allergènes : 1 page A4, marge haute de 4 cm', a4.pages === 1 && a4.margeHaute === '40mm', JSON.stringify(a4));
+  const ecrit = await a.attendEcriture('allergenes_imprimes', 'POST');
+  check('impression retenue : plats et allergènes tels qu\'imprimés', ecrit && ecrit.corps.menu_id === 'm1' && JSON.stringify(ecrit.corps.lignes.map(l => [l.nom, l.allergenes]))
+    === JSON.stringify([['CASSOLETTE DE SAINT-JACQUES', ['Céleri', 'Gluten', 'Lactose']], ['TARTE AU CITRON', ['Gluten', 'Lactose']]]), JSON.stringify(ecrit && ecrit.corps));
+  check('réimprimée : plus d\'alerte, fiche à jour', await a.attendPlus('À réimprimer') && await a.attend('Fiche allergènes à jour'));
+  // un allergène ajouté sur une fiche technique d'un plat du menu → la fiche recette suit (base) → le menu est à réimprimer
+  await a.onglet('Fiche Technique'); await a.clic('VELOUTÉ CURRY'); await a.clic('Modifier');
+  await a.clic('Moutarde'); await a.clic('Enregistrer');
+  await a.attendEcriture('fiches', 'PATCH'); await sleep(500);
+  await a.clic('Retour'); await a.onglet('Menus');
+  check('allergène ajouté sur une fiche technique : « À réimprimer » revient avec le détail', await a.attend('À réimprimer') && await a.voit('CASSOLETTE DE SAINT-JACQUES : + Moutarde'));
+  // un menu jamais imprimé depuis le Hub : pas d'alerte, on peut le noter comme imprimé
+  await a.clic('3 temps'); await a.clic('Fiche allergènes');
+  check('jamais imprimée : pas d\'alerte, explication', await a.attend('jamais imprimée depuis le Hub') && !(await a.voit('3 temps à réimprimer')));
+  await a.clic('Marquer comme imprimée'); await a.clic('Marquer comme imprimée');
+  const note = a.ecritures('allergenes_imprimes', 'POST').find(e => e.corps.menu_id === 'm2');
+  check('marquée comme imprimée sans impression', !!note && await a.attend('Fiche allergènes à jour'));
+});
+
+scenario('Fiche allergènes — cuisine', { anciensMenus: true, ficheImprimee: true }, async (a) => {
+  await a.connexion('Cuisine', 'Hugo PETIT');
+  await a.onglet('Menus');
+  check('cuisine : voit « À réimprimer »', await a.attend('À réimprimer'));
+  await a.clic('Voir la fiche allergènes');
+  await a.imprime('Imprimer');
+  check('cuisine : sa réimpression solde l\'alerte', !!(await a.attendEcriture('allergenes_imprimes', 'POST')) && await a.attendPlus('À réimprimer'));
+});
+
 scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.connexion('Cuisine', 'Alexandre RAVASIO');
   await a.onglet('Groupes');

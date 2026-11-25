@@ -106,6 +106,8 @@ export interface Database {
       yokitup_recettes: Table<{ id: string; nom: string; plat: string; version: string; etiquettes: string[]; ingredients: Json; lu_le: string }, 'id' | 'nom' | 'plat'>;
       yokitup_liens: Table<{ plat: string; fiche_recette_id: string; relie_par: string | null; relie_le: string }, 'plat' | 'fiche_recette_id'>;
       yokitup_synchros: Table<{ id: number; le: string; par: string | null; recettes: number; ok: boolean; message: string | null }>;
+      // Fiche allergènes imprimée de chaque menu (supabase/sql/allergenes-menus.sql) ; imprime_le et imprime_par remplis par la base.
+      allergenes_imprimes: Table<{ menu_id: string; menu_nom: string; lignes: Json; imprime_le: string; imprime_par: string }, 'menu_id'>;
     };
     Views: { [_ in never]: never };
     Functions: {

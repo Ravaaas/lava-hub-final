@@ -10,6 +10,7 @@ export function natureAction(action: string): { libelle: string; couleur: string
   const a = action.toLowerCase();
   if (a.includes('suppression')) return { libelle: 'Suppression', couleur: 'var(--danger-tx)' };
   if (a.includes('création')) return { libelle: 'Création', couleur: 'var(--ok)' };
+  if (a.includes('impression')) return { libelle: 'Impression', couleur: 'var(--ink3)' };
   return { libelle: 'Modification', couleur: 'var(--ink3)' };
 }
 

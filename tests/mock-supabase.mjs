@@ -2,7 +2,8 @@
 // Reproduit ce dont l'app dépend : connexion par compte, profils de connexion, fonction « equipe »,
 // lecture/écriture des tables avec les mêmes droits que la RLS de la vraie base
 // (écriture = admin ; copie Yokitup = fonction seulement ; groupes = admin ou salle ; coordonnées des référents = admin ou salle, lecture comprise ; journal = tout membre connecté ;
-//  Pertes & Perso = cuisine + admin, journée validée verrouillée, chacun ses commentaires et ses pertes).
+//  Pertes & Perso = cuisine + admin, journée validée verrouillée, chacun ses commentaires et ses pertes ; fiche allergènes imprimée = tout membre).
+// Déclencheur reproduit : allergènes d'une fiche technique modifiés → fiches recette qui l'utilisent recalculées (supabase/sql/automatisation.sql).
 export const HOST = 'qmvxmxzsmpigvseuidcd.supabase.co';
 export const MOT_DE_PASSE = 'bon-mot-de-passe';
 
@@ -56,6 +57,8 @@ function donneesDeDepart() {
     yokitup_recettes: [],
     yokitup_liens: [],
     yokitup_synchros: [],
+    // dernière fiche allergènes imprimée de chaque menu (voir FICHE_IMPRIMEE)
+    allergenes_imprimes: [],
   };
 }
 
@@ -76,8 +79,14 @@ const ANCIENS_MENUS = { id: 'menus', data: { items: [
   { id: 'm2', nom: '3 temps', services: [{ nom: 'Entrée', plats: [] }, { nom: 'Plat', plats: [{ frId: 'r1' }] }, { nom: 'Dessert', plats: [] }] },
 ] } };
 
+// Fiche allergènes de la « Carte du soir » (anciens menus) imprimée avant un changement : la tarte n'avait que du Gluten.
+const FICHE_IMPRIMEE = { menu_id: 'm1', menu_nom: 'Carte du soir', imprime_le: '2026-11-20T09:00:00Z', imprime_par: 'Alexandre', lignes: [
+  { cle: 'r1', temps: 'Plat', nom: 'CASSOLETTE DE SAINT-JACQUES', allergenes: ['Céleri', 'Gluten', 'Lactose'] },
+  { cle: 'r2', temps: 'Dessert', nom: 'TARTE AU CITRON', allergenes: ['Gluten'] },
+] };
+
 // Clé de chaque table (insertion = remplacement si la clé existe déjà, comme un upsert PostgREST).
-const CLES = { yokitup_liens: ['plat'], groupes_contacts: ['groupe_id'], membres: ['email'], perso_produits: ['cle'], perso_saisies: ['date', 'produit_cle'], perso_commentaires: ['date', 'email'], perso_validations: ['date'], perso_recaps: ['semaine'] };
+const CLES = { allergenes_imprimes: ['menu_id'], yokitup_liens: ['plat'], groupes_contacts: ['groupe_id'], membres: ['email'], perso_produits: ['cle'], perso_saisies: ['date', 'produit_cle'], perso_commentaires: ['date', 'email'], perso_validations: ['date'], perso_recaps: ['semaine'] };
 const PERSO = ['perso_produits', 'perso_saisies', 'perso_commentaires', 'perso_validations', 'pertes', 'perso_recaps'];
 
 const b64 = o => btoa(JSON.stringify(o)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
@@ -85,6 +94,7 @@ const b64 = o => btoa(JSON.stringify(o)).replaceAll('+', '-').replaceAll('/', '_
 export function creerBase(options = {}) {
   const db = donneesDeDepart();
   if (options.anciensMenus) db.lava_config.push(JSON.parse(JSON.stringify(ANCIENS_MENUS)));
+  if (options.ficheImprimee) db.allergenes_imprimes.push(JSON.parse(JSON.stringify(FICHE_IMPRIMEE)));
   const mdp = {};   // mots de passe créés à la première connexion
   const etat = { session: null, ecritures: [], inconnus: [], refuserTout: !!options.refuserEcritures };
   const yokitup = { recettes: RECETTES_YOKITUP };   // remplaçable (aperçu démo : tests/yokitup-reel.json)
@@ -100,6 +110,7 @@ export function creerBase(options = {}) {
     if (table === 'audit_log') return true;
     if (table === 'yokitup_recettes' || table === 'yokitup_synchros') return false;   // remplies par la fonction « yokitup » seulement
     if (table === 'groupes' || table === 'groupes_contacts') return r === 'admin' || r === 'salle';
+    if (table === 'allergenes_imprimes') return true;   // la personne qui imprime solde l'alerte
     if (table === 'perso_saisies') return r === 'admin' || (r === 'cuisine' && !valide(ligne.date));
     if (table === 'perso_commentaires') return r === 'admin' || (r === 'cuisine' && ligne.email === etat.session && !valide(ligne.date));
     if (table === 'pertes') return r === 'admin' || (r === 'cuisine' && (!ligne.saisi_email || ligne.saisi_email === etat.session));
@@ -111,7 +122,19 @@ export function creerBase(options = {}) {
     if (t === 'perso_saisies' || t === 'pertes') return { ...r, saisi_email: etat.session, saisi_par: prenom, ...(t === 'pertes' ? { cree_le: new Date().toISOString() } : { modifie_le: new Date().toISOString() }) };
     if (t === 'perso_commentaires') return { ...r, email: etat.session, nom: prenom, modifie_le: new Date().toISOString() };
     if (t === 'perso_validations') return { ...r, valide_par: prenom, valide_le: new Date().toISOString() };
+    if (t === 'allergenes_imprimes') return { ...r, imprime_par: prenom, imprime_le: new Date().toISOString() };
     return r;
+  };
+  // Déclencheur « fiche_maj » : une fiche recette prend les allergènes de ses fiches techniques liées (jamais moins si un lien est cassé)
+  const liste = a => (Array.isArray(a) ? a.map(String) : String(a || '').split(',')).map(x => x.trim()).filter(Boolean);
+  const recalculerAllergenes = ficheId => {
+    for (const fr of db.fiches_recette) {
+      const ids = (fr.sous_recettes || []).map(e => (typeof e === 'string' ? e : e.id)).filter(Boolean);
+      if (!ids.includes(ficheId)) continue;
+      const liees = db.fiches.filter(f => ids.includes(f.id));
+      const tout = liees.flatMap(f => liste(f.allergenes)).concat(liees.length < ids.length ? liste(fr.allergenes) : []);
+      fr.allergenes = [...new Set(tout)].sort((x, y) => x.localeCompare(y, 'fr')).join(', ');
+    }
   };
   const utilisateur = email => ({ id: 'u-' + email, aud: 'authenticated', role: 'authenticated', email, app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() });
   const jeton = email => ({
@@ -221,7 +244,13 @@ export function creerBase(options = {}) {
         return repondre(req, 201, rows);
       }
       const cibles = filtre(db[t].slice());
-      if (m === 'PATCH') { cibles.forEach(r => Object.assign(r, b)); return repondre(req, 200, cibles); }
+      if (m === 'PATCH') {
+        // fiche technique dont les allergènes changent : la base recalcule les fiches recette qui l'utilisent
+        const changees = t === 'fiches' && 'allergenes' in b ? cibles.filter(r => liste(r.allergenes).join() !== liste(b.allergenes).join()).map(r => r.id) : [];
+        cibles.forEach(r => Object.assign(r, b));
+        changees.forEach(recalculerAllergenes);
+        return repondre(req, 200, cibles);
+      }
       if (m === 'DELETE') { db[t] = db[t].filter(r => !cibles.includes(r)); return repondre(req, 200, cibles); }
     }
     if (p.startsWith('/rest/v1/')) { etat.inconnus.push(m + ' ' + p); return repondre(req, 200, []); }

@@ -381,7 +381,42 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .fr-photo{position:relative;overflow:hidden;aspect-ratio:16/10;max-height:340px;width:100%;border-radius:12px;margin-top:1.25rem}
 .fdoc-sous{margin-top:0.15rem;font-size:0.8125rem;color:#6B5C5C;text-transform:none}
 .fdoc-plat .fr-sr-allerg{margin:0.3rem 0 0}
-.menu-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:0.4rem;margin:0 0 0.75rem}
+.menu-actions{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:0.4rem;margin:0 0 0.75rem}
+.menu-actions .choix{flex:0 1 auto}
+.menu-actions-espace{flex:1 1 0}
+/* Menus : fiche allergènes (tableau plats × 13 allergènes) et alerte « À réimprimer » */
+.alg-pastille{height:20px;margin-left:8px;padding:0 8px;font-size:11px}
+.alg-etat{margin:0 0 0.75rem;padding:12px 16px;border-radius:var(--r);background:var(--fill);color:var(--ink2);font-size:15px;line-height:1.45}
+.alg-etat.alg-ok{background:var(--ok-soft);color:var(--ok)}
+.alg-etat.alg-alerte{border:1.5px solid #B5433C;background:#FBEFEE;color:#221818}
+.alg-etat-titre{margin-bottom:0.25rem;color:#B5433C;font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase}
+.alg-changements{margin:0.35rem 0 0;padding-left:1.2rem;font-weight:600}
+.alg-changements li+li{margin-top:0.15rem}
+.alg-etat-actions{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.6rem}
+.alg-defile{overflow-x:auto}
+.alg-table{table-layout:fixed}
+.alg-table thead th.alg-col{width:2.1rem;padding:0.5rem 0;vertical-align:bottom;text-align:center}
+.alg-table thead th:first-child{vertical-align:bottom}
+.alg-col span{display:inline-block;writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-size:0.75rem;line-height:1}
+.alg-table tbody th.alg-plat{padding:0.5rem 0.75rem;font-size:0.875rem;font-weight:600;color:#221818;text-align:left;text-transform:uppercase;border-bottom:1px solid #EDD8D8}
+.alg-table tbody th.alg-plat .fdoc-sous{font-weight:400}
+.alg-table tbody td.alg-c,.alg-table tbody td.alg-c:last-child{padding:0;text-align:center;vertical-align:middle;border-left:1px solid #EDD8D8;color:#B5433C;font-weight:700}
+.alg-x{font-size:0.95rem;line-height:1}
+.alg-table tbody tr:nth-child(n) td,.alg-table tbody tr:nth-child(n) th{background:#fff}
+.alg-table tbody tr.alg-temps td,.alg-table tbody tr.alg-temps td:last-child{padding:0.45rem 0.75rem 0.3rem;text-align:left;font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#B5433C;background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.alg-legende{margin-top:0.75rem;font-size:0.8125rem;color:#6B5C5C}
+.alg-legende .alg-x{color:#B5433C}
+@media (max-width:640px){
+  /* téléphone : le tableau défile dans la feuille, la colonne des plats reste à gauche */
+  .alg-table{width:auto;min-width:100%}
+  .alg-table thead th:first-child,.alg-table tbody th.alg-plat{position:sticky;left:0;z-index:1;width:8.5rem;min-width:8.5rem;max-width:8.5rem;background:#fff;box-shadow:1px 0 0 #E0D0D0}
+  .alg-table thead th.alg-col{width:1.6rem;min-width:1.6rem}
+  .alg-table tbody td.alg-c{min-width:1.6rem;height:2.4rem}
+  .alg-col span{font-size:0.6875rem}
+  .alg-table tbody th.alg-plat{padding:0.45rem 0.5rem;font-size:0.75rem;overflow-wrap:anywhere}
+  .alg-table tbody tr.alg-temps td{position:sticky;left:0}
+  .alg-x{font-size:0.8rem}
+}
 .fdoc-notes{font-size:0.9375rem;line-height:1.6;white-space:pre-wrap;color:#221818}
 .fdoc .fr-allerg-tag{background:#FBEDEC;color:#B5433C}
 .fdoc-stxt .fr-allerg-tag{background:#fff;box-shadow:inset 0 0 0 1px #EDD8D8}
@@ -673,6 +708,14 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fdoc-menu .fdoc-sous{line-height:1.25}
   .fdoc-menu .fr-allerg-tag{padding:0.3mm 2mm;font-size:7.5pt}
   .pp-tableau{overflow:visible}
+  /* fiche allergènes : une page A4, 13 colonnes étroites */
+  .alg-defile{overflow:visible}
+  .alg-table thead th.alg-col{width:8.5mm;padding:1mm 0}
+  .alg-col span{font-size:7.5pt}
+  .alg-table tbody th.alg-plat{padding:0.8mm 2.5mm;font-size:8.5pt}
+  .alg-table tbody tr.alg-temps td,.alg-table tbody tr.alg-temps td:last-child{padding:1mm 2.5mm 0.6mm;font-size:7pt}
+  .alg-x{font-size:8pt}
+  .alg-legende{margin-top:2mm;font-size:7.5pt}
   .pp-table th,.pp-table td{padding:0.9mm 1mm;font-size:8.5pt}
 }
 /* Fiche recette : deux portions (Carte et Menu), un grammage par portion */

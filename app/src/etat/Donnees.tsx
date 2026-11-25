@@ -5,6 +5,8 @@ import { chargerFichesRecette, chargerPhoto } from '../db/fichesRecette';
 import { chargerGroupes } from '../db/groupes';
 import { chargerMenus, chargerReglages, CATEGORIES_PAR_DEFAUT, type Reglages } from '../db/config';
 import { chargerMembres } from '../db/equipe';
+import { chargerFichesImprimees } from '../db/allergenesImprimes';
+import type { FicheImprimee } from '../domain/allergenesMenus';
 import { journaliser } from '../db/journal';
 import { surModification } from '../db/tempsReel';
 import { membresClasses } from '../domain/equipe';
@@ -17,6 +19,8 @@ interface Donnees {
   fichesRecette: FicheRecette[];
   groupes: Groupe[];
   menus: Menu[];
+  /** Dernière fiche allergènes imprimée de chaque menu (vide si la table n'existe pas encore). */
+  fichesImprimees: FicheImprimee[];
   reglages: Reglages;
   /** Équipe (admin uniquement ; vide pour les autres). */
   membres: Membre[];
@@ -48,6 +52,7 @@ export function DonneesProvider({ children }: { children: ReactNode }) {
   const [fichesRecette, setFichesRecette] = useState<FicheRecette[]>([]);
   const [groupes, setGroupes] = useState<Groupe[]>([]);
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [fichesImprimees, setFichesImprimees] = useState<FicheImprimee[]>([]);
   const [reglages, setReglages] = useState<Reglages>({ categories: CATEGORIES_PAR_DEFAUT, autres: {} });
   const [membres, setMembres] = useState<Membre[]>([]);
   const [photos, setPhotos] = useState<ReadonlyMap<string, string | null>>(new Map());
@@ -59,12 +64,13 @@ export function DonneesProvider({ children }: { children: ReactNode }) {
     dernierChargement.current = Date.now();
     setSynchro(true);
     // chaque liste est chargée indépendamment : une table indisponible n'empêche pas les autres de s'afficher
-    const [f, fr, g, m, r] = await Promise.allSettled([chargerFiches(), chargerFichesRecette(), chargerGroupes(), chargerMenus(), chargerReglages()]);
+    const [f, fr, g, m, r, fi] = await Promise.allSettled([chargerFiches(), chargerFichesRecette(), chargerGroupes(), chargerMenus(), chargerReglages(), chargerFichesImprimees()]);
     if (f.status === 'fulfilled') setFiches(f.value);
     if (fr.status === 'fulfilled') setFichesRecette(fr.value);
     if (g.status === 'fulfilled') setGroupes(g.value);
     if (m.status === 'fulfilled') setMenus(m.value);
     if (r.status === 'fulfilled') setReglages(r.value);
+    if (fi.status === 'fulfilled') setFichesImprimees(fi.value);   // table absente : pas d'alerte, sans message d'erreur
     if ([f, fr, g, m, r].some(x => x.status === 'rejected')) notifier('Erreur de connexion — certaines données ne sont pas à jour', 'err');
     setPhotos(new Map());   // les photos seront relues à la demande
     setSynchro(false);
@@ -110,7 +116,7 @@ export function DonneesProvider({ children }: { children: ReactNode }) {
   const journal = useCallback((action: string, nom: string, detail: readonly string[] = []) => journaliser(action, nom, moi.prenom, detail), [moi.prenom]);
 
   const valeur: Donnees = {
-    fiches, fichesRecette, groupes, menus, reglages, membres, pret, synchro,
+    fiches, fichesRecette, groupes, menus, fichesImprimees, reglages, membres, pret, synchro,
     recharger, rechargerMembres, photo: id => photos.get(id), chargerPhotoDe, oublierPhoto, journal, setSynchro,
   };
   return <Contexte.Provider value={valeur}>{children}</Contexte.Provider>;

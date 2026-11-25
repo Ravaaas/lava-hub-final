@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-25",
+    titre: "Menus : fiche allergènes et alerte « À réimprimer »",
+    desc: "Chaque menu a sa fiche allergènes : dans l'onglet Menus, choisir « Fiche allergènes » au-dessus de la feuille. Un tableau croise les plats du menu et les 13 allergènes, calculés depuis les fiches techniques, et s'imprime sur une page A4. Quand la fiche est imprimée (ou notée « imprimée »), le Hub retient son contenu. Si ensuite un plat est ajouté, retiré ou renommé, ou si un allergène change sur une fiche technique d'un de ses plats, le menu porte la pastille « À réimprimer » avec le détail des changements, et un email part vers restaurant@lava-paris.com 30 minutes après le dernier changement, une seule fois par changement, avec la nouvelle fiche en PDF. L'alerte disparaît quand la fiche est réimprimée."
+  },
+  {
+    date: "2026-11-25",
     titre: "Fiche groupe : les plats de remplacement viennent de la carte actuelle",
     desc: "Les plats proposés à la place d'un plat en conflit (allergie ou régime) sont désormais uniquement des fiches recette de la carte actuelle : statuts Carte, Partages et Lunch. Les plats libres, les fiches Best of et les fiches archivées ne sont plus proposés, et les menus ne sont plus consultés. Les autres plats du niveau passent en premier s'ils sont à la carte."
   },
