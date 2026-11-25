@@ -1,11 +1,12 @@
 // PDF A4 PAYSAGE de la fiche allergènes de la carte, joint à l'email : même dessin que la fiche imprimée de l'app
-// (onglet Menus > Fiche allergènes > Imprimer, toujours en paysage) : marge haute de 4 cm, 14 mm sur les côtés, plats × 13 allergènes.
+// (onglet Menus > Fiche allergènes > Imprimer, toujours en paysage) : le tableau seul (plats × 13 allergènes), rien autour,
+// marge haute de 4 cm, 14 mm sur les côtés.
 // Polices standard Helvetica : les caractères hors alphabet latin (émojis…) sont retirés.
 import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage, type RGB } from "npm:pdf-lib@1.17.1";
 import { ALLERGENES, repartir, type LigneAllergenes } from "./regles.ts";
 
 const hex = (h: string): RGB => rgb(parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255);
-const RED = hex("#B5433C"), INK = hex("#221818"), MUTE = hex("#6B5C5C"), LINE = hex("#E0D0D0"), FIN = hex("#EDD8D8"), ZEBRA = hex("#F5ECEC"), PIED = hex("#8A7A7A");
+const RED = hex("#B5433C"), INK = hex("#221818"), MUTE = hex("#6B5C5C"), LINE = hex("#E0D0D0"), FIN = hex("#EDD8D8"), ZEBRA = hex("#F5ECEC");
 
 const MM = 72 / 25.4;
 const W = 841.89, H = 595.28;            // A4 paysage
@@ -28,7 +29,7 @@ function parTemps(lignes: readonly LigneAllergenes[]): { temps: string; lignes: 
   return g;
 }
 
-export async function ficheAllergenesPdf(menu: string, lignes: readonly LigneAllergenes[], edition: string, fichier: string): Promise<Uint8Array> {
+export async function ficheAllergenesPdf(lignes: readonly LigneAllergenes[], fichier: string): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const R = await doc.embedFont(StandardFonts.Helvetica), B = await doc.embedFont(StandardFonts.HelveticaBold);
   // pdf-lib mesure avec crénage mais dessine sans : on mesure lettre par lettre
@@ -55,13 +56,6 @@ export async function ficheAllergenesPdf(menu: string, lignes: readonly LigneAll
     if (l) lignes.push(l);
     return lignes.length ? lignes : [""];
   };
-
-  // ── En-tête ──
-  y -= 8; espace("Fiche allergènes", ML, y, 7.5, 1.6);
-  y -= 7;
-  for (const l of couper(menu.toUpperCase(), MR - ML, 16, B)) { y -= 19; texte(l, ML, y, 16, B, INK); }
-  y -= 15; texte(`${lignes.length} plat${lignes.length > 1 ? "s" : ""}  ·  Édition du ${edition}`, ML, y, 10, R, MUTE);
-  y -= 7; trait(y, 1.6, RED); y -= 10;
 
   // ── Tableau : en-tête (noms d'allergènes à la verticale), répété en haut de chaque page ──
   const entete = () => {
@@ -114,17 +108,5 @@ export async function ficheAllergenesPdf(menu: string, lignes: readonly LigneAll
     }
   }
   trait(y, 0.7, LINE);
-
-  // ── Légende ──
-  const legende = `= l'allergène est présent dans le plat (calculé depuis les fiches techniques).${lignes.some((l) => l.libre) ? " Les plats libres n'ont pas de fiche : leurs allergènes sont à vérifier à part." : ""}`;
-  const ll = couper(legende, MR - ML - 10, 7.5, R);
-  place(8 + ll.length * 9.5);
-  y -= 10;
-  page.drawCircle({ x: ML + 2.6, y: y + 2.6, size: 2.6, color: RED });
-  ll.forEach((t, i) => { texte(t, ML + 9, y, 7.5, R, MUTE); if (i < ll.length - 1) y -= 9.5; });
-
-  // ── Pied de page : numéro, comme la fiche imprimée ──
-  const pages = doc.getPages();
-  pages.forEach((pg, i) => { page = pg; const t = `${i + 1} / ${pages.length}`; texte(t, MR - R.widthOfTextAtSize(t, 7.5), 13 * MM - 4, 7.5, R, PIED); });
   return await doc.save();
 }

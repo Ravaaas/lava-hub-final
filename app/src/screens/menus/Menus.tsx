@@ -183,14 +183,10 @@ function AlerteReimpression({ etat, vue, onVoir, onMarquer }: { etat: EtatFiche;
 /** Fiche allergènes de la carte : un tableau plats × 13 allergènes, même dessin que les autres feuilles (écran = impression). */
 function FeuilleAllergenes({ etat }: { etat: EtatFiche }) {
   const groupes = parTemps(etat.lignes);
-  const libres = etat.lignes.some(l => l.libre);
   return (
     <div className={`fdoc fdoc-allerg${etat.lignes.length > 22 ? ' alg-serre' : ''}`}>
-      <div className="fdoc-hdr"><div className="fdoc-sur">Fiche allergènes</div><div className="fdoc-nom">{FICHE_CARTE.nom}</div>
-        <div className="fdoc-cles"><span>{etat.lignes.length ? pluriel(etat.lignes.length, 'plat') : 'Aucun plat à la carte'}</span><span>Édition du {dateFr(new Date().toISOString())}</span></div>
-      </div>
       <div className="fdoc-body">
-        <hr className="fdoc-sep" />
+        {etat.lignes.length === 0 && <div className="fdoc-sous">Aucun plat à la carte</div>}
         {etat.lignes.length > 0 && <div className="alg-defile">
           <table className="fdoc-table alg-table">
             <thead><tr><th scope="col">Plat</th>{ALLERGENES.map(a => <th key={a} scope="col" className="alg-col"><span>{a}</span></th>)}</tr></thead>
@@ -213,7 +209,6 @@ function FeuilleAllergenes({ etat }: { etat: EtatFiche }) {
             ))}</tbody>
           </table>
         </div>}
-        <div className="alg-legende"><span className="alg-x">●</span> = l'allergène est présent dans le plat (calculé depuis les fiches techniques).{libres && ' Les plats libres n\'ont pas de fiche : leurs allergènes sont à vérifier à part.'}</div>
       </div>
     </div>
   );

@@ -386,9 +386,9 @@ scenario('Fiches recette', {}, async (a, page) => {
   check('photo portrait enregistrée recadrée en 16/10 (JPEG)', Math.abs(ratio - 1.6) < 0.02 && /^data:image\/jpeg/.test(cree.corps.photo), ratio);
   // modification depuis la fiche ouverte
   await a.clic('CASSOLETTE DE SAINT-JACQUES'); await a.clic('Modifier');
-  await a.remplir('Nom du plat', 'CASSOLETTE DE ST-JACQUES'); await a.clic('Enregistrer');
+  await a.remplir('Nom du plat', 'CASSOLETTE DE ST-JACQUES'); await a.remplir('Nom court', 'saint-jacques'); await a.clic('Enregistrer');
   const modif = await a.attendEcriture('fiches_recette', 'PATCH');
-  check('modification enregistrée, fiche ouverte à jour', modif && modif.filtre.id === 'eq.r1' && await page.waitForFunction(() => /cassolette de st-jacques/.test(__t.texteCouche()), { timeout: 5000 }).then(() => true, () => false));
+  check('modification enregistrée (nom court en capitales), fiche ouverte à jour', modif && modif.filtre.id === 'eq.r1' && modif.corps.nom_court === 'SAINT-JACQUES' && await page.waitForFunction(() => /cassolette de st-jacques/.test(__t.texteCouche()), { timeout: 5000 }).then(() => true, () => false));
   await a.clic('Retour');
   // impression puis suppression
   await a.clic('Carte du soir'); await a.clic('TARTE AU CITRON');
@@ -437,26 +437,30 @@ scenario('Anciens menus', { anciensMenus: true }, async (a) => {
   check('3 temps d\'avant : affiché en Temps 1, 2, 3', await a.enOrdre(['Temps 1', 'Temps 2', 'CASSOLETTE DE SAINT-JACQUES', 'Temps 3']) && !(await a.voit('Entrée')));
 });
 
-scenario('Fiche allergènes', { anciensMenus: true, ficheImprimee: true }, async (a, page) => {
+scenario('Fiche allergènes', { anciensMenus: true, ficheImprimee: true }, async (a, page, base) => {
+  // un plat servi seulement au Lunch, au nom long sans nom court : section Lunch, premier élément du nom ; la tarte a un nom court
+  base.db.fiches_recette.push({ id: 'r5', nom: 'SOUPE DU JOUR, CROÛTONS, HERBES', statut: 'lunch', allergenes: 'Gluten', sous_recettes: [], photo: null });
+  base.db.fiches_recette.find(f => f.id === 'r2').nom_court = 'TARTE AU CITRON';
   await a.connexion('Cuisine', 'Alexandre RAVASIO');
   await a.onglet('Menus');
   // fiche de la carte imprimée quand la tarte n'avait que du Gluten : la base lui compte maintenant aussi le Lactose
   check('carte changée depuis l\'impression : pastille « À réimprimer » et détail', await a.attend('À réimprimer') && await a.voit('Fiche allergènes à réimprimer')
     && await a.voit('TARTE AU CITRON : + Lactose') && await a.voit('par Alexandre'));
   await a.clic('Voir la fiche allergènes');
-  check('une seule fiche : tous les plats de la carte, dans l\'ordre du repas, sans les menus ni les archives', await a.attend('Édition du')
-    && await a.enOrdre(['Fiche allergènes', 'La carte', 'Plat', 'Gluten', 'Mollusque', 'Partages', 'HOUMOUS BETTERAVE', 'Plats', 'CASSOLETTE DE SAINT-JACQUES', 'Desserts', 'TARTE AU CITRON'])
+  check('une seule fiche : le tableau seul, tous les plats de la carte dans l\'ordre du repas, Lunch à la fin, sans les menus ni les archives', await a.attend('Mollusque')
+    && await a.enOrdre(['Plat', 'Gluten', 'Mollusque', 'Partages', 'HOUMOUS BETTERAVE', 'Plats', 'CASSOLETTE DE SAINT-JACQUES', 'Desserts', 'TARTE AU CITRON', 'Lunch', 'SOUPE DU JOUR'])
+    && !(await a.voit('CROÛTONS')) && !(await a.voit('Édition du')) && !(await a.voit('présent dans le plat'))
     && !(await a.voit('ANCIEN PLAT')) && !(await a.existe('3 temps')));
   const ronds = await page.evaluate(() => [...document.querySelectorAll('.alg-table tbody tr')].filter(r => r.querySelector('.alg-plat'))
     .map(r => r.querySelector('.alg-plat').innerText.trim().split('\n')[0] + ':' + [...r.querySelectorAll('.alg-x')].map(x => x.getAttribute('aria-label')).join(',')));
-  check('fiche allergènes : un rond par allergène du plat', JSON.stringify(ronds) === JSON.stringify(['HOUMOUS BETTERAVE:Sésame', 'CASSOLETTE DE SAINT-JACQUES:Gluten,Lactose,Céleri', 'TARTE AU CITRON:Gluten,Lactose']), JSON.stringify(ronds));
+  check('fiche allergènes : un rond par allergène du plat', JSON.stringify(ronds) === JSON.stringify(['HOUMOUS BETTERAVE:Sésame', 'CASSOLETTE DE SAINT-JACQUES:Gluten,Lactose,Céleri', 'TARTE AU CITRON:Gluten,Lactose', 'SOUPE DU JOUR:Gluten']), JSON.stringify(ronds));
   const imp = await a.imprime('Imprimer');
-  check('fiche allergènes : impression de la feuille seule', imp.n === 1 && imp.texte.includes('fiche allergènes') && imp.texte.includes('tarte au citron') && !imp.texte.includes('à réimprimer') && !imp.texte.includes('les menus'), imp.texte.slice(0, 200));
+  check('fiche allergènes : impression de la feuille seule', imp.n === 1 && imp.texte.includes('mollusque') && imp.texte.includes('tarte au citron') && !imp.texte.includes('fiche allergènes') && !imp.texte.includes('à réimprimer') && !imp.texte.includes('les menus'), imp.texte.slice(0, 200));
   const a4 = await a.feuilleA4();
   check('fiche allergènes : 1 page A4 en paysage, marge haute de 4 cm', a4.pages === 1 && a4.paysage && a4.margeHaute === '40mm', JSON.stringify(a4));
   const ecrit = await a.attendEcriture('allergenes_imprimes', 'POST');
   check('impression retenue : plats et allergènes tels qu\'imprimés', ecrit && ecrit.corps.menu_id === 'carte' && JSON.stringify(ecrit.corps.lignes.map(l => [l.nom, l.allergenes]))
-    === JSON.stringify([['HOUMOUS BETTERAVE', ['Sésame']], ['CASSOLETTE DE SAINT-JACQUES', ['Céleri', 'Gluten', 'Lactose']], ['TARTE AU CITRON', ['Gluten', 'Lactose']]]), JSON.stringify(ecrit && ecrit.corps));
+    === JSON.stringify([['HOUMOUS BETTERAVE', ['Sésame']], ['CASSOLETTE DE SAINT-JACQUES', ['Céleri', 'Gluten', 'Lactose']], ['TARTE AU CITRON', ['Gluten', 'Lactose']], ['SOUPE DU JOUR', ['Gluten']]]), JSON.stringify(ecrit && ecrit.corps));
   check('réimprimée : plus d\'alerte, fiche à jour', await a.attendPlus('À réimprimer') && await a.attend('Fiche allergènes à jour'));
   // un allergène ajouté sur une fiche technique d'un plat de la carte → la fiche recette suit (base) → la fiche est à réimprimer
   await a.onglet('Fiche Technique'); await a.clic('VELOUTÉ CURRY'); await a.clic('Modifier');
@@ -486,7 +490,7 @@ const NOMS_CARTE = ['BOULES DE FEU', 'PAIN SOUFFLE, BROCAMOLE, SARDINES FUMÉS',
   'CHEESECAKE COING VERVEINE', 'RIZ AU LAIT COCO, SORBET ANANAS GINGEMBRE', 'VANILLE, COCO, MANGUE, PATATE DOUCE, MACIS'];
 const carteLongue = (base, fois) => {
   base.db.fiches_recette = base.db.fiches_recette.filter(f => f.statut === 'archive');
-  for (let k = 0; k < fois; k++) NOMS_CARTE.forEach((nom, i) => base.db.fiches_recette.push({ id: `c${k}-${i}`, nom: k ? `${nom} ${k + 1}` : nom, statut: i < 2 ? 'partages' : 'carte', allergenes: 'Céleri, Gluten, Lactose', sous_recettes: [], photo: null }));
+  for (let k = 0; k < fois; k++) NOMS_CARTE.forEach((nom, i) => base.db.fiches_recette.push({ id: `c${k}-${i}`, nom: k ? `${nom} ${k + 1}` : nom, statut: i < 2 ? 'partages' : [2, 4, 11].includes(i) ? 'lunch' : 'carte', allergenes: 'Céleri, Gluten, Lactose', sous_recettes: [], photo: null }));
   base.db.lava_config.push({ id: 'menus', data: { items: [{ id: 'm5', nom: '5 temps', services: [1, 2, 3, 4, 5].map(n => ({ nom: `Temps ${n}`, plats: NOMS_CARTE.map((_, i) => i).filter(i => i >= 2 && Math.min(4, Math.floor((i - 2) / 3)) === n - 1).flatMap(i => Array.from({ length: fois }, (_, k) => ({ frId: `c${k}-${i}` }))) })) }] } });
 };
 for (const [nom, fois] of [['vraie carte (15 plats)', 1], ['carte de 30 plats', 2]]) {
@@ -494,7 +498,8 @@ for (const [nom, fois] of [['vraie carte (15 plats)', 1], ['carte de 30 plats', 
     carteLongue(base, fois);
     await a.connexion('Cuisine', 'Alexandre RAVASIO');
     await a.onglet('Menus'); await a.clic('Fiche allergènes');
-    check(`${nom} : tous les plats affichés`, await a.attend(`${15 * fois} plats`));
+    check(`${nom} : tous les plats affichés, Lunch compris`, await a.attend('Lunch')
+      && await page.evaluate(() => document.querySelectorAll('.alg-table .alg-plat').length) === 15 * fois);
     await a.imprime('Imprimer');
     const a4 = await a.feuilleA4();
     check(`${nom} : une seule page A4 paysage, marge haute de 4 cm`, a4.pages === 1 && a4.paysage && a4.margeHaute === '40mm', JSON.stringify(a4));

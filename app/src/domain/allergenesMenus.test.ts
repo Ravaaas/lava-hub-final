@@ -15,12 +15,17 @@ const menus: Menu[] = [
 const imprimee = (lignes = etatFiche(frs, menus, []).lignes): FicheImprimee => ({ menuId: 'carte', menuNom: 'La carte', lignes, imprimeLe: '2026-11-25T10:00:00Z', imprimePar: 'Alexandre' });
 
 describe('fiche allergènes de la carte', () => {
-  it('tous les plats de la carte actuelle, dans l\'ordre du repas (Partages, Entrées, Plats, Desserts) puis par nom ; ni Best of ni archives', () => {
+  it('tous les plats de la carte actuelle, dans l\'ordre du repas (Partages, Entrées, Plats, Desserts, Lunch) puis par nom ; ni Best of ni archives', () => {
     const { lignes } = etatFiche(frs, menus, []);
     expect(lignes.map(l => [l.temps, l.nom, l.allergenes])).toEqual([
-      ['Partages', 'HOUMOUS', ['Sésame']], ['Entrées', 'SALADE', []], ['Plats', 'BŒUF AXURIA', ['Gluten', 'Lactose']], ['Desserts', 'TARTE AU CITRON', ['Gluten', 'Œuf']],
+      ['Partages', 'HOUMOUS', ['Sésame']], ['Plats', 'BŒUF AXURIA', ['Gluten', 'Lactose']], ['Desserts', 'TARTE AU CITRON', ['Gluten', 'Œuf']], ['Lunch', 'SALADE', []],
     ]);
-    expect(parTemps(lignes).map(g => [g.temps, g.lignes.length])).toEqual([['Partages', 1], ['Entrées', 1], ['Plats', 1], ['Desserts', 1]]);
+    expect(parTemps(lignes).map(g => [g.temps, g.lignes.length])).toEqual([['Partages', 1], ['Plats', 1], ['Desserts', 1], ['Lunch', 1]]);
+  });
+
+  it('nom sur la fiche : le nom court, sinon le premier élément du nom', () => {
+    const plats = [{ ...fr('b', 'BŒUF AXURIA, PLEUROTES, JUS CURRY VERT', 'carte', []), nomCourt: 'BŒUF' }, fr('p', 'PAIN SOUFFLE, BROCAMOLE', 'partages', []), { ...fr('s', 'SAINT-JACQUES, PONZU', 'carte', []), nomCourt: '  ' }];
+    expect(etatFiche(plats, [], []).lignes.map(l => l.nom)).toEqual(['PAIN SOUFFLE', 'BŒUF', 'SAINT-JACQUES']);
   });
 
   it('jamais imprimée : pas d\'alerte ; imprimée et inchangée : à jour', () => {

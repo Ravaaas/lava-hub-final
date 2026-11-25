@@ -4,7 +4,7 @@
 import type { FicheRecette, Menu } from './types';
 import { comparer, ecartVide, FICHE_CARTE, ficheCarte, libellesEcart, type Ecart, type LigneAllergenes } from '../../../supabase/functions/allergenes-menus/regles';
 
-export { colonne, comparer, ecartVide, FICHE_CARTE, ficheCarte, libellesEcart, lireLignes, repartir, SECTIONS, sectionsDesPlats, signatureEcart, STATUTS_FICHE } from '../../../supabase/functions/allergenes-menus/regles';
+export { colonne, comparer, ecartVide, FICHE_CARTE, ficheCarte, libellesEcart, lireLignes, nomSurFiche, repartir, SECTIONS, sectionsDesPlats, signatureEcart, STATUTS_FICHE } from '../../../supabase/functions/allergenes-menus/regles';
 export type { Ecart, LigneAllergenes } from '../../../supabase/functions/allergenes-menus/regles';
 
 /** Dernière fiche allergènes imprimée (table allergenes_imprimes ; la carte a la clé « carte »). */

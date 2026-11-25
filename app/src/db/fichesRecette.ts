@@ -18,7 +18,7 @@ export const ecrireElement = (e: Element) => ({
 });
 
 // La photo (base64, lourde) n'est pas chargée avec la liste : voir chargerPhoto.
-const COLONNES = 'id,nom,statut,allergenes,sous_recettes';
+const COLONNES = 'id,nom,nom_court,statut,allergenes,sous_recettes';
 
 export async function chargerFichesRecette(): Promise<FicheRecette[]> {
   const { data, error } = await supabase.from('fiches_recette').select(COLONNES).order('nom');
@@ -26,6 +26,7 @@ export async function chargerFichesRecette(): Promise<FicheRecette[]> {
   return data.map(l => ({
     id: l.id,
     nom: l.nom,
+    nomCourt: texte(l.nom_court),
     statut: estStatut(l.statut) ? l.statut : 'carte',
     allergenes: listeAllergenes(l.allergenes),
     elements: tableau(l.sous_recettes).map(lireElement),
@@ -39,6 +40,8 @@ export async function chargerPhoto(id: string): Promise<string | null> {
 
 export interface SaisieFicheRecette {
   nom: string;
+  /** Vide = premier élément du nom sur la fiche allergènes. */
+  nomCourt: string;
   statut: FicheRecette['statut'];
   elements: Element[];
   photo: string | null;
@@ -48,6 +51,7 @@ export interface SaisieFicheRecette {
 
 const versLigne = (f: SaisieFicheRecette) => ({
   nom: f.nom,
+  nom_court: f.nomCourt || null,
   statut: f.statut,
   photo: f.photo,
   allergenes: joindre(f.allergenes),

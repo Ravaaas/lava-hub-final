@@ -32,6 +32,7 @@ export interface Database {
       fiches_recette: Table<{
         id: string;
         nom: string;
+        nom_court: string | null;         // élément principal du plat, pour la fiche allergènes
         statut: string | null;
         photo: string | null;             // image en base64 (data:image/jpeg…), chargée à la demande
         allergenes: string | null;        // calculé par la base

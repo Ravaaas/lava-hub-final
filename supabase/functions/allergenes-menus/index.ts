@@ -108,14 +108,14 @@ Deno.serve(async (req) => {
     if (!apercu && !essai && !(jeton && corps.auto === true)) return reply({ ok: false, message: "Appel inconnu" });
 
     const [fr, cfg, imp, al] = await Promise.all([
-      admin.from("fiches_recette").select("id,nom,statut,allergenes"),   // sans les photos
+      admin.from("fiches_recette").select("id,nom,nom_court,statut,allergenes"),   // sans les photos
       admin.from("lava_config").select("data").eq("id", "menus").maybeSingle(),   // sections (entrée, plat, dessert) tirées des menus
       admin.from("allergenes_imprimes").select("lignes,imprime_le,imprime_par").eq("menu_id", FICHE_CARTE.id).maybeSingle(),
       admin.from("allergenes_alertes").select("ecart,ecart_le,prevenu").eq("menu_id", FICHE_CARTE.id).maybeSingle(),
     ]);
     const err = [fr, cfg, imp, al].find((r) => r.error)?.error;
     if (err) return reply({ ok: false, message: err.message });
-    const frs = (fr.data ?? []).map((l) => ({ id: String(l.id), nom: String(l.nom ?? ""), statut: String(l.statut ?? ""), allergenes: listeAllergenes(l.allergenes) }));
+    const frs = (fr.data ?? []).map((l) => ({ id: String(l.id), nom: String(l.nom ?? ""), nomCourt: String(l.nom_court ?? ""), statut: String(l.statut ?? ""), allergenes: listeAllergenes(l.allergenes) }));
     const items = (cfg.data?.data as { items?: unknown[] } | null)?.items;
     const menus = (Array.isArray(items) ? items : []).map((m) => {
       const o = (m ?? {}) as { nom?: unknown; services?: unknown };
@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
 
     const to = (Deno.env.get("ALLERGENES_DESTINATAIRE") || DESTINATAIRE).split(",").map((s) => s.trim()).filter(Boolean);
     const fichier = nomFicheAllergenes(FICHE_CARTE.nom);
-    const pdfs = async () => [{ fichier, pdf: await ficheAllergenesPdf(FICHE_CARTE.nom, lignes, dateFr(new Date()), fichier) }];
+    const pdfs = async () => [{ fichier, pdf: await ficheAllergenesPdf(lignes, fichier) }];
     // Sujet court et SANS ACCENTS : un sujet long et accentué est mal découpé par l'envoi SMTP et casse tout l'email (en-têtes affichés en clair)
     const sujet = (enEssai: boolean) => enEssai ? "ESSAI - LAVA - Fiche allergenes de la carte"
       : `LAVA - Fiche allergenes a reimprimer (${changements.length} changement${changements.length > 1 ? "s" : ""})`;

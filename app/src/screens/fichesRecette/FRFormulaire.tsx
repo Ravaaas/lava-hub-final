@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import type { Element, FicheRecette, StatutFR } from '../../domain/types';
 import { STATUTS, aPortionMenu, allergenesDesElements, avecGrammage, diffFicheRecette } from '../../domain/fichesRecette';
 import { contient } from '../../domain/texte';
+import { nomSurFiche } from '../../domain/allergenesMenus';
 import { creerFicheRecette, modifierFicheRecette } from '../../db/fichesRecette';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
@@ -17,8 +18,9 @@ let compteur = 0;
 export function FRFormulaire({ fr, statutParDefaut, onFermer }: { fr: FicheRecette | null; statutParDefaut: StatutFR; onFermer: () => void }) {
   const { fiches, photo, chargerPhotoDe, oublierPhoto, recharger, journal, setSynchro } = useDonnees();
   const notifier = useNotifier();
-  const ids = { nom: useId() };
+  const ids = { nom: useId(), court: useId() };
   const [nom, setNom] = useState(fr?.nom ?? '');
+  const [nomCourt, setNomCourt] = useState(fr?.nomCourt ?? '');
   const [statut, setStatut] = useState<StatutFR>(fr?.statut ?? statutParDefaut);
   const [lignes, setLignes] = useState<Ligne[]>(() => (fr?.elements ?? []).map(e => ({ ...e, cle: ++compteur })));
   // Plats servis avec une portion différente à la carte et dans les menus : un grammage Menu par élément.
@@ -57,7 +59,7 @@ export function FRFormulaire({ fr, statutParDefaut, onFermer }: { fr: FicheRecet
       const base = e.type === 'fiche' ? { ...e, grammage: e.grammage.trim() } : { ...e, texte: e.texte.trim(), grammage: e.grammage.trim() };
       return avecGrammage(base, 'menu', portions === 'deux' ? (e.grammageMenu ?? '').trim() : '');
     }).filter(e => e.type === 'fiche' || e.texte);
-    const saisie = { nom: n, statut, elements: propres, photo: nouvellePhoto === undefined ? photoEnBase ?? null : nouvellePhoto, allergenes };
+    const saisie = { nom: n, nomCourt: nomCourt.trim().toUpperCase(), statut, elements: propres, photo: nouvellePhoto === undefined ? photoEnBase ?? null : nouvellePhoto, allergenes };
     setOccupe(true); setSynchro(true);
     try {
       const r = fr ? await modifierFicheRecette(fr.id, saisie) : await creerFicheRecette(saisie);
@@ -78,6 +80,8 @@ export function FRFormulaire({ fr, statutParDefaut, onFermer }: { fr: FicheRecet
       </>}>
       <div className="fg2"><label className="fl" htmlFor={ids.nom}>Nom du plat *</label>
         <input className="fi2" id={ids.nom} type="text" placeholder="ex: Cassolette de Saint-Jacques" value={nom} onChange={e => { setNom(e.target.value); }} /></div>
+      <div className="fg2"><label className="fl" htmlFor={ids.court}>Nom court <span style={{ fontWeight: 400, color: 'var(--gt)', fontSize: '0.875rem' }}>(fiche allergènes : l'élément principal, ex. BŒUF)</span></label>
+        <input className="fi2" id={ids.court} type="text" placeholder={nomSurFiche({ nom: nom.toUpperCase() }) || 'ex: SAINT-JACQUES'} value={nomCourt} onChange={e => { setNomCourt(e.target.value); }} /></div>
       <div className="fg2"><span className="fl">Statut</span>
         <Choix libelle="Statut" options={STATUTS} valeur={statut} onChange={setStatut} /></div>
       <div className="fg2"><span className="fl">Photo</span>

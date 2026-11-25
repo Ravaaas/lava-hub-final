@@ -52,9 +52,10 @@ export function avecGrammage(e: Element, portion: Portion, g: string): Element {
   return reste;
 }
 
-export function diffFicheRecette(avant: FicheRecette, apres: Pick<FicheRecette, 'nom' | 'statut' | 'elements'>, fiches: readonly Fiche[]): string[] {
+export function diffFicheRecette(avant: FicheRecette, apres: Pick<FicheRecette, 'nom' | 'nomCourt' | 'statut' | 'elements'>, fiches: readonly Fiche[]): string[] {
   const c: string[] = [];
   if (avant.nom !== apres.nom) c.push(`Nom : ${avant.nom || '—'} → ${apres.nom || '—'}`);
+  if ((avant.nomCourt ?? '') !== (apres.nomCourt ?? '')) c.push(`Nom court : ${avant.nomCourt || '—'} → ${apres.nomCourt || '—'}`);
   if (avant.statut !== apres.statut) c.push(`Statut : ${libelleStatut(avant.statut)} → ${libelleStatut(apres.statut)}`);
   const cle = (e: Element) => (e.type === 'fiche' ? e.id : e.texte);
   const nom = (e: Element) => (e.type === 'fiche' ? fiches.find(f => f.id === e.id)?.nom ?? 'élément lié' : e.texte);

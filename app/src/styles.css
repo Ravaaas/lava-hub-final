@@ -403,8 +403,6 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .alg-x{font-size:0.95rem;line-height:1}
 .alg-table tbody tr:nth-child(n) td,.alg-table tbody tr:nth-child(n) th{background:#fff}
 .alg-table tbody tr.alg-temps td,.alg-table tbody tr.alg-temps td:last-child{padding:0.45rem 0.75rem 0.3rem;text-align:left;font-size:0.75rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#B5433C;background:#F5ECEC;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.alg-legende{margin-top:0.75rem;font-size:0.8125rem;color:#6B5C5C}
-.alg-legende .alg-x{color:#B5433C}
 @media (max-width:640px){
   /* téléphone : le tableau défile dans la feuille, la colonne des plats reste à gauche */
   .alg-table{width:auto;min-width:100%}
@@ -711,9 +709,8 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .pp-tableau{overflow:visible}
   /* fiche allergènes : toujours en A4 paysage (page nommée), une page, 13 colonnes */
   /* (page nommée : elle reprend la marge de 4 cm et le numéro de page, sinon Chrome ajoute sa date et son titre) */
-  @page allergenes{size:A4 landscape;margin:40mm 14mm 13mm;@bottom-right{content:counter(page) " / " counter(pages);font-family:system-ui,sans-serif;font-size:7.5pt;color:#8a7a7a}}
+  @page allergenes{size:A4 landscape;margin:40mm 14mm 13mm}
   .fdoc-allerg{page:allergenes}
-  .fdoc-allerg .fdoc-sep{margin:2mm 0 2mm}
   .alg-defile{overflow:visible}
   .alg-table thead th.alg-col{width:9mm;padding:0.6mm 0}
   .alg-table thead th:first-child{padding:0.6mm 2.5mm}
@@ -723,7 +720,6 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .alg-table tbody tr.alg-temps td,.alg-table tbody tr.alg-temps td:last-child{padding:0.5mm 2.5mm 0.3mm;font-size:6.5pt;line-height:1.1}
   .alg-table tbody td.alg-c,.alg-table tbody td.alg-c:last-child{font-size:7pt;line-height:1}
   .alg-x{font-size:7pt}
-  .alg-legende{margin-top:1.5mm;font-size:7pt}
   /* longue carte (plus de 22 plats) : encore plus serré pour rester sur une page */
   .alg-serre .alg-table tbody th.alg-plat{padding:0.15mm 2.5mm;font-size:7pt;line-height:1.1}
   .alg-serre .alg-table tbody tr.alg-temps td{padding:0.3mm 2.5mm 0.15mm;font-size:6pt}

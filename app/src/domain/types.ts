@@ -36,6 +36,8 @@ export type StatutFR = 'carte' | 'partages' | 'lunch' | 'bestof' | 'archive';
 export interface FicheRecette {
   id: string;
   nom: string;
+  /** Élément principal du plat (BŒUF, BROCAMOLE…), écrit sur la fiche allergènes ; vide = premier élément du nom. */
+  nomCourt?: string;
   statut: StatutFR;
   /** Calculés par la base d'après les fiches liées. */
   allergenes: string[];
