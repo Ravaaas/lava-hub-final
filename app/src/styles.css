@@ -648,6 +648,8 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   /* marge haute de 4 cm sur chaque page imprimée (en-tête du papier, classement) */
   @page{size:A4;margin:40mm 14mm 13mm;@bottom-right{content:counter(page) " / " counter(pages);font-family:system-ui,sans-serif;font-size:7.5pt;color:#8a7a7a}}
   html,body{background:#fff}
+  /* à l'impression, 100vh = hauteur d'une page portrait : sur une page paysage (fiche allergènes), body et #app débordaient sur une 2e page */
+  body,#app{min-height:0}
   body:has(.fdoc) *:not(:has(.fdoc)):not(.fdoc):not(.fdoc *){display:none}
   body:has(.fdoc) *:has(.fdoc){margin:0;padding:0;max-width:none;position:static;overflow:visible;animation:none;background:#fff;border:0;box-shadow:none}
   .fdoc{min-height:0;border-radius:0;box-shadow:none}
@@ -708,15 +710,24 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fdoc-menu .fr-allerg-tag{padding:0.3mm 2mm;font-size:7.5pt}
   .pp-tableau{overflow:visible}
   /* fiche allergènes : toujours en A4 paysage (page nommée), une page, 13 colonnes */
-  @page allergenes{size:A4 landscape}
+  /* (page nommée : elle reprend la marge de 4 cm et le numéro de page, sinon Chrome ajoute sa date et son titre) */
+  @page allergenes{size:A4 landscape;margin:40mm 14mm 13mm;@bottom-right{content:counter(page) " / " counter(pages);font-family:system-ui,sans-serif;font-size:7.5pt;color:#8a7a7a}}
   .fdoc-allerg{page:allergenes}
+  .fdoc-allerg .fdoc-sep{margin:2mm 0 2mm}
   .alg-defile{overflow:visible}
-  .alg-table thead th.alg-col{width:10mm;padding:1mm 0}
-  .alg-col span{font-size:7.5pt}
-  .alg-table tbody th.alg-plat{padding:0.8mm 2.5mm;font-size:8.5pt}
-  .alg-table tbody tr.alg-temps td,.alg-table tbody tr.alg-temps td:last-child{padding:1mm 2.5mm 0.6mm;font-size:7pt}
-  .alg-x{font-size:8pt}
-  .alg-legende{margin-top:2mm;font-size:7.5pt}
+  .alg-table thead th.alg-col{width:9mm;padding:0.6mm 0}
+  .alg-table thead th:first-child{padding:0.6mm 2.5mm}
+  .alg-col span{font-size:7pt}
+  .alg-table tbody th.alg-plat{padding:0.35mm 2.5mm;font-size:7.75pt;line-height:1.15}
+  .alg-table tbody th.alg-plat .fdoc-sous{margin-top:0;font-size:6.5pt;line-height:1.1}
+  .alg-table tbody tr.alg-temps td,.alg-table tbody tr.alg-temps td:last-child{padding:0.5mm 2.5mm 0.3mm;font-size:6.5pt;line-height:1.1}
+  .alg-table tbody td.alg-c,.alg-table tbody td.alg-c:last-child{font-size:7pt;line-height:1}
+  .alg-x{font-size:7pt}
+  .alg-legende{margin-top:1.5mm;font-size:7pt}
+  /* longue carte (plus de 22 plats) : encore plus serré pour rester sur une page */
+  .alg-serre .alg-table tbody th.alg-plat{padding:0.15mm 2.5mm;font-size:7pt;line-height:1.1}
+  .alg-serre .alg-table tbody tr.alg-temps td{padding:0.3mm 2.5mm 0.15mm;font-size:6pt}
+  .alg-serre .alg-x{font-size:6pt}
   .pp-table th,.pp-table td{padding:0.9mm 1mm;font-size:8.5pt}
 }
 /* Fiche recette : deux portions (Carte et Menu), un grammage par portion */

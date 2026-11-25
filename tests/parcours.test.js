@@ -478,6 +478,29 @@ scenario('Fiche allergènes — jamais imprimée', {}, async (a) => {
   check('marquée comme imprimée sans impression', !!note && await a.attend('Fiche allergènes à jour'));
 });
 
+// La vraie carte (15 plats aux noms longs, 4 sections) et une carte deux fois plus longue : toujours une seule page A4 paysage.
+const NOMS_CARTE = ['BOULES DE FEU', 'PAIN SOUFFLE, BROCAMOLE, SARDINES FUMÉS', 'BETTERAVE, OIGNON, CACAHUÈTE, CAFÉ, ORANGE', 'HUÎTRE, YUZUKOSHO, AIL DES OURS, SOBACHA',
+  'OEUF PARFAIT, VELOUTE BUTTERNUT', 'SAINT-JACQUES, CHOU-FLEUR, PONZU, GOCHUGARU', 'TARTARE DE VEAU, GARUM ANCHOIS, CACAHUÈTE', 'BŒUF AXURIA, PLEUROTES, OIGNON NOIR, JUS CURRY VERT',
+  'MAGRET DE CANARD, PURÉE PATATE DOUCE, POIS CHICHE AU SATAY, JUS CARAMEL AUX EPICES', 'RISOTTO ÉPEAUTRE, CHAMPIGNONS, CHOU KALE, CÉLERI CAFÉ',
+  'TRUITE DES PYRÉNÉES, BETTERAVE JAUNE, CITRON CAVIAR, JUS D\'ARÊTES ANANAS', 'VOLAILLE BBQ, POIS CHICHES SATAY, PATATE DOUCE CURRY, SAUCE POULETTE',
+  'CHEESECAKE COING VERVEINE', 'RIZ AU LAIT COCO, SORBET ANANAS GINGEMBRE', 'VANILLE, COCO, MANGUE, PATATE DOUCE, MACIS'];
+const carteLongue = (base, fois) => {
+  base.db.fiches_recette = base.db.fiches_recette.filter(f => f.statut === 'archive');
+  for (let k = 0; k < fois; k++) NOMS_CARTE.forEach((nom, i) => base.db.fiches_recette.push({ id: `c${k}-${i}`, nom: k ? `${nom} ${k + 1}` : nom, statut: i < 2 ? 'partages' : 'carte', allergenes: 'Céleri, Gluten, Lactose', sous_recettes: [], photo: null }));
+  base.db.lava_config.push({ id: 'menus', data: { items: [{ id: 'm5', nom: '5 temps', services: [1, 2, 3, 4, 5].map(n => ({ nom: `Temps ${n}`, plats: NOMS_CARTE.map((_, i) => i).filter(i => i >= 2 && Math.min(4, Math.floor((i - 2) / 3)) === n - 1).flatMap(i => Array.from({ length: fois }, (_, k) => ({ frId: `c${k}-${i}` }))) })) }] } });
+};
+for (const [nom, fois] of [['vraie carte (15 plats)', 1], ['carte de 30 plats', 2]]) {
+  scenario(`Fiche allergènes — ${nom}`, {}, async (a, page, base) => {
+    carteLongue(base, fois);
+    await a.connexion('Cuisine', 'Alexandre RAVASIO');
+    await a.onglet('Menus'); await a.clic('Fiche allergènes');
+    check(`${nom} : tous les plats affichés`, await a.attend(`${15 * fois} plats`));
+    await a.imprime('Imprimer');
+    const a4 = await a.feuilleA4();
+    check(`${nom} : une seule page A4 paysage, marge haute de 4 cm`, a4.pages === 1 && a4.paysage && a4.margeHaute === '40mm', JSON.stringify(a4));
+  });
+}
+
 scenario('Fiche allergènes — cuisine', { ficheImprimee: true }, async (a) => {
   await a.connexion('Cuisine', 'Hugo PETIT');
   await a.onglet('Menus');

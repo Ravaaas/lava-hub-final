@@ -185,7 +185,7 @@ function FeuilleAllergenes({ etat }: { etat: EtatFiche }) {
   const groupes = parTemps(etat.lignes);
   const libres = etat.lignes.some(l => l.libre);
   return (
-    <div className="fdoc fdoc-allerg">
+    <div className={`fdoc fdoc-allerg${etat.lignes.length > 22 ? ' alg-serre' : ''}`}>
       <div className="fdoc-hdr"><div className="fdoc-sur">Fiche allergènes</div><div className="fdoc-nom">{FICHE_CARTE.nom}</div>
         <div className="fdoc-cles"><span>{etat.lignes.length ? pluriel(etat.lignes.length, 'plat') : 'Aucun plat à la carte'}</span><span>Édition du {dateFr(new Date().toISOString())}</span></div>
       </div>
