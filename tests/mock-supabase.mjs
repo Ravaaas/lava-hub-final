@@ -7,7 +7,7 @@
 export const HOST = 'qmvxmxzsmpigvseuidcd.supabase.co';
 export const MOT_DE_PASSE = 'bon-mot-de-passe';
 
-const jour = n => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+const jour = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv-SE'); };   // date locale, comme l'app (pas UTC : faux entre minuit et 1 h à Paris)
 
 function donneesDeDepart() {
   return {
