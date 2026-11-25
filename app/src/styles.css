@@ -380,6 +380,7 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .fr-sr-head:last-child{border-bottom:none}
 .fr-photo{position:relative;overflow:hidden;aspect-ratio:16/10;max-height:340px;width:100%;border-radius:12px;margin-top:1.25rem}
 .fdoc-sous{margin-top:0.15rem;font-size:0.8125rem;color:#6B5C5C;text-transform:none}
+.fdoc-plat .fr-sr-allerg{margin:0.3rem 0 0}
 .menu-actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:0.4rem;margin:0 0 0.75rem}
 .fdoc-notes{font-size:0.9375rem;line-height:1.6;white-space:pre-wrap;color:#221818}
 .fdoc .fr-allerg-tag{background:#FBEDEC;color:#B5433C}
@@ -661,6 +662,16 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fr-sr-allerg{margin-top:0.5mm;gap:1.2mm}
   .fr-sr-card .fdoc-ptitle{margin:2mm 2.5mm 0.8mm}
   .fdoc-step,.fdoc-table tr,.fr-allerg-sub,.fr-sr-card,.fdoc-footer{break-inside:avoid}
+  /* menu : allergènes à droite du nom du plat (une ligne de moins par plat) pour tenir sur une page A4 (Carte du soir, Lunch, 3 et 5 temps) */
+  .fdoc-plat{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:3mm;align-items:start}
+  .fdoc-plat .fdoc-plat-nom{grid-column:1;grid-row:1}
+  .fdoc-plat .fr-sr-allerg{grid-column:2;grid-row:1;width:auto;max-width:80mm;margin:0;justify-content:flex-end}
+  .fdoc-plat .fdoc-sous{grid-column:1/-1;margin-top:0.3mm}
+  .fdoc-menu .fdoc-sep{margin:2mm 0 1mm}
+  .fdoc-menu .fdoc-ptitle{margin:2.5mm 0 1mm}
+  .fdoc-menu .fdoc-stxt{padding:0.5mm 2.5mm;line-height:1.25}
+  .fdoc-menu .fdoc-sous{line-height:1.25}
+  .fdoc-menu .fr-allerg-tag{padding:0.3mm 2mm;font-size:7.5pt}
   .pp-tableau{overflow:visible}
   .pp-table th,.pp-table td{padding:0.9mm 1mm;font-size:8.5pt}
 }

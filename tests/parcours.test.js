@@ -424,6 +424,8 @@ scenario('Menus', {}, async (a) => {
   const impM = await a.imprime('Imprimer');
   check('menu : impression de la feuille seule', impM.n === 1 && impM.texte.includes('carte du soir') && impM.texte.includes('mignardises maison')
     && !impM.texte.includes('nouveau menu') && !impM.texte.includes('5 temps'), impM.texte.slice(0, 200));
+  const a4M = await a.feuilleA4();
+  check('menu imprimé : 1 page A4, allergènes sur la ligne du plat', a4M.pages === 1 && a4M.margeHaute === '40mm', JSON.stringify(a4M));
 });
 
 scenario('Anciens menus', { anciensMenus: true }, async (a) => {

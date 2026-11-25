@@ -86,7 +86,7 @@ function FeuilleMenu({ menu }: { menu: Menu }) {
   // numéro du premier plat de chaque temps : la numérotation continue d'un temps à l'autre
   const debuts = services.map((_, i) => services.slice(0, i).reduce((n, x) => n + x.plats.length, 0));
   return (
-    <div className="fdoc">
+    <div className="fdoc fdoc-menu">
       <div className="fdoc-hdr"><div className="fdoc-sur">Menu</div><div className="fdoc-nom">{menu.nom}</div>
         <div className="fdoc-cles"><span>{total ? pluriel(total, 'plat') : 'Aucun plat pour le moment'}</span></div>
       </div>
@@ -100,9 +100,9 @@ function FeuilleMenu({ menu }: { menu: Menu }) {
               const d = platAffiche(p, fichesRecette, fiches);
               return (
                 <div key={k} className="fdoc-step"><div className="fdoc-snum">{(debuts[i] ?? 0) + k + 1}</div>
-                  <div className="fdoc-stxt">{d.nom}
+                  <div className="fdoc-stxt fdoc-plat"><span className="fdoc-plat-nom">{d.nom}</span>
                     {d.elements.length > 0 && <div className="fdoc-sous">{d.elements.join(' · ')}</div>}
-                    {d.allergenes.length > 0 && <div className="fr-sr-allerg" style={{ margin: '0.3rem 0 0' }}><Etiquettes liste={d.allergenes} /></div>}
+                    {d.allergenes.length > 0 && <div className="fr-sr-allerg"><Etiquettes liste={d.allergenes} /></div>}
                   </div>
                 </div>
               );
