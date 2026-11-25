@@ -3,7 +3,7 @@ import type { ContactGroupe, Groupe, Niveau } from '../../domain/types';
 import type { Alerte, Proposition } from '../../domain/menus';
 import { ALLERGENES, REGIMES } from '../../domain/allergenes';
 import { REGLEMENTS, SALLES, aujourdhui, dateCourte, erreurGroupe, groupesEnConflit, libelleMontant, montantSaisi, profilsAEnregistrer, resumeProfils } from '../../domain/groupes';
-import { alertesMenu, allergieSaisie, clePlat, estAllergieLibre, lierRemplacant, niveauxAEnregistrer, propositionsPour, sansRemplace, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
+import { alertesMenu, allergieSaisie, clePlat, estAllergieLibre, lierRemplacant, niveauxAEnregistrer, propositionsPour, sansRemplace, STATUTS_CARTE, niveauxDuGroupe, niveauxDuMenu, platAffiche, totalNiveau } from '../../domain/menus';
 import { creerGroupe, enregistrerContact, modifierGroupe } from '../../db/groupes';
 import { useDonnees } from '../../etat/Donnees';
 import { Fenetre } from '../../ui/Fenetre';
@@ -223,12 +223,20 @@ function Profils({ profils, niveaux, onNiveaux, onChange }: { profils: ProfilSai
         if (!niveau || !conflit) return null;
         const cle = clePlat(conflit);
         const autres = niveau.plats.filter(p => clePlat(p) !== cle).map(p => ({ valeur: clePlat(p), libelle: platAffiche(p, fichesRecette, fiches).nom }));
+        // puis tous les plats de la carte actuelle qui ne sont pas déjà dans le niveau : en choisir un l'ajoute (comme une proposition)
+        const carte = fichesRecette.filter(f => STATUTS_CARTE.includes(f.statut) && f.id !== cle && !niveau.plats.some(p => clePlat(p) === f.id))
+          .sort((x, y) => x.nom.localeCompare(y.nom, 'fr')).map(f => ({ valeur: f.id, libelle: f.nom }));
         const choisi = niveau.plats.find(p => p.remplace === cle);
         const propositions = analyse.propositions.get(a.plat);
+        const choisir = (v: string) => {
+          if (!v || autres.some(o => o.valeur === v)) { onNiveaux(lierRemplacant(niveaux, cle, v)); return; }
+          const f = fichesRecette.find(x => x.id === v);
+          if (f) accepter(a, { plat: { frId: f.id }, nom: f.nom, origine: 'fiches' });
+        };
         return (
           <>
-            {autres.length > 0 && <Selecteur className="alerte-menu-choix" libelle={`Adapté avec — ${a.plat}`} vide="Adapté avec : choisir le plat" options={autres}
-              valeur={choisi ? clePlat(choisi) : ''} onChange={v => { onNiveaux(lierRemplacant(niveaux, cle, v)); }} />}
+            {autres.length + carte.length > 0 && <Selecteur className="alerte-menu-choix" libelle={`Adapté avec — ${a.plat}`} vide="Adapté avec : choisir le plat" options={[...autres, ...carte]}
+              valeur={choisi ? clePlat(choisi) : ''} onChange={choisir} />}
             {propositions && (propositions.length
               ? <div className="alerte-menu-props"><span>Proposer :</span>{propositions.map(pr => (
                 <button key={clePlat(pr.plat)} type="button" className="alerte-menu-prop" aria-label={`Servir ${pr.nom} à la place de ${a.plat}`}

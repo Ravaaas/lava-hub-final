@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-25",
+    titre: "Fiche groupe : choisir le plat de remplacement dans toute la carte",
+    desc: "Le choix « Adapté avec » d'un plat en conflit liste maintenant, après les plats du niveau, tous les plats de la carte actuelle (Carte, Partages, Lunch), avec une recherche. Choisir un plat qui n'est pas encore dans le niveau l'ajoute pour les personnes concernées, retire ce nombre du plat en conflit et les lie, comme une proposition."
+  },
+  {
+    date: "2026-11-25",
     titre: "Fiche groupe : « 1 sans viande » en face du plat de remplacement",
     desc: "Sur la fiche d'un groupe, un plat de remplacement indique maintenant pour qui il est servi, par exemple « 1 sans viande » ou « 2 gluten · végétarien », au lieu de « à la place de » suivi du nom du plat remplacé. Même écriture sur la fiche imprimée et dans les PDF envoyés le lundi."
   },

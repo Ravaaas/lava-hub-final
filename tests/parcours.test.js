@@ -860,6 +860,27 @@ scenario('Groupes alternatives', {}, async (a) => {
   check('alternative enregistrée, liée au plat remplacé', cree && JSON.stringify(cree.corps.niveaux[0]) === JSON.stringify({ nom: 'Entrée', plats: [{ text: 'Tartare de veau', qte: 7 }, { frId: 'r1', qte: 1, remplace: 'Tartare de veau' }] }), JSON.stringify(cree && cree.corps.niveaux));
 });
 
+scenario('Groupes choix dans la carte', {}, async (a) => {
+  await a.connexion('Cuisine', 'Alexandre RAVASIO');
+  await a.onglet('Groupes');
+  await a.clic('Nouveau groupe');
+  await a.remplir('Nom du groupe', 'Dîner Blanc'); await a.remplir('Nombre de personnes', '8');
+  await a.remplir('Plat libre (Entrée)', 'Tartare de veau'); await a.clic('Libre', 0);
+  await a.remplir('Nombre — Tartare de veau', '8');
+  await a.clic('Ajouter une personne'); await a.clic('Sans viande');
+  await a.attend('Tartare de veau — Sans viande (veau) · 1 pers.');
+  // la liste « Adapté avec » propose tous les plats de la carte actuelle (Carte, Partages), jamais les fiches archivées
+  await a.clic('Adapté avec — Tartare de veau');
+  check('liste complète : plats de la carte, sans les archivés', await a.existe('HOUMOUS BETTERAVE') && await a.existe('TARTE AU CITRON') && await a.existe('CASSOLETTE DE SAINT-JACQUES')
+    && !(await a.existe('ANCIEN PLAT')));
+  await a.clic('HOUMOUS BETTERAVE');
+  check('plat choisi dans la liste : ajouté, lié, nombre retiré du plat en conflit', await a.attend('Plats adaptés') && await a.voit('remplacé par HOUMOUS BETTERAVE')
+    && (await a.champ('Nombre — Tartare de veau'))?.valeur === '7' && (await a.champ('Nombre — HOUMOUS BETTERAVE'))?.valeur === '1' && await a.voit('Total : 8 / 8 pers.'));
+  await a.clic('Enregistrer');
+  const cree = await a.attendEcriture('groupes', 'POST');
+  check('choix enregistré, lié au plat remplacé', cree && JSON.stringify(cree.corps.niveaux[0]) === JSON.stringify({ nom: 'Entrée', plats: [{ text: 'Tartare de veau', qte: 7 }, { frId: 'r3', qte: 1, remplace: 'Tartare de veau' }] }), JSON.stringify(cree && cree.corps.niveaux));
+});
+
 scenario('Journal', {}, async (a) => {
   await a.connexion('Cuisine', 'Alexandre RAVASIO');
   await a.onglet('Journal');
