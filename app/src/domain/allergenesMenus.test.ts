@@ -55,13 +55,18 @@ describe('fiche allergènes de la carte', () => {
     expect(signatureEcart(comparer(avant, apres1))).not.toBe(signatureEcart(comparer(avant, apres2)));
   });
 
-  it('section tirée des menus : entrée l\'emporte sur plat ; Temps 1 = entrée, dernier temps = dessert ; absent des menus = plat', () => {
+  it('section tirée des menus : 5 temps = Temps 1-2 entrées, 3-4 plats, 5 dessert, toujours ; 3 temps = 1 entrée, 2 plat, 3 dessert ; sinon entrée l\'emporte sur plat ; absent des menus = plat', () => {
+    const cinq = ['huitre', 'stjacques', 'truite', 'boeuf', 'vanille'];
     const m: Menu[] = [
-      { id: 'a', nom: 'Carte du soir', services: [{ nom: 'Plat', plats: [{ frId: 'tartare' }, { frId: 'huitre' }, { frId: 'boeuf' }] }, { nom: 'Desserts', plats: [{ frId: 'riz' }] }] },
-      { id: 'b', nom: 'Lunch', services: [{ nom: 'Entrée', plats: [{ frId: 'tartare' }] }, { nom: 'Plat', plats: [{ texte: 'Pêche du jour' }] }] },
-      { id: 'c', nom: '5 temps', services: [1, 2, 3, 4, 5].map(n => ({ nom: `Temps ${n}`, plats: n === 1 ? [{ frId: 'huitre' }] : n === 5 ? [{ frId: 'vanille' }] : [] })) },
+      { id: 'a', nom: 'Carte du soir', services: [{ nom: 'Plat', plats: [{ frId: 'tartare' }, { frId: 'huitre' }, { frId: 'risotto' }] }, { nom: 'Desserts', plats: [{ frId: 'riz' }] }] },
+      { id: 'b', nom: 'Lunch', services: [{ nom: 'Entrée', plats: [{ frId: 'tartare' }, { frId: 'truite' }] }, { nom: 'Plat', plats: [{ frId: 'stjacques' }, { texte: 'Pêche du jour' }] }] },
+      { id: 'c', nom: '5 temps', services: cinq.map((id, k) => ({ nom: `Temps ${k + 1}`, plats: [{ frId: id }] })) },
+      { id: 'd', nom: '3 temps', services: ['tartare', 'magret', 'vanille'].map((id, k) => ({ nom: `Temps ${k + 1}`, plats: [{ frId: id }] })) },
     ];
-    expect(Object.fromEntries(sectionsDesPlats(m))).toEqual({ tartare: 'Entrées', huitre: 'Entrées', boeuf: 'Plats', riz: 'Desserts', vanille: 'Desserts' });
+    expect(Object.fromEntries(sectionsDesPlats(m))).toEqual({
+      huitre: 'Entrées', stjacques: 'Entrées', truite: 'Plats', boeuf: 'Plats', vanille: 'Desserts',
+      tartare: 'Entrées', magret: 'Plats', risotto: 'Plats', riz: 'Desserts',
+    });
     expect(etatFiche([fr('z', 'HORS MENU', 'carte', [])], m, []).lignes[0]?.temps).toBe('Plats');
   });
 

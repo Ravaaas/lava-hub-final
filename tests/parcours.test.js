@@ -196,7 +196,8 @@ function actions(page, base) {
         const p = [...document.styleSheets].flatMap(f => { try { return regles(f.cssRules); } catch (e) { return []; } }).find(r => r instanceof CSSPageRule);
         return p ? p.style.marginTop : '';
       });
-      return { pages: (pdf.match(/\/Type\s*\/Page(?![s\w])/g) || []).length, margeHaute };
+      const taille = /\/MediaBox\s*\[\s*0 0 ([\d.]+) ([\d.]+)/.exec(pdf);
+      return { pages: (pdf.match(/\/Type\s*\/Page(?![s\w])/g) || []).length, margeHaute, paysage: !!taille && Number(taille[1]) > Number(taille[2]) };
     },
     async onglet(nom) { await a.clic(nom); await sleep(300); },
     async connexion(equipe, profil, mdp = MOT_DE_PASSE) {
@@ -452,7 +453,7 @@ scenario('Fiche allergènes', { anciensMenus: true, ficheImprimee: true }, async
   const imp = await a.imprime('Imprimer');
   check('fiche allergènes : impression de la feuille seule', imp.n === 1 && imp.texte.includes('fiche allergènes') && imp.texte.includes('tarte au citron') && !imp.texte.includes('à réimprimer') && !imp.texte.includes('les menus'), imp.texte.slice(0, 200));
   const a4 = await a.feuilleA4();
-  check('fiche allergènes : 1 page A4, marge haute de 4 cm', a4.pages === 1 && a4.margeHaute === '40mm', JSON.stringify(a4));
+  check('fiche allergènes : 1 page A4 en paysage, marge haute de 4 cm', a4.pages === 1 && a4.paysage && a4.margeHaute === '40mm', JSON.stringify(a4));
   const ecrit = await a.attendEcriture('allergenes_imprimes', 'POST');
   check('impression retenue : plats et allergènes tels qu\'imprimés', ecrit && ecrit.corps.menu_id === 'carte' && JSON.stringify(ecrit.corps.lignes.map(l => [l.nom, l.allergenes]))
     === JSON.stringify([['HOUMOUS BETTERAVE', ['Sésame']], ['CASSOLETTE DE SAINT-JACQUES', ['Céleri', 'Gluten', 'Lactose']], ['TARTE AU CITRON', ['Gluten', 'Lactose']]]), JSON.stringify(ecrit && ecrit.corps));

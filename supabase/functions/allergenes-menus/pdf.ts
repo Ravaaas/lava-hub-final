@@ -1,5 +1,5 @@
-// PDF A4 de la fiche allergènes d'un menu, joint à l'email : même dessin que la fiche imprimée de l'app
-// (onglet Menus > Fiche allergènes > Imprimer) : marge haute de 4 cm, 14 mm sur les côtés, plats × 13 allergènes.
+// PDF A4 PAYSAGE de la fiche allergènes de la carte, joint à l'email : même dessin que la fiche imprimée de l'app
+// (onglet Menus > Fiche allergènes > Imprimer, toujours en paysage) : marge haute de 4 cm, 14 mm sur les côtés, plats × 13 allergènes.
 // Polices standard Helvetica : les caractères hors alphabet latin (émojis…) sont retirés.
 import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage, type RGB } from "npm:pdf-lib@1.17.1";
 import { ALLERGENES, repartir, type LigneAllergenes } from "./regles.ts";
@@ -8,14 +8,14 @@ const hex = (h: string): RGB => rgb(parseInt(h.slice(1, 3), 16) / 255, parseInt(
 const RED = hex("#B5433C"), INK = hex("#221818"), MUTE = hex("#6B5C5C"), LINE = hex("#E0D0D0"), FIN = hex("#EDD8D8"), ZEBRA = hex("#F5ECEC"), PIED = hex("#8A7A7A");
 
 const MM = 72 / 25.4;
-const W = 595.28, H = 841.89;
+const W = 841.89, H = 595.28;            // A4 paysage
 const ML = 14 * MM, MR = W - 14 * MM;      // marges latérales
 const HAUT = H - 40 * MM;                  // marge haute de 4 cm
 const BAS = 13 * MM + 8;                   // marge basse (pied de page dans la marge)
-const COL = 8.5 * MM;                      // largeur d'une colonne d'allergène
+const COL = 10 * MM;                       // largeur d'une colonne d'allergène (le nom du plat garde ~14 cm : une ligne)
 const XC = MR - ALLERGENES.length * COL;   // début des colonnes d'allergènes
 
-/** Nom de fichier, ex. « LAVA FICHE ALLERGENES CARTE DU SOIR.pdf ». */
+/** Nom de fichier, ex. « LAVA FICHE ALLERGENES LA CARTE.pdf ». */
 export function nomFicheAllergenes(menu: string): string {
   const propre = menu.normalize("NFD").replace(/\p{M}/gu, "").replace(/[^A-Za-z0-9]+/g, " ").trim().toUpperCase().slice(0, 40);
   return `LAVA FICHE ALLERGENES${propre ? " " + propre : ""}.pdf`;
@@ -65,7 +65,7 @@ export async function ficheAllergenesPdf(menu: string, lignes: readonly LigneAll
 
   // ── Tableau : en-tête (noms d'allergènes à la verticale), répété en haut de chaque page ──
   const entete = () => {
-    const h = 58;
+    const h = 50;
     const haut = y;
     page.drawRectangle({ x: ML, y: haut - h, width: MR - ML, height: h, borderColor: LINE, borderWidth: 0.7, color: rgb(1, 1, 1) });
     texte("Plat", ML + 7, haut - h + 5, 8, B, RED);
@@ -86,22 +86,22 @@ export async function ficheAllergenesPdf(menu: string, lignes: readonly LigneAll
   const TX = XC - ML - 10;
   for (const g of parTemps(lignes)) {
     if (g.temps) {
-      place(15 + 16);
-      page.drawRectangle({ x: ML, y: y - 15, width: MR - ML, height: 15, color: ZEBRA });
-      espace(g.temps, ML + 7, y - 10.5, 7, 1.1);
-      y -= 15;
+      place(13 + 14);
+      page.drawRectangle({ x: ML, y: y - 13, width: MR - ML, height: 13, color: ZEBRA });
+      espace(g.temps, ML + 7, y - 9.3, 7, 1.1);
+      y -= 13;
       trait(y, 0.5, FIN);
     }
     for (const l of g.lignes) {
       const { colonnes, autres } = repartir(l.allergenes);
-      const nom = couper(l.nom.toUpperCase(), TX, 8.5, B);
-      const sous = [...(l.libre ? ["Plat libre : allergènes à vérifier"] : []), ...(autres.length ? [`Aussi : ${autres.join(", ")}`] : [])].flatMap((t) => couper(t, TX, 7.5, R));
-      const h = Math.max(16, 5 + nom.length * 10.5 + sous.length * 9 + 2);
+      const nom = couper(l.nom.toUpperCase(), TX, 8, B);
+      const sous = [...(l.libre ? ["Plat libre : allergènes à vérifier"] : []), ...(autres.length ? [`Aussi : ${autres.join(", ")}`] : [])].flatMap((t) => couper(t, TX, 7, R));
+      const h = Math.max(14, 4 + nom.length * 9.5 + sous.length * 8.5 + 1);
       place(h);
       const haut = y;
-      let yy = haut - 3;
-      nom.forEach((t) => { yy -= 10.5; texte(t, ML + 7, yy, 8.5, B, INK); });
-      sous.forEach((t) => { yy -= 9; texte(t, ML + 7, yy, 7.5, R, MUTE); });
+      let yy = haut - 2.5;
+      nom.forEach((t) => { yy -= 9.5; texte(t, ML + 7, yy, 8, B, INK); });
+      sous.forEach((t) => { yy -= 8.5; texte(t, ML + 7, yy, 7, R, MUTE); });
       ALLERGENES.forEach((a, i) => {
         const x = XC + i * COL;
         page.drawLine({ start: { x, y: haut }, end: { x, y: haut - h }, thickness: 0.5, color: FIN });

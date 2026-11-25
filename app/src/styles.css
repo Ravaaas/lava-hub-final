@@ -707,9 +707,11 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .fdoc-menu .fdoc-sous{line-height:1.25}
   .fdoc-menu .fr-allerg-tag{padding:0.3mm 2mm;font-size:7.5pt}
   .pp-tableau{overflow:visible}
-  /* fiche allergènes : une page A4, 13 colonnes étroites */
+  /* fiche allergènes : toujours en A4 paysage (page nommée), une page, 13 colonnes */
+  @page allergenes{size:A4 landscape}
+  .fdoc-allerg{page:allergenes}
   .alg-defile{overflow:visible}
-  .alg-table thead th.alg-col{width:8.5mm;padding:1mm 0}
+  .alg-table thead th.alg-col{width:10mm;padding:1mm 0}
   .alg-col span{font-size:7.5pt}
   .alg-table tbody th.alg-plat{padding:0.8mm 2.5mm;font-size:8.5pt}
   .alg-table tbody tr.alg-temps td,.alg-table tbody tr.alg-temps td:last-child{padding:1mm 2.5mm 0.6mm;font-size:7pt}

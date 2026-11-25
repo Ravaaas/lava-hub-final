@@ -37,37 +37,45 @@ const trier = (l: readonly string[]): string[] => [...new Set(l)].sort((a, b) =>
 /** Un menu tel qu'écrit (lava_config, ligne « menus ») ou lu par l'app : seuls le nom, les temps et l'id des fiches servent. */
 export interface MenuTemps { nom: string; services: readonly { nom: string; plats: readonly unknown[] }[] }
 
-/** Section d'un temps de menu : « Entrée », « Plat », « Dessert », « Partages » ; dans un menu à temps numérotés, Temps 1 = entrée, dernier temps = dessert. */
-function sectionDuTemps(temps: string, rang: number, nbTemps: number): string | null {
+/**
+ * Section d'un temps numéroté (« Temps 2 ») : menu en 5 temps (ou plus) : Temps 1 et 2 = entrées, Temps 3 et 4 = plats, dernier temps = dessert ;
+ * menu plus court (3 temps) : Temps 1 = entrée, dernier temps = dessert, entre les deux = plats.
+ */
+function sectionDuTempsNumerote(rang: number, nbTemps: number): string {
+  if (rang === nbTemps - 1) return "Desserts";
+  return rang === 0 || (rang === 1 && nbTemps >= 5) ? "Entrées" : "Plats";
+}
+
+/** Section d'un temps nommé : « Entrée », « Plat », « Dessert », « Partages ». */
+function sectionDuTempsNomme(temps: string): string | null {
   const t = sansAccents(temps).replace(/s$/, "");
-  if (t === "partage") return "Partages";
-  if (t === "entree") return "Entrées";
-  if (t === "dessert") return "Desserts";
-  if (t === "plat") return "Plats";
-  if (/^temps \d+$/.test(t)) return rang === 0 ? "Entrées" : rang === nbTemps - 1 ? "Desserts" : "Plats";
-  return null;
+  return t === "partage" ? "Partages" : t === "entree" ? "Entrées" : t === "dessert" ? "Desserts" : t === "plat" ? "Plats" : null;
 }
 
 /**
  * Section de chaque plat (id de fiche recette), d'après les temps où il est servi dans les menus.
- * Un plat servi à plusieurs places : Partages, puis Entrées, puis Desserts l'emportent sur Plats (la Carte du soir range tout le salé en « Plat »).
+ * Les menus à temps numérotés (3 temps, 5 temps) l'emportent toujours : leur place dit si le plat est une entrée, un plat ou un dessert.
+ * Sinon (Lunch, Carte du soir) : Partages, puis Entrées, puis Desserts l'emportent sur Plats (la Carte du soir range tout le salé en « Plat »).
  */
 export function sectionsDesPlats(menus: readonly MenuTemps[]): Map<string, string> {
   const priorite = ["Partages", "Entrées", "Desserts", "Plats"];
-  const r = new Map<string, string>();
+  const numerotes = new Map<string, string>(), nommes = new Map<string, string>();
+  const retenir = (r: Map<string, string>, id: string, sec: string) => {
+    const avant = r.get(id);
+    if (!avant || priorite.indexOf(sec) < priorite.indexOf(avant)) r.set(id, sec);
+  };
   for (const m of menus) {
     m.services.forEach((s, rang) => {
-      const sec = sectionDuTemps(s.nom, rang, m.services.length);
+      const numerote = /^temps \d+$/.test(sansAccents(s.nom));
+      const sec = numerote ? sectionDuTempsNumerote(rang, m.services.length) : sectionDuTempsNomme(s.nom);
       if (!sec) return;
       for (const p of s.plats) {
         const id = texte(objet(p).frId);
-        if (!id) continue;
-        const avant = r.get(id);
-        if (!avant || priorite.indexOf(sec) < priorite.indexOf(avant)) r.set(id, sec);
+        if (id) retenir(numerote ? numerotes : nommes, id, sec);
       }
     });
   }
-  return r;
+  return new Map([...nommes, ...numerotes]);
 }
 
 /**
