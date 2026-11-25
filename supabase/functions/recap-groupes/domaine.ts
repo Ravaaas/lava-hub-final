@@ -300,7 +300,8 @@ export function construireFiche(g: Groupe, menus: readonly Menu[], frs: readonly
   const niveaux = niveauxDuGroupe(g, menus).filter((n) => n.plats.length);
   const avecQte = niveaux.some((n) => n.plats.some((p) => p.qte !== null));
   const debuts = niveaux.map((_, i) => niveaux.slice(0, i).reduce((t, n) => t + n.plats.length, 0));
-  const alertes = alertesMenu(niveauxDuGroupe(g, menus), g.profils, frs, fiches).map((a) => ({
+  // seuls les plats pas encore adaptés : un plat adapté est signalé sur sa ligne (« 1 sans viande »)
+  const alertes = alertesMenu(niveauxDuGroupe(g, menus), g.profils, frs, fiches).filter((a) => !a.adapte).map((a) => ({
     plat: a.plat,
     texte: ` — ${a.allergenes.map((x) => (a.indices?.[x] ? `${x} (${a.indices[x]})` : x)).join(", ")} · ${a.personnes} pers.` +
       (a.remplacants ? (a.adapte ? ` → remplacé par ${a.remplacants.join(", ")}` : ` → ${a.remplacants.join(", ")} : pas assez pour ${a.personnes} pers.`) : ""),

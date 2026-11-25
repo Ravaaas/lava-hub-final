@@ -137,7 +137,8 @@ function GroupeDetail({ groupe: g, contact, onFermer, onModifier }: { groupe: Gr
         {g.statut === 'brouillon' && <div className="fdoc-brouillon" role="note">Brouillon — fiche non validée</div>}
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
-          <AlertesMenu alertes={alertesGroupe(g, menus, fichesRecette, fiches)} />
+          {/* seuls les plats pas encore adaptés : un plat adapté est signalé sur sa ligne (« 1 sans viande ») */}
+          <AlertesMenu alertes={alertesGroupe(g, menus, fichesRecette, fiches).filter(a => !a.adapte)} />
           {!niveaux.length && <><div className="fdoc-ptitle">Menu</div>
             <div className="ci-label" style={{ color: 'var(--gt)' }}>{m ? "Ce menu n'a pas encore de plats." : 'Menu sur mesure — voir les notes.'}</div></>}
           {niveaux.map((n, i) => {

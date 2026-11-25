@@ -87,7 +87,9 @@ describe('fiche groupe du lundi : mêmes règles que l\'app', () => {
     expect(f.alertes.find(a => a.plat === 'BŒUF AXURIA')).toMatchObject({ adapte: false, texte: expect.stringContaining('Bœuf sans tempura : pas assez pour 4 pers.') as unknown });
     // une seule personne concernée : adapté
     const adapte = srv.construireFiche({ ...g, profils: [profils[0] as Profil] }, [], srvFrs, srvFiches);
-    expect(adapte.alertes.find(a => a.plat === 'BŒUF AXURIA')).toMatchObject({ adapte: true, texte: ' — Gluten, Végétalien (bœuf) · 1 pers. → remplacé par Bœuf sans tempura' });
+    // plat adapté : plus dans l'encadré (il est signalé sur sa ligne : « 1 gluten · végétalien »)
+    expect(adapte.alertes.find(a => a.plat === 'BŒUF AXURIA')).toBeUndefined();
+    expect(adapte.niveaux[0]?.plats[1]?.remplace).toBe('1 gluten · végétalien');
     expect(f.restrictions).toHaveLength(3);
     expect(f).toMatchObject({ referent: 'Elodie', reglement: 'Empreinte bancaire', boissons: 'Eau', notes: 'RAS' });
     // sans nombres : plats numérotés d'un niveau à l'autre ; sans plats : message

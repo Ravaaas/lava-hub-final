@@ -117,13 +117,13 @@ export function GroupeFormulaire({ groupe: g, contact, onFermer, onContact }: { 
           <input className="fi2" id={id.tel} type="tel" autoComplete="off" placeholder="ex: 06 12 34 56 78" value={telephone} onChange={e => { setTelephone(e.target.value); }} /></div>
       </div>
       <p className="niv-aide" style={{ marginTop: '-0.25rem' }}>Email et téléphone ne sont visibles que par l'admin et la salle, et rejoignent la liste des contacts des groupes.</p>
+      <Profils profils={profils} onChange={setProfils} />
       <div className="fg2"><label className="fl" htmlFor={id.menu}>Menu choisi</label>
           <Selecteur id={id.menu} options={[{ valeur: '', libelle: 'Sur mesure' }, ...menus.map(m => ({ valeur: m.id, libelle: m.nom }))]} valeur={menuId} onChange={v => void choisirMenu(v)} /></div>
       <Niveaux niveaux={niveaux} pax={Number(pax) || 0} profils={profils} onChange={setNiveaux} />
+      <Adaptations profils={profils} niveaux={niveaux} onNiveaux={setNiveaux} />
       <div className="fg2"><label className="fl" htmlFor={id.boissons}>Boissons précommandées</label>
         <textarea className="fta" id={id.boissons} placeholder="ex: 3 magnums de Chablis, 2 bouteilles de Saint-Joseph, eaux et cafés" value={boissons} onChange={e => { setBoissons(e.target.value); }} /></div>
-      <Profils profils={profils} onChange={setProfils} niveaux={niveaux} onNiveaux={setNiveaux}
-        />
       <div className="fg2" style={{ marginTop: '1.25rem' }}><span className="fl">Règlement</span>
         <Choix libelle="Règlement" options={REGLEMENTS} valeur={reglement} onChange={setReglement} /></div>
       {reglement !== 'aucun' && <div className="fg2"><label className="fl" htmlFor={id.montant}>{libelleMontant(reglement)}</label>
@@ -140,37 +140,7 @@ type ProfilSaisi = { id: string; nb: string; allergenes: string[]; regimes: stri
  * Allergies et régimes : une ligne par personne, ou par personnes qui ont exactement les mêmes
  * (ex. 1 personne Œuf + Moutarde, 1 personne Œuf seul). Une seule ligne ouverte à la fois ; les autres sont résumées.
  */
-function Profils({ profils, niveaux, onNiveaux, onChange }: { profils: ProfilSaisi[]; niveaux: Niveau[]; onNiveaux: (n: Niveau[]) => void; onChange: (p: ProfilSaisi[]) => void }) {
-  const { fichesRecette, fiches } = useDonnees();
-  const notifier = useNotifier();
-  // plats à adapter et, pour chacun, des alternatives compatibles (cherchées une fois par changement de plats ou de personnes)
-  const analyse = useMemo(() => {
-    const personnes = profils.map(p => ({ ...p, nb: Number(p.nb) || 1 }));
-    const alertes = alertesMenu(niveaux, personnes, fichesRecette, fiches);
-    const propositions = new Map<string, Proposition[]>();
-    for (const a of alertes) {
-      if (a.adapte) continue;
-      const i = niveaux.findIndex(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
-      const conflit = niveaux[i]?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
-      if (conflit) propositions.set(a.plat, propositionsPour(niveaux, i, conflit, personnes, fichesRecette, fiches));
-    }
-    return { alertes, propositions };
-  }, [niveaux, profils, fichesRecette, fiches]);
-  // un clic sur une proposition : le plat est ajouté au niveau (avec le nombre de personnes concernées, retiré du plat en conflit) et lié « à la place de »
-  const accepter = (a: Alerte, pr: Proposition) => {
-    const i = niveaux.findIndex(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
-    const conflit = niveaux[i]?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
-    if (!conflit) return;
-    let suite = niveaux;
-    let precision = '';
-    if (pr.origine !== 'niveau') {
-      const reste = conflit.qte === null ? null : conflit.qte - a.personnes;
-      suite = niveaux.map((n, k) => (k !== i ? n : { ...n, plats: [...n.plats.map(q => (q === conflit && q.qte !== null ? { ...q, qte: reste !== null && reste > 0 ? reste : null } : q)), { ...pr.plat, qte: a.personnes }] }));
-      if (conflit.qte !== null) precision = ` ; ${a.plat} : ${conflit.qte} → ${reste !== null && reste > 0 ? reste : '–'}`;
-    }
-    onNiveaux(lierRemplacant(suite, clePlat(conflit), clePlat(pr.plat)));
-    notifier(`${pr.nom} servi à la place de ${a.plat} (${a.personnes} pers.${precision})`, 'ok');
-  };
+function Profils({ profils, onChange }: { profils: ProfilSaisi[]; onChange: (p: ProfilSaisi[]) => void }) {
   const [ouvert, setOuvert] = useState<number | null>(null);
   const [autre, setAutre] = useState('');
   const ouvrir = (i: number | null) => { setOuvert(i); setAutre(''); };
@@ -216,6 +186,43 @@ function Profils({ profils, niveaux, onNiveaux, onChange }: { profils: ProfilSai
       })}
       <button type="button" className="btn-ar" style={{ marginBottom: '1rem' }} onClick={() => { onChange([...profils, { id: crypto.randomUUID(), nb: '1', allergenes: [], regimes: [] }]); ouvrir(profils.length); }}>
         <Icone nom="plus" />Ajouter une personne</button>
+    </>
+  );
+}
+
+/** « Plats à adapter » : les plats du menu qui contredisent une allergie ou un régime, des alternatives à la carte, et le choix du plat servi à la place. */
+function Adaptations({ profils, niveaux, onNiveaux }: { profils: ProfilSaisi[]; niveaux: Niveau[]; onNiveaux: (n: Niveau[]) => void }) {
+  const { fichesRecette, fiches } = useDonnees();
+  const notifier = useNotifier();
+  // plats à adapter et, pour chacun, des alternatives compatibles (cherchées une fois par changement de plats ou de personnes)
+  const analyse = useMemo(() => {
+    const personnes = profils.map(p => ({ ...p, nb: Number(p.nb) || 1 }));
+    const alertes = alertesMenu(niveaux, personnes, fichesRecette, fiches);
+    const propositions = new Map<string, Proposition[]>();
+    for (const a of alertes) {
+      if (a.adapte) continue;
+      const i = niveaux.findIndex(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
+      const conflit = niveaux[i]?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
+      if (conflit) propositions.set(a.plat, propositionsPour(niveaux, i, conflit, personnes, fichesRecette, fiches));
+    }
+    return { alertes, propositions };
+  }, [niveaux, profils, fichesRecette, fiches]);
+  // un clic sur une proposition : le plat est ajouté au niveau (avec le nombre de personnes concernées, retiré du plat en conflit) et lié « à la place de »
+  const accepter = (a: Alerte, pr: Proposition) => {
+    const i = niveaux.findIndex(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
+    const conflit = niveaux[i]?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
+    if (!conflit) return;
+    let suite = niveaux;
+    let precision = '';
+    if (pr.origine !== 'niveau') {
+      const reste = conflit.qte === null ? null : conflit.qte - a.personnes;
+      suite = niveaux.map((n, k) => (k !== i ? n : { ...n, plats: [...n.plats.map(q => (q === conflit && q.qte !== null ? { ...q, qte: reste !== null && reste > 0 ? reste : null } : q)), { ...pr.plat, qte: a.personnes }] }));
+      if (conflit.qte !== null) precision = ` ; ${a.plat} : ${conflit.qte} → ${reste !== null && reste > 0 ? reste : '–'}`;
+    }
+    onNiveaux(lierRemplacant(suite, clePlat(conflit), clePlat(pr.plat)));
+    notifier(`${pr.nom} servi à la place de ${a.plat} (${a.personnes} pers.${precision})`, 'ok');
+  };
+  return (
       <AlertesMenu alertes={analyse.alertes} adapter={a => {
         // autres plats du niveau où se trouve le plat en conflit : l'un d'eux peut être servi à sa place
         const niveau = niveaux.find(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
@@ -245,7 +252,6 @@ function Profils({ profils, niveaux, onNiveaux, onChange }: { profils: ProfilSai
           </>
         );
       }} />
-    </>
   );
 }
 

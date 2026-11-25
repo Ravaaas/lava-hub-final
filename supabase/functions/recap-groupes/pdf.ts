@@ -124,8 +124,8 @@ export async function fichePdf(g: FicheGroupe, fichier: string): Promise<Uint8Ar
       const derniere = nom[nom.length - 1] ?? [];
       const wDerniere = derniere.reduce((t, m) => t + (m.sp ? R.widthOfTextAtSize(" ", 9) : 0) + m.f.widthOfTextAtSize(m.t, 9), 0);
       const suffixe = p.remplace ? ` · ${p.remplace}` : "";   // « 1 sans viande » ou « à la place de … »
-      const inline = !!suffixe && wDerniere + R.widthOfTextAtSize(net(suffixe), 8) <= TX;
-      const apres = !!suffixe && !inline ? couper([{ t: p.remplace, f: R }], TX, 8) : [];
+      const inline = !!suffixe && wDerniere + B.widthOfTextAtSize(net(suffixe), 8) <= TX;
+      const apres = !!suffixe && !inline ? couper([{ t: p.remplace, f: B }], TX, 8) : [];
       rempl = inline ? suffixe : "";
       const pastilles = [...p.pour.map((t) => ({ t, pour: true })), ...p.risques.map((t) => ({ t, pour: false }))];
       const h = Math.max(17, 3 + nom.length * 11.5 + apres.length * 10 + (pastilles.length ? 14 : 0) + 3);
@@ -137,8 +137,8 @@ export async function fichePdf(g: FicheGroupe, fichier: string): Promise<Uint8Ar
       const taille = num.length > 3 ? 8 : 10;
       page.drawText(num, { x: ML + (XN - ML - B.widthOfTextAtSize(num, taille)) / 2, y: haut - h / 2 - taille * 0.35, size: taille, font: B, color: WHITE });
       let yy = haut - 3;
-      nom.forEach((l, k) => { yy -= 11.5; dessinerLigne(l, XT, yy, 9, INK); if (k === nom.length - 1 && rempl) texte(rempl, XT + wDerniere, yy, 8, R, MUTE); });
-      apres.forEach((l) => { yy -= 10; dessinerLigne(l, XT, yy, 8, MUTE); });
+      nom.forEach((l, k) => { yy -= 11.5; dessinerLigne(l, XT, yy, 9, INK); if (k === nom.length - 1 && rempl) texte(rempl, XT + wDerniere, yy, 8, B, INK); });
+      apres.forEach((l) => { yy -= 10; dessinerLigne(l, XT, yy, 8, INK); });
       if (pastilles.length) {
         yy -= 14;
         let x = XT;

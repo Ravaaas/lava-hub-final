@@ -3,6 +3,11 @@
 export const MISES_A_JOUR: readonly { date: string; titre: string; desc: string }[] = [
   {
     date: "2026-11-25",
+    titre: "Fiche groupe : allergies avant le menu, fiche plus nette à l'impression",
+    desc: "Dans le formulaire d'un groupe, les allergies et régimes se renseignent maintenant avant le menu ; l'encadré « Plats à adapter » et les alternatives restent sous le menu. Sur la fiche, un plat adapté n'a plus de cadre : « 1 sans viande » s'écrit en gras sur la ligne du plat de remplacement, et seul le cadre des plats pas encore adaptés reste. À l'impression, la date et le titre que le navigateur ajoutait en haut de la page ont disparu."
+  },
+  {
+    date: "2026-11-25",
     titre: "Fiche groupe : choisir le plat de remplacement dans toute la carte",
     desc: "Le choix « Adapté avec » d'un plat en conflit liste maintenant, après les plats du niveau, tous les plats de la carte actuelle (Carte, Partages, Lunch), avec une recherche. Choisir un plat qui n'est pas encore dans le niveau l'ajoute pour les personnes concernées, retire ce nombre du plat en conflit et les lie, comme une proposition."
   },
