@@ -11,7 +11,6 @@ import { useNotifier } from '../../ui/Notifications';
 import { heureFr } from '../../domain/texte';
 import { Icone } from '../../ui/Icone';
 import { Puces } from '../../ui/Puces';
-import { AlertesMenu } from './AlertesMenu';
 import { Choix } from '../../ui/Choix';
 import { Selecteur } from '../../ui/Selecteur';
 import { useConfirmer } from '../../ui/Confirmation';
@@ -222,36 +221,44 @@ function Adaptations({ profils, niveaux, onNiveaux }: { profils: ProfilSaisi[]; 
     onNiveaux(lierRemplacant(suite, clePlat(conflit), clePlat(pr.plat)));
     notifier(`${pr.nom} servi à la place de ${a.plat} (${a.personnes} pers.${precision})`, 'ok');
   };
+  const total = analyse.alertes.length;
+  if (!total) return null;
+  const restants = analyse.alertes.filter(a => !a.adapte).length;
   return (
-      <AlertesMenu alertes={analyse.alertes} adapter={a => {
-        // autres plats du niveau où se trouve le plat en conflit : l'un d'eux peut être servi à sa place
-        const niveau = niveaux.find(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
-        const conflit = niveau?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
-        if (!niveau || !conflit) return null;
-        const cle = clePlat(conflit);
-        const autres = niveau.plats.filter(p => clePlat(p) !== cle).map(p => ({ valeur: clePlat(p), libelle: platAffiche(p, fichesRecette, fiches).nom }));
-        // puis tous les plats de la carte actuelle qui ne sont pas déjà dans le niveau : en choisir un l'ajoute (comme une proposition)
-        const carte = fichesRecette.filter(f => STATUTS_CARTE.includes(f.statut) && f.id !== cle && !niveau.plats.some(p => clePlat(p) === f.id))
-          .sort((x, y) => x.nom.localeCompare(y.nom, 'fr')).map(f => ({ valeur: f.id, libelle: f.nom }));
-        const choisi = niveau.plats.find(p => p.remplace === cle);
-        const propositions = analyse.propositions.get(a.plat);
-        const choisir = (v: string) => {
-          if (!v || autres.some(o => o.valeur === v)) { onNiveaux(lierRemplacant(niveaux, cle, v)); return; }
-          const f = fichesRecette.find(x => x.id === v);
-          if (f) accepter(a, { plat: { frId: f.id }, nom: f.nom, origine: 'fiches' });
-        };
-        return (
-          <>
-            {autres.length + carte.length > 0 && <Selecteur className="alerte-menu-choix" libelle={`Adapté avec — ${a.plat}`} vide="Adapté avec : choisir le plat" options={[...autres, ...carte]}
-              valeur={choisi ? clePlat(choisi) : ''} onChange={choisir} />}
-            {propositions && (propositions.length
-              ? <div className="alerte-menu-props"><span>Proposer :</span>{propositions.map(pr => (
-                <button key={clePlat(pr.plat)} type="button" className="alerte-menu-prop" aria-label={`Servir ${pr.nom} à la place de ${a.plat}`}
-                  title={pr.origine === 'niveau' ? 'Déjà dans ce niveau' : 'Plat de la carte actuelle'} onClick={() => { accepter(a, pr); }}>{pr.nom}</button>))}</div>
-              : <div className="alerte-menu-aucune">Aucune alternative compatible à la carte actuelle.</div>)}
-          </>
-        );
-      }} />
+    <div className={`adapt${restants ? '' : ' adapt-ok'}`} role="note">
+      <div className="adapt-titre"><Icone nom={restants ? 'alert' : 'check'} taille={16} />{restants ? `À adapter · ${restants} sur ${total}` : 'Tout est adapté'}</div>
+      <div className="adapt-liste">
+        {analyse.alertes.map(a => {
+          // autres plats du niveau où se trouve le plat en conflit : l'un d'eux peut être servi à sa place
+          const niveau = niveaux.find(n => n.plats.some(p => platAffiche(p, fichesRecette, fiches).nom === a.plat));
+          const conflit = niveau?.plats.find(p => platAffiche(p, fichesRecette, fiches).nom === a.plat);
+          if (!niveau || !conflit) return null;
+          const cle = clePlat(conflit);
+          const sugg = (analyse.propositions.get(a.plat) ?? []).map(pr => ({ valeur: clePlat(pr.plat), libelle: pr.nom, groupe: 'Suggestions' }));
+          const dejaLa = new Set(sugg.map(o => o.valeur));
+          const autres = niveau.plats.filter(p => clePlat(p) !== cle && !dejaLa.has(clePlat(p))).map(p => ({ valeur: clePlat(p), libelle: platAffiche(p, fichesRecette, fiches).nom, groupe: 'Dans ce niveau' }));
+          // puis tous les plats de la carte actuelle qui ne sont pas déjà dans le niveau : en choisir un l'ajoute (comme une suggestion)
+          const carte = fichesRecette.filter(f => STATUTS_CARTE.includes(f.statut) && f.id !== cle && !dejaLa.has(f.id) && !niveau.plats.some(p => clePlat(p) === f.id))
+            .sort((x, y) => x.nom.localeCompare(y.nom, 'fr')).map(f => ({ valeur: f.id, libelle: f.nom, groupe: 'Carte' }));
+          const options = [...sugg, ...autres, ...carte];
+          const choisi = niveau.plats.find(p => p.remplace === cle);
+          const choisir = (v: string) => {
+            if (!v || niveau.plats.some(p => clePlat(p) === v)) { onNiveaux(lierRemplacant(niveaux, cle, v)); return; }
+            const f = fichesRecette.find(x => x.id === v);
+            if (f) accepter(a, { plat: { frId: f.id }, nom: f.nom, origine: 'fiches' });
+          };
+          // sous le nom : ce que le plat contredit, en bref (2 mots au plus), et le nombre de personnes
+          const causes = a.allergenes.length > 2 ? `${a.allergenes.slice(0, 2).join(', ')} +${a.allergenes.length - 2}` : a.allergenes.join(', ');
+          const detail = a.allergenes.map(x => (a.indices?.[x] ? `${x} (${a.indices[x]})` : x)).join(', ');
+          return (
+            <div key={a.plat} className={`adapt-ligne${a.adapte ? ' adapt-fait' : ''}`}>
+              <div className="adapt-txt" title={detail}><span className="adapt-nom">{a.plat}</span><span className="adapt-sous">{causes} · {a.personnes} pers.</span></div>
+              <Selecteur className="adapt-choix" libelle={`Adapté avec — ${a.plat}`} vide="Choisir" options={options} valeur={choisi ? clePlat(choisi) : ''} onChange={choisir} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

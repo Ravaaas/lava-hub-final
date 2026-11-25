@@ -121,13 +121,20 @@ const check = (nom, ok, detail = '') => {
 function actions(page, base) {
   const a = {
     async clic(txt, n = 0) {
-      const ok = await page.evaluate((t, n) => { const e = __t.tous(t)[n]; if (!e) return false; e.scrollIntoView({ block: 'center' }); e.click(); return true; }, txt, n);
+      // le défilement est fini avant le clic : sinon son évènement scroll refermerait aussitôt une liste qui vient de s'ouvrir
+      const ok = await page.evaluate(async (t, n) => { const e = __t.tous(t)[n]; if (!e) return false; e.scrollIntoView({ block: 'center', behavior: 'instant' }); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); e.click(); return true; }, txt, n);
       if (!ok) throw new Error(`bouton « ${txt} » introuvable`);
       await sleep(350);
     },
     async clicLigne(ligne, txt) {
-      const ok = await page.evaluate((l, t) => { const e = __t.dansLigne(l, t); if (!e) return false; e.scrollIntoView({ block: 'center' }); e.click(); return true; }, ligne, txt);
+      const ok = await page.evaluate((l, t) => { const e = __t.dansLigne(l, t); if (!e) return false; e.scrollIntoView({ block: 'center', behavior: 'instant' }); e.click(); return true; }, ligne, txt);
       if (!ok) throw new Error(`bouton « ${txt} » introuvable dans la ligne « ${ligne} »`);
+      await sleep(350);
+    },
+    // Option d'une liste de choix ouverte (la même chose peut aussi s'écrire ailleurs dans la page)
+    async option(txt) {
+      const ok = await page.evaluate(t => { const e = [...document.querySelectorAll('[role=option]')].find(o => __t.norm(o.textContent).includes(__t.norm(t))); if (!e) return false; e.click(); return true; }, txt);
+      if (!ok) throw new Error(`option « ${txt} » introuvable`);
       await sleep(350);
     },
     existe: txt => page.evaluate(t => __t.tous(t).length > 0, txt),
@@ -545,7 +552,7 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.remplir('Autre allergie ou intolérance — ligne 3', 'gluten'); await a.clic('Ajouter');
   check('allergie libre : « gluten » coche l\'allergène Gluten, sans doublon', await a.voit('Curry · Gluten') && JSON.stringify(await puce('Gluten')) === '["true"]');
   await a.clic('Gluten');
-  check('formulaire : plats à adapter expliqués', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY), Végétarien (saint-jacques) · 4 pers.', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*allergies et régimes/, '').slice(0, 400));
+  check('formulaire : plats à adapter expliqués', await a.enOrdre(['À adapter · 2 sur 2', 'CASSOLETTE DE SAINT-JACQUES', 'Gluten, Curry +1 · 4 pers.', 'TARTE AU CITRON', 'Gluten · 3 pers.']), (await a.texte()).slice(-600));
   await a.remplir('Notes', '2 enfants');
   await a.remplir('Boissons précommandées', '3 magnums de Chablis\nEaux et cafés');
   check('règlement : rien reçu par défaut', await a.estActif('Rien reçu'));
@@ -576,12 +583,12 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.clic('Pour qui — Cassolette sans gluten');
   await a.clic('1 pers. — Curry');
   check('pour qui : personne reliée au plat', JSON.stringify(await puce('1 pers. — Curry')) === '["true"]' && !(await puce('2 pers. — Gluten · Végétarien')).includes('true'));
-  check('remplacement : conflit adapté dans l\'encadré', await a.enOrdre(['Plats à adapter', 'CASSOLETTE DE SAINT-JACQUES — Gluten, Curry (VELOUTÉ CURRY), Végétarien (saint-jacques) · 4 pers. → remplacé par Cassolette sans gluten', 'TARTE AU CITRON — Gluten · 3 pers.']), (await a.texte()).replace(/^[\s\S]*plats à adapter/, '').slice(0, 300));
+  check('remplacement : conflit adapté dans l\'encadré', await a.enOrdre(['À adapter · 1 sur 2', 'CASSOLETTE DE SAINT-JACQUES', 'Gluten, Curry +1 · 4 pers.', 'Cassolette sans gluten', 'TARTE AU CITRON', 'Gluten · 3 pers.', 'Choisir']), (await a.texte()).replace(/^[\s\S]*plats à adapter/, '').slice(0, 300));
   // depuis l'encadré : choisir le plat adapté sur la ligne en conflit (et le retirer)
-  await a.remplir('Adapté avec — CASSOLETTE DE SAINT-JACQUES', 'Adapté avec : choisir le plat');
-  check('encadré : retrait du plat adapté', !(await a.voit('remplacé par Cassolette sans gluten')) && await a.voit('Plats à adapter'));
+  await a.remplir('Adapté avec — CASSOLETTE DE SAINT-JACQUES', 'Choisir');
+  check('encadré : retrait du plat adapté', await a.voit('À adapter · 2 sur 2'));
   await a.remplir('Adapté avec — CASSOLETTE DE SAINT-JACQUES', 'Cassolette sans gluten');
-  check('encadré : plat adapté choisi depuis la ligne en conflit', await a.voit('remplacé par Cassolette sans gluten') && await a.voit('à la place de'));
+  check('encadré : plat adapté choisi depuis la ligne en conflit', await a.voit('À adapter · 1 sur 2') && await a.voit('à la place de'));
   // montant de l'acompte (champ affiché dès que quelque chose est reçu) et référent du groupe
   await a.remplir("Montant de l'acompte (€)", 'trois cents');
   m = await a.marque(); await a.clic('Enregistrer');
@@ -608,7 +615,7 @@ scenario('Groupes', { anciensMenus: true }, async (a, page) => {
   await a.clic('Anniversaire Leroy');
   check('fiche groupe : plat en conflit avec l\'allergie', /cassolette de saint-jacques[\s\S]*gluten/.test(await a.texte()));
   check('fiche groupe : encadré des plats à adapter avant le menu', await a.enOrdre(['Plats à adapter', 'TARTE AU CITRON — Gluten · 3 pers.', 'Plat', '8 / 8 pers.', 'CASSOLETTE DE SAINT-JACQUES', 'Cassolette sans gluten · 1 gluten, 2 gluten · végétarien, 1 curry', 'Dessert'])
-    && !(await a.voit('remplacé par')) && !(await a.voit('Plats adaptés')));
+    && !(await a.voit('remplacé par')) && !(await a.voit('Tout est adapté')));
   check('fiche groupe : « 1 gluten, … » en gras sur la ligne du plat de remplacement', await page.evaluate(() => { const e = document.querySelector('.fdoc-remplace'); return !!e && Number(getComputedStyle(e).fontWeight) >= 700; }));
   check('fiche groupe : une ligne par personne', await a.enOrdre(['Restrictions', '1 pers.', 'Gluten', 'Moutarde', '2 pers.', 'Gluten', 'Végétarien', '1 pers.', 'Curry', 'Référent et règlement']));
   check('fiche groupe : boissons précommandées et règlement', await a.enOrdre(['Boissons précommandées', '3 magnums de Chablis', 'Eaux et cafés', 'Restrictions', 'Règlement', 'Acompte versé']));
@@ -849,13 +856,13 @@ scenario('Groupes alternatives', {}, async (a) => {
   await a.remplir('Plat libre (Entrée)', 'Tartare de veau'); await a.clic('Libre', 0);
   await a.remplir('Nombre — Tartare de veau', '8');
   await a.clic('Ajouter une personne'); await a.clic('Sans viande');
-  check('plat à adapter : le régime sans viande trouve le veau', await a.attend('Tartare de veau — Sans viande (veau) · 1 pers.'));
-  check('alternatives proposées automatiquement', await a.voit('Proposer') && await a.existe('Servir CASSOLETTE DE SAINT-JACQUES à la place de Tartare de veau')
-    && !(await a.existe('Servir Tartare de veau à la place de Tartare de veau')) && !(await a.existe('Servir ANCIEN PLAT à la place de Tartare de veau')));
-  await a.clic('Servir CASSOLETTE DE SAINT-JACQUES à la place de Tartare de veau');
-  check('un clic : plat ajouté, nombre retiré du plat en conflit, total juste', await a.attend('Plats adaptés') && (await a.champ('Nombre — Tartare de veau'))?.valeur === '7'
+  check('plat à adapter : le régime sans viande trouve le veau', await a.attend('Sans viande · 1 pers.') && await a.voit('À adapter · 1 sur 1'));
+  await a.clic('Adapté avec — Tartare de veau');
+  check('alternatives proposées automatiquement, en tête de la liste', await a.voit('Suggestions') && await a.enOrdre(['Suggestions', 'CASSOLETTE DE SAINT-JACQUES']) && !(await a.existe('ANCIEN PLAT')));
+  await a.option('CASSOLETTE DE SAINT-JACQUES');
+  check('un clic : plat ajouté, nombre retiré du plat en conflit, total juste', await a.attend('Tout est adapté') && (await a.champ('Nombre — Tartare de veau'))?.valeur === '7'
     && (await a.champ('Nombre — CASSOLETTE DE SAINT-JACQUES'))?.valeur === '1' && await a.voit('Total : 8 / 8 pers.'));
-  check('conflit réglé : remplacé par l\'alternative', await a.voit('remplacé par CASSOLETTE DE SAINT-JACQUES'));
+  check('conflit réglé : l\'alternative s\'écrit sur la ligne', await a.voit('Tout est adapté'));
   await a.clic('Enregistrer');
   const cree = await a.attendEcriture('groupes', 'POST');
   await a.clic('Déjeuner Roux');
@@ -871,13 +878,13 @@ scenario('Groupes choix dans la carte', {}, async (a) => {
   await a.remplir('Plat libre (Entrée)', 'Tartare de veau'); await a.clic('Libre', 0);
   await a.remplir('Nombre — Tartare de veau', '8');
   await a.clic('Ajouter une personne'); await a.clic('Sans viande');
-  await a.attend('Tartare de veau — Sans viande (veau) · 1 pers.');
+  await a.attend('Sans viande · 1 pers.');
   // la liste « Adapté avec » propose tous les plats de la carte actuelle (Carte, Partages), jamais les fiches archivées
   await a.clic('Adapté avec — Tartare de veau');
   check('liste complète : plats de la carte, sans les archivés', await a.existe('HOUMOUS BETTERAVE') && await a.existe('TARTE AU CITRON') && await a.existe('CASSOLETTE DE SAINT-JACQUES')
     && !(await a.existe('ANCIEN PLAT')));
-  await a.clic('HOUMOUS BETTERAVE');
-  check('plat choisi dans la liste : ajouté, lié, nombre retiré du plat en conflit', await a.attend('Plats adaptés') && await a.voit('remplacé par HOUMOUS BETTERAVE')
+  await a.option('HOUMOUS BETTERAVE');
+  check('plat choisi dans la liste : ajouté, lié, nombre retiré du plat en conflit', await a.attend('Tout est adapté') && await a.voit('HOUMOUS BETTERAVE')
     && (await a.champ('Nombre — Tartare de veau'))?.valeur === '7' && (await a.champ('Nombre — HOUMOUS BETTERAVE'))?.valeur === '1' && await a.voit('Total : 8 / 8 pers.'));
   await a.clic('Enregistrer');
   const cree = await a.attendEcriture('groupes', 'POST');
