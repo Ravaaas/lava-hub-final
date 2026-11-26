@@ -828,8 +828,9 @@ scenario('Ratio', { ratio: true }, async (a, page) => {
   check('menu 5 temps comme la fiche : prix, plafond, coefficient, temps', await a.voit('Menu soir 5 temps') && await a.voit('75,00 € TTC') && await a.voit('Plafond 15,15 €')
     && await a.voit('Budgets 15,00 € · coefficient 4,55') && await a.enOrdre(['Temps 3', '4,00 €', '3,80 €', '27 %', 'CASSOLETTE DE SAINT-JACQUES', '3,90 €', 'Au-dessus', '+0,10 €']));
   check('même plat dans le 3 temps : vérifié avec son propre budget', await a.enOrdre(['Menu soir 3 temps', 'Temps 2', '5,50 €', 'CASSOLETTE DE SAINT-JACQUES', '3,90 €', 'Dans le budget', '−1,3']));
-  check('midi : version LUNCH, plat libre et coût incomplet signalés avec l\'action à faire', await a.enOrdre(['Menu midi', 'Plat du jour', 'Plat libre : le remplacer par sa fiche recette dans Menus'])
-    && await a.enOrdre(['Dessert', 'TARTE AU CITRON', 'TARTE CITRON (LUNCH)', 'Coût incomplet, sans prix dans Yokitup : ZESTE DE CITRON', '1,10 €', 'Dans le budget']));
+  check('midi : version LUNCH, plat libre signalé avec l\'action à faire ; produits sans prix réunis en une note', await a.enOrdre(['Menu midi', 'Plat du jour', 'Plat libre : le remplacer par sa fiche recette dans Menus'])
+    && await a.enOrdre(['Dessert', 'TARTE AU CITRON', 'TARTE CITRON (LUNCH)', '1,10 €', 'Dans le budget'])
+    && await a.enOrdre(['Produits sans prix dans Yokitup', 'Comptés 0 €, comme dans Yokitup : ZESTE DE CITRON']));
   check('carte : coût, prix conseillé (coût × 4,5 × 1,10 arrondi au demi-euro)', await a.enOrdre(['Carte', 'CASSOLETTE ST JACQUES', '4,20 €', '21,00 €', '20,79 €']) && await a.voit('Sans prix'));
   await a.clic('CASSOLETTE DE SAINT-JACQUES · Menu soir 5 temps · Temps 3');
   check('lien du résumé : la ligne est visée', await page.evaluate(() => !!document.querySelector('.rt-vise')));

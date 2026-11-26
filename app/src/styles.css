@@ -809,7 +809,7 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .rt-ecart{min-width:4.6rem;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
 .rt-txt-vert{color:#14652c}.rt-txt-ambre{color:#7a4b00}.rt-txt-rouge{color:#9a2a20}
 .rt-vide{color:#6B5C5C;font-size:0.875rem}
-.rt-menu+.rt-menu,.rt-carte{margin-top:1.75rem}
+.rt-menu+.rt-menu,.rt-duo+.rt-menu,.rt-carte{margin-top:1.75rem}
 .rt-defile{overflow-x:auto}
 .rt-table-carte .rt-carte-plat{white-space:normal;min-width:11rem}
 .rt-table-carte tbody tr:nth-child(even) th,.rt-table-carte tbody tr:nth-child(even) td{background:#FBF6F6}
@@ -819,12 +819,13 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .rt-saisie.fi2{width:6.5rem;min-height:36px;height:36px;padding:0 10px;text-align:right;background:#F4EFEF;color:#221818;font-size:0.9375rem;font-variant-numeric:tabular-nums}
 .rt-saisie.fi2:focus{background:#fff;box-shadow:0 0 0 2px #B5433C}
 .rt-saisie.fi2::placeholder{color:#9a8c8c}
-.rt-imprime{display:none}
+.rt-imprime,.rt-nom-court{display:none}
 .rt-coef{display:inline-flex;align-items:center;gap:6px;font-weight:700}
 .rt-cache{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .rt-ranger{margin:0;padding:0;list-style:none;border:1px solid #E0D0D0}
 .rt-ranger li{padding:0.55rem 0.75rem;border-top:1px solid #EDD8D8;font-size:0.9375rem;color:#221818}
 .rt-ranger li:first-child{border-top:0}
+.rt-note{margin:0;font-size:0.875rem;line-height:1.5;color:#55555a}
 .rt-apercu{margin-top:4px;font-size:14px;color:var(--ink2)}
 @keyframes rt-vise{0%,40%{box-shadow:inset 0 0 0 2px #B5433C}100%{box-shadow:inset 0 0 0 2px transparent}}
 .rt-vise>td,.rt-vise>th{animation:rt-vise 2.2s cubic-bezier(.16,1,.3,1)}
@@ -845,16 +846,37 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .rt-table-carte tbody td::before{content:attr(data-libelle);font-size:0.6875rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#B5433C}
 }
 @media print{
-  .rt-imprime{display:inline}
+  .rt-imprime,.rt-nom-court{display:inline}
+  .rt-nom-long{display:none}
   .fdoc-ratio .fdoc-sep{margin:2mm 0 1mm}
   .fdoc-ratio .fdoc-ptitle{margin:2.5mm 0 0.8mm}
-  .rt-menu+.rt-menu,.rt-carte{margin-top:2mm}
+  .rt-menu+.rt-menu,.rt-duo+.rt-menu,.rt-carte{margin-top:2mm}
+  .rt-duo{display:grid;grid-template-columns:1fr 1fr;gap:0 4mm;align-items:start}
+  .rt-duo .rt-menu+.rt-menu{margin-top:0}
+  .rt-duo .rt-cles{gap:0 2mm}
   .rt-cles{margin:0 0 1mm;font-size:7.5pt;gap:0 3mm}
   .rt-table thead th{font-size:7pt;padding:0.5mm 2mm}
   .rt-table tbody td,.rt-table tbody th{font-size:8pt;padding:0.35mm 2mm;line-height:1.2}
   .rt-table tbody tr.rt-plat td{padding:0.3mm 2mm 0.3mm 5mm}
   .rt-plat-nom{flex-basis:auto}
-  .rt-yk,.rt-brut,.rt-action{font-size:6.5pt;margin-top:0}
+  .rt-action{font-size:6.5pt;margin-top:0}
+  /* une page A4 même avec toute la carte : noms Yokitup, fiches reliées et prix bruts seulement à l'écran */
+  .rt-yk,.rt-brut{display:none}
+  .rt-table thead th{font-size:6.5pt;padding:0.2mm 2mm}
+  .rt-table tbody td,.rt-table tbody th{font-size:7pt;padding:0.1mm 2mm;line-height:1.1}
+  .rt-table tbody tr.rt-plat td{padding:0.1mm 2mm 0.1mm 5mm}
+  .rt-table-carte tbody th.rt-carte-plat{font-weight:500}
+  .rt-table-carte td{width:1%}
+  .rt-plat-l{flex-wrap:nowrap;gap:3mm}
+  .rt-plat-nom{flex:1 1 auto}
+  .rt-plat-cout{flex-wrap:nowrap;gap:1.5mm}
+  .rt-ecart{min-width:12mm}
+  .rt-vide{font-size:6.5pt}
+  .rt-table tbody tr.rt-plat .rt-vide{display:block;line-height:1}
+  .fdoc-ratio .fdoc-hdr .fdoc-cles{font-size:8pt}
+  .fdoc-ratio .fdoc-nom{font-size:13pt}
+  .rt-serre .rt-table tbody td,.rt-serre .rt-table tbody th{font-size:6.5pt;padding-top:0;padding-bottom:0}
+  .rt-serre .rt-cles{font-size:7pt}
   .rt-pastille{height:auto;padding:0 1.8mm;font-size:6.5pt}
   .rt-point{width:2mm;height:2mm}
   .rt-defile{overflow:visible}

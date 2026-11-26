@@ -53,6 +53,8 @@ export function Ratio() {
   const carte = verifierCarte(d.recettes, d.prixCarte, d.liens, fichesRecette, d.regles);
   const alertes = resume(verifies, carte);
   const aRanger = recettesARanger(d.recettes, verifies, d.liens);
+  // Produits sans prix dans Yokitup (eau, parures, pain rassis…) : comptés 0 €, comme Yokitup ; signalés une seule fois.
+  const sansPrix = [...new Set(d.recettes.flatMap(r => r.manquants))].sort((a, b) => a.localeCompare(b, 'fr'));
 
   const enregistrerPrix = async (l: LigneCarte, prix: number | null) => {
     if (prix === l.prixReel) return;
@@ -79,15 +81,22 @@ export function Ratio() {
       </p>
       {d.sansCouts && d.recettes.length > 0 && <div className="alg-etat" role="status">Les coûts n'ont pas encore été lus : clique « Relire Yokitup ».</div>}
       <Alertes alertes={alertes} />
-      <div className="fdoc fdoc-ratio">
+      {/* longue carte : encore plus serré à l'impression pour rester sur une page */}
+      <div className={`fdoc fdoc-ratio${carte.length + verifies.reduce((n, m) => n + m.temps.reduce((k, t) => k + t.plats.length, 0), 0) > 44 ? ' rt-serre' : ''}`}>
         <div className="fdoc-hdr"><div className="fdoc-sur">Ratio matière</div><div className="fdoc-nom">Budgets et coûts</div>
           <div className="fdoc-cles"><span>Coefficient {coef(d.regles.coefficient)}</span><span>TVA {pourcent(d.regles.tva)}</span><span>Perte {pourcent(d.regles.perte)} incluse</span>
             {d.derniere && <span>Yokitup du {new Date(d.derniere.le).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })}</span>}</div>
         </div>
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
-          {verifies.map(m => <SectionMenu key={m.budget.id} m={m} regles={d.regles} onModifier={() => { setEdition(m.budget); }} />)}
+          {/* à l'impression, les deux menus du soir côte à côte : la feuille tient sur une page avec toute la carte */}
+          <div className="rt-duo">{verifies.filter(m => m.budget.version === 'MENU').map(m => <SectionMenu key={m.budget.id} m={m} regles={d.regles} onModifier={() => { setEdition(m.budget); }} />)}</div>
+          {verifies.filter(m => m.budget.version !== 'MENU').map(m => <SectionMenu key={m.budget.id} m={m} regles={d.regles} onModifier={() => { setEdition(m.budget); }} />)}
           <SectionCarte lignes={carte} regles={d.regles} onPrix={(l, p) => void enregistrerPrix(l, p)} />
+          {sansPrix.length > 0 && <div className="fdoc-ecran">
+            <div className="fdoc-ptitle">Produits sans prix dans Yokitup</div>
+            <p className="rt-note">Comptés 0 €, comme dans Yokitup : {sansPrix.join(', ')}. Si l'un d'eux n'est pas gratuit, lui donner un prix dans Yokitup : les coûts suivront à la prochaine lecture.</p>
+          </div>}
           {aRanger.length > 0 && <div className="fdoc-ecran">
             <div className="fdoc-ptitle">Recettes Yokitup hors des menus</div>
             <ul className="rt-ranger">{aRanger.map(x => (
@@ -106,13 +115,16 @@ export function Ratio() {
 
 /** En tête : ce qui demande une action, avec un lien vers chaque ligne concernée (jamais imprimé). */
 function Alertes({ alertes }: { alertes: ReturnType<typeof resume> }) {
-  type Ligne = { cle: string; ton: Pastille | 'neutre'; titre: string; renvois: Renvoi[] };
-  const lignes = ([
+  type Ligne = { cle: string; ton: Pastille | 'neutre'; titre: string; renvois: Renvoi[]; nombre?: number };
+  const toutes: Ligne[] = [
     { cle: 'hors', ton: 'rouge', titre: pluriel(alertes.horsBudget.length, 'plat hors budget', 'plats hors budget'), renvois: alertes.horsBudget },
     { cle: 'proches', ton: 'ambre', titre: pluriel(alertes.proches.length, 'plat proche du plafond', 'plats proches du plafond'), renvois: alertes.proches },
-    { cle: 'prix', ton: 'neutre', titre: pluriel(alertes.sansPrix.length, 'plat de la carte sans prix', 'plats de la carte sans prix'), renvois: alertes.sansPrix },
+    // plats sans prix : un seul lien vers le premier (la carte est un tableau à remplir d'un coup)
+    { cle: 'prix', ton: 'neutre', titre: pluriel(alertes.sansPrix.length, 'plat de la carte sans prix', 'plats de la carte sans prix'),
+      renvois: alertes.sansPrix.length > 3 ? alertes.sansPrix.slice(0, 1).map(r => ({ ...r, nom: 'Saisir les prix', ou: 'Carte' })) : alertes.sansPrix, nombre: alertes.sansPrix.length },
     { cle: 'corriger', ton: 'neutre', titre: pluriel(alertes.aCorriger.length, 'plat impossible à vérifier', 'plats impossibles à vérifier'), renvois: alertes.aCorriger },
-  ] satisfies Ligne[]).filter(l => l.renvois.length);
+  ];
+  const lignes = toutes.filter(l => (l.nombre ?? l.renvois.length) > 0);
   if (!lignes.length && !alertes.budgetsTropHauts.length) return <div className="rt-alertes rt-tout-bon" role="status"><Icone nom="check" />Tous les plats sont dans leur budget.</div>;
   return (
     <section className="rt-alertes" aria-label="Alertes">
@@ -171,10 +183,9 @@ function LignePlat({ p, version }: { p: PlatVerifie; version: string }) {
     <tr className="rt-plat" id={p.ancre}>
       <td colSpan={4}>
         <div className="rt-plat-l">
-          <div className="rt-plat-nom">{p.nom}
+          <div className="rt-plat-nom"><span className="rt-nom-long">{p.nom}</span><span className="rt-nom-court">{p.court}</span>
             {p.recette && <span className="rt-yk">{p.recette.nom}</span>}
             {p.probleme && <span className="rt-action">{ACTION[p.probleme](version)}</span>}
-            {p.recette && p.recette.manquants.length > 0 && <span className="rt-action">Coût incomplet, sans prix dans Yokitup : {p.recette.manquants.join(', ')}</span>}
           </div>
           {p.cout !== null && p.pastille && <div className="rt-plat-cout">
             <span className="rt-montant">{euros(p.cout)}</span>
@@ -221,7 +232,6 @@ function LigneCarteRatio({ l, onPrix }: { l: LigneCarte; onPrix: (l: LigneCarte,
       <th scope="row" className="rt-carte-plat">{l.plat}
         {l.fiche && <span className="rt-yk">{l.fiche}</span>}
         {l.cout === null && <span className="rt-action">{ACTION.sansCout('CARTE')}</span>}
-        {l.recette.manquants.length > 0 && <span className="rt-action">Coût incomplet : {l.recette.manquants.join(', ')}</span>}
       </th>
       <td data-libelle="Coût">{l.cout === null ? '—' : euros(l.cout)}</td>
       <td data-libelle="Conseillé">{l.conseille ? <><strong>{euros(l.conseille.arrondi)}</strong><span className="rt-brut">{euros(l.conseille.brut)}</span></> : '—'}</td>

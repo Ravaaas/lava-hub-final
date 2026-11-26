@@ -7,6 +7,7 @@
 // Pastilles : vert = sous 90 % du plafond, ambre = entre 90 % et le plafond, rouge = au-dessus.
 import type { FicheRecette, Menu } from './types';
 import { servicesAffiches } from './menus';
+import { nomSurFiche } from './allergenesMenus';
 import { compareFr } from './texte';
 
 export interface Regles {
@@ -93,6 +94,8 @@ export interface PlatVerifie {
   /** Ancre de la ligne (liens du résumé). */
   ancre: string;
   nom: string;
+  /** Nom court (fiche allergènes : nom court de la fiche, sinon jusqu'à la 1re virgule), pour la feuille imprimée. */
+  court: string;
   /** Plat Yokitup relié (null : non relié). */
   plat: string | null;
   recette: RecetteRatio | null;
@@ -138,15 +141,15 @@ export function verifierMenu(b: BudgetMenu, menus: readonly Menu[], frs: readonl
     const service = services.find(s => cle(s.nom) === cle(t.nom));
     const plats = (service?.plats ?? []).map((p, k): PlatVerifie => {
       const base = { ancre: `ratio-${b.id}-${i}-${k}`, plat: null, recette: null, cout: null, pastille: null, ecart: null };
-      if ('texte' in p) return { ...base, nom: p.texte, probleme: 'libre' };
+      if ('texte' in p) return { ...base, nom: p.texte, court: nomSurFiche({ nom: p.texte }), probleme: 'libre' };
       const fr = frs.find(f => f.id === p.frId);
-      if (!fr) return { ...base, nom: '(fiche supprimée)', probleme: 'supprime' };
-      const plat = platDeFiche.get(fr.id) ?? null;
-      if (!plat) return { ...base, nom: fr.nom, probleme: 'nonRelie' };
+      if (!fr) return { ...base, nom: '(fiche supprimée)', court: '(fiche supprimée)', probleme: 'supprime' };
+      const court = nomSurFiche(fr), plat = platDeFiche.get(fr.id) ?? null;
+      if (!plat) return { ...base, nom: fr.nom, court, probleme: 'nonRelie' };
       const recette = versionDe(recettes, plat, b.version);
-      if (!recette) return { ...base, nom: fr.nom, plat, probleme: 'sansVersion' };
-      if (recette.cout === null) return { ...base, nom: fr.nom, plat, recette, probleme: 'sansCout' };
-      return { ...base, nom: fr.nom, plat, recette, probleme: null, cout: recette.cout, pastille: pastille(recette.cout, plafond), ecart: recette.cout - plafond };
+      if (!recette) return { ...base, nom: fr.nom, court, plat, probleme: 'sansVersion' };
+      if (recette.cout === null) return { ...base, nom: fr.nom, court, plat, recette, probleme: 'sansCout' };
+      return { ...base, nom: fr.nom, court, plat, recette, probleme: null, cout: recette.cout, pastille: pastille(recette.cout, plafond), ecart: recette.cout - plafond };
     });
     return { ...t, apresPerte: plafond, part: total > 0 ? t.budget / total : 0, plats };
   });
