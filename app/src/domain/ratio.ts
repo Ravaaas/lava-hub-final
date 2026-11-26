@@ -2,11 +2,13 @@
 // Règles pures, sans accès à la base.
 //   - prix HT = prix TTC ÷ (1 + TVA) ; plafond matière d'un menu = prix HT ÷ coefficient (4,5) ;
 //   - perte de 5 % incluse : ce qu'on peut mettre dans l'assiette pour un temps = budget × 0,95 (« après perte ») ;
-//   - un plat de menu est comparé (coût de sa version MENU, LUNCH pour le midi) au budget après perte de son temps ;
+//   - un plat de menu est comparé (coût de sa version MENU, LUNCH pour le midi) au budget après perte de son temps (repère) ;
+//   - un menu entier est HORS BUDGET quand son coût réel (plat le plus cher de chaque temps) dépasse le total des budgets après perte :
+//     seuls un menu entier ou un plat de la carte sont inscrits « hors budget » (résumé et pastille de l'onglet) ;
 //   - un plat de la carte : prix TTC conseillé = coût de sa version CARTE × coefficient × (1 + TVA), arrondi au demi-euro supérieur.
 // Pastilles : vert = sous 90 % du plafond, ambre = entre 90 % et le plafond, rouge = au-dessus.
 import type { FicheRecette, Menu } from './types';
-import { servicesAffiches } from './menus';
+import { servicesAffiches, STATUTS_CARTE } from './menus';
 import { nomSurFiche } from './allergenesMenus';
 import { compareFr } from './texte';
 
@@ -122,6 +124,14 @@ export interface MenuVerifie {
   /** Coût réel du menu : le plat le plus cher de chaque temps (null si un temps n'a aucun coût). */
   coutReel: number | null;
   coefficientReel: number | null;
+  /** Ancre de la section du menu (liens du résumé). */
+  ancre: string;
+  /** Total des budgets après perte : ce que le menu entier peut coûter. */
+  totalApresPerte: number;
+  /** Menu entier face à son budget (null si le coût réel est inconnu). */
+  pastille: Pastille | null;
+  /** Coût réel − total après perte (négatif = marge). */
+  ecart: number | null;
 }
 
 const cle = (s: string): string => s.replace(/[Œœ]/g, 'oe').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
@@ -155,11 +165,13 @@ export function verifierMenu(b: BudgetMenu, menus: readonly Menu[], frs: readonl
   });
   const parTemps = temps.map(t => Math.max(...t.plats.map(p => p.cout ?? -Infinity)));
   const coutReel = temps.length && parTemps.every(Number.isFinite) ? parTemps.reduce((a, c) => a + c, 0) : null;
-  const plafond = plafondMatiere(b.prixTtc, r);
+  const plafond = plafondMatiere(b.prixTtc, r), totalApresPerte = apresPerte(total, r);
   return {
     budget: b, menuTrouve: !!menu, prixHt: prixHt(b.prixTtc, r), plafond, total,
     coefficient: coefficient(b.prixTtc, total, r), budgetsTropHauts: total > plafond + 0.005, temps,
     coutReel, coefficientReel: coutReel === null ? null : coefficient(b.prixTtc, coutReel, r),
+    ancre: `ratio-${b.id}`, totalApresPerte,
+    pastille: coutReel === null ? null : pastille(coutReel, totalApresPerte), ecart: coutReel === null ? null : coutReel - totalApresPerte,
   };
 }
 
@@ -195,20 +207,32 @@ export interface LigneCarte {
 /** Ancre d'un plat de la carte (lettres et chiffres seulement). */
 export const ancreCarte = (plat: string): string => 'ratio-carte-' + cle(plat).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+/** Fiche recette de la carte actuelle (statuts Carte, Partages, Lunch, comme la fiche allergènes) reliée à ce plat Yokitup, sinon null. */
+const ficheALaCarte = (plat: string, liens: ReadonlyMap<string, string>, frs: readonly FicheRecette[]): FicheRecette | null => {
+  const fr = frs.find(f => f.id === liens.get(plat));
+  return fr && STATUTS_CARTE.includes(fr.statut) ? fr : null;
+};
+
+/** Carte : seulement les plats de la carte actuelle (plat Yokitup relié à une fiche Carte, Partages ou Lunch). */
 export function verifierCarte(recettes: readonly RecetteRatio[], prix: ReadonlyMap<string, number>, liens: ReadonlyMap<string, string>,
   frs: readonly FicheRecette[], r: Regles): LigneCarte[] {
-  return recettesCarte(recettes).map(rec => {
+  return recettesCarte(recettes).filter(rec => ficheALaCarte(rec.plat, liens, frs)).map(rec => {
     const cout = rec.cout, prixReel = prix.get(rec.plat) ?? null;
     const coef = cout !== null && prixReel !== null ? coefficient(prixReel, cout, r) : null;
     return {
       ancre: ancreCarte(rec.plat), plat: rec.plat, recette: rec,
-      fiche: frs.find(f => f.id === liens.get(rec.plat))?.nom ?? null,
+      fiche: ficheALaCarte(rec.plat, liens, frs)?.nom ?? null,
       cout, conseille: cout !== null ? prixConseille(cout, r) : null, prixReel, coefficientReel: coef,
       pastille: cout !== null && prixReel !== null ? pastille(cout, plafondMatiere(prixReel, r)) : null,
       ecartPrix: cout !== null && prixReel !== null ? prixReel - prixConseille(cout, r).arrondi : null,
     };
   });
 }
+
+/** Recettes CARTE de Yokitup reliées à aucune fiche recette : nouveau plat à relier (Config > Yokitup) s'il est à la carte.
+ *  Celles reliées à une fiche hors carte (Best of, archive) sont des plats retirés : pas signalées. */
+export const carteARelier = (recettes: readonly RecetteRatio[], liens: ReadonlyMap<string, string>): RecetteRatio[] =>
+  recettesCarte(recettes).filter(rec => !liens.has(rec.plat));
 
 /** Recettes MENU ou LUNCH de Yokitup qu'aucun temps des menus vérifiés n'utilise : à ranger (relier la fiche, l'ajouter au menu). */
 export function recettesARanger(recettes: readonly RecetteRatio[], verifies: readonly MenuVerifie[], liens: ReadonlyMap<string, string>): { recette: RecetteRatio; relie: boolean }[] {
@@ -220,8 +244,9 @@ export function recettesARanger(recettes: readonly RecetteRatio[], verifies: rea
 }
 
 // ── Résumé des alertes ──
-export interface Renvoi { ancre: string; nom: string; ou: string }
+export interface Renvoi { ancre: string; nom: string; ou: string; menu?: true }
 export interface Resume {
+  /** Menus entiers et plats de la carte au-dessus de leur budget (un plat de menu seul n'y figure pas). */
   horsBudget: Renvoi[];
   proches: Renvoi[];
   sansPrix: Renvoi[];
@@ -232,11 +257,12 @@ export interface Resume {
 
 export function resume(menus: readonly MenuVerifie[], carte: readonly LigneCarte[]): Resume {
   const r: Resume = { horsBudget: [], proches: [], sansPrix: [], aCorriger: [], budgetsTropHauts: menus.filter(m => m.budgetsTropHauts).map(m => m.budget.nom) };
-  for (const m of menus) for (const t of m.temps) for (const p of t.plats) {
-    const renvoi = { ancre: p.ancre, nom: p.nom, ou: `${m.budget.nom} · ${t.nom}` };
-    if (p.pastille === 'rouge') r.horsBudget.push(renvoi);
-    else if (p.pastille === 'ambre') r.proches.push(renvoi);
-    if (p.probleme) r.aCorriger.push(renvoi);
+  for (const m of menus) {
+    if (m.pastille && m.coutReel !== null && m.pastille !== 'vert') {
+      const renvoi = { ancre: m.ancre, nom: m.budget.nom, ou: `coût ${euros(m.coutReel)} pour ${euros(m.totalApresPerte)}`, menu: true as const };
+      (m.pastille === 'rouge' ? r.horsBudget : r.proches).push(renvoi);
+    }
+    for (const t of m.temps) for (const p of t.plats) if (p.probleme) r.aCorriger.push({ ancre: p.ancre, nom: p.nom, ou: `${m.budget.nom} · ${t.nom}` });
   }
   for (const l of carte) {
     const renvoi = { ancre: l.ancre, nom: l.plat, ou: 'Carte' };
@@ -248,7 +274,7 @@ export function resume(menus: readonly MenuVerifie[], carte: readonly LigneCarte
   return r;
 }
 
-/** Plats hors budget (menus et carte), pour la pastille rouge de l'onglet Ratio visible partout dans le Hub. */
+/** Menus entiers et plats de la carte hors budget, pour la pastille rouge de l'onglet Ratio visible partout dans le Hub. */
 export function nbHorsBudget(budgets: readonly BudgetMenu[], menus: readonly Menu[], frs: readonly FicheRecette[], recettes: readonly RecetteRatio[],
   liens: ReadonlyMap<string, string>, prix: ReadonlyMap<string, number>, r: Regles): number {
   return resume(budgets.map(b => verifierMenu(b, menus, frs, recettes, liens, r)), verifierCarte(recettes, prix, liens, frs, r)).horsBudget.length;

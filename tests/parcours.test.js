@@ -822,10 +822,12 @@ scenario('Yokitup sans clé', { yokitupSansCle: true }, async (a) => {
 
 scenario('Ratio', { ratio: true }, async (a, page, base) => {
   check('connexion admin', await a.connexion('Cuisine', 'Alexandre RAVASIO'));
-  check('alerte sur l\'onglet Ratio, visible depuis tout le Hub', await a.attendClic('Ratio — 1 plat hors budget') && await a.voit('Fiche Technique'));
+  check('alerte sur l\'onglet Ratio, visible depuis tout le Hub', await a.attendClic('Ratio — 1 hors budget') && await a.voit('Fiche Technique'));
   await a.onglet('Ratio');
-  check('résumé des alertes : hors budget, sans prix, à vérifier', await a.attend('1 plat hors budget') && await a.voit('1 plat de la carte sans prix')
-    && await a.voit('1 plat impossible à vérifier') && await a.existe('CASSOLETTE DE SAINT-JACQUES · Menu soir 5 temps · Temps 3'));
+  check('résumé : seul le menu entier est hors budget (pas chaque plat), sans prix, à vérifier', await a.attend('1 menu hors budget') && await a.voit('1 plat de la carte sans prix')
+    && await a.voit('1 plat impossible à vérifier') && await a.existe('Menu soir 5 temps · coût 19,50 € pour 14,25 €')
+    && !(await a.existe('CASSOLETTE DE SAINT-JACQUES · Menu soir 5 temps')));
+  check('menu entier face à ses budgets après perte', await a.enOrdre(['Menu soir 5 temps', 'Menu entier : 19,50 € pour 14,25 € après perte', 'Au-dessus', '+5,25 €']));
   check('menu 5 temps comme la fiche : prix, plafond, coefficient, temps', await a.voit('Menu soir 5 temps') && await a.voit('75,00 € TTC') && await a.voit('Plafond 15,15 €')
     && await a.voit('Budgets 15,00 € · coefficient 4,55') && await a.enOrdre(['Temps 3', '4,00 €', '3,80 €', '27 %', 'CASSOLETTE DE SAINT-JACQUES', '3,90 €', 'Au-dessus', '+0,10 €']));
   check('même plat dans le 3 temps : vérifié avec son propre budget', await a.enOrdre(['Menu soir 3 temps', 'Temps 2', '5,50 €', 'CASSOLETTE DE SAINT-JACQUES', '3,90 €', 'Dans le budget', '−1,3']));
@@ -833,14 +835,14 @@ scenario('Ratio', { ratio: true }, async (a, page, base) => {
     && await a.enOrdre(['Dessert', 'TARTE AU CITRON', 'TARTE CITRON (LUNCH)', '1,10 €', 'Dans le budget'])
     && await a.enOrdre(['Produits sans prix dans Yokitup', 'Comptés 0 €, comme dans Yokitup : ZESTE DE CITRON']));
   check('carte : coût, prix conseillé (coût × 4,5 × 1,10 arrondi au demi-euro)', await a.enOrdre(['Carte', 'CASSOLETTE ST JACQUES', '4,20 €', '21,00 €', '20,79 €']) && await a.voit('Sans prix'));
-  await a.clic('CASSOLETTE DE SAINT-JACQUES · Menu soir 5 temps · Temps 3');
-  check('lien du résumé : la ligne est visée', await page.evaluate(() => !!document.querySelector('.rt-vise')));
+  await a.clic('Menu soir 5 temps · coût 19,50 € pour 14,25 €');
+  check('lien du résumé : le menu est visé', await page.evaluate(() => document.querySelector('.rt-vise')?.id === 'ratio-soir5'));
   // Prix réel de la carte saisi dans l'onglet
   await a.remplir('Prix réel — CASSOLETTE ST JACQUES', '19');
   await a.touche('Prix réel — CASSOLETTE ST JACQUES', 'Enter');
   const prix = await a.attendEcriture('ratio_carte', 'POST');
   check('prix réel enregistré', prix && prix.corps.plat === 'CASSOLETTE ST JACQUES' && prix.corps.prix_ttc === 19, JSON.stringify(prix && prix.corps));
-  check('coefficient réel et pastille rouge sous 4,5 ; alerte mise à jour', await a.attend('4,11') && await a.attend('2 plats hors budget') && !(await a.voit('plat de la carte sans prix')));
+  check('coefficient réel et pastille rouge sous 4,5 ; alerte mise à jour', await a.attend('4,11') && await a.attend('1 menu hors budget · 1 plat de la carte hors budget') && !(await a.voit('plat de la carte sans prix')));
   check('prix inscrit au journal', a.ecritures('audit_log', 'POST').some(e => e.corps.action === 'prix carte (Ratio)' && JSON.stringify(e.corps.detail).includes('19,00 €')));
   // Budgets modifiables, prix de vente compris
   await a.clic('Modifier', 0);
@@ -849,14 +851,15 @@ scenario('Ratio', { ratio: true }, async (a, page, base) => {
   await a.clic('Enregistrer');
   const menu = await a.attendEcriture('ratio_menus', 'POST');
   check('budget enregistré', menu && menu.corps.id === 'soir5' && menu.corps.prix_ttc === 75 && menu.corps.temps[2].budget === 4.5 && menu.corps.temps.length === 5, JSON.stringify(menu && menu.corps));
-  check('nouveau budget appliqué : plat proche du plafond', await a.attend('Proche du plafond') && await a.attend('1 plat proche du plafond') && await a.voit('Budgets 15,50 €'));
+  check('nouveau budget appliqué : plat proche du plafond de son temps', await a.attend('Proche du plafond') && await a.voit('Budgets 15,50 €') && await a.voit('19,50 € pour 14,73 €'));
   const imp = await a.imprime('Imprimer');
   check('impression : la feuille seule, sans boutons ni résumé', imp.n === 1 && imp.texte.includes('menu soir 5 temps') && imp.texte.includes('19,00 €') && !imp.texte.includes('relire yokitup') && !imp.texte.includes('plat hors budget'), imp.texte.slice(0, 300));
   const a4 = await a.feuilleA4();
   check('feuille Ratio : 1 page A4, 4 cm en haut', a4.pages === 1 && a4.margeHaute === '40mm', JSON.stringify(a4));
   await a.onglet('Fiche Technique');
-  check('alerte de l\'onglet mise à jour en le quittant (carte sous le coefficient, menu revenu au budget)', await a.attendClic('Ratio — 1 plat hors budget'));
+  check('alerte de l\'onglet mise à jour en le quittant (menu entier et plat de la carte)', await a.attendClic('Ratio — 2 hors budget'));
   base.db.ratio_carte = [];
+  base.db.yokitup_couts.find(c => c.recette_id === 'yk2').cout = 0.5;   // cassolette Menu à 0,50 € : le 5 temps revient dans son budget
   await a.onglet('Ratio'); await a.onglet('Menus');
   check('plus rien hors budget : plus d\'alerte', await a.attendClic('Menus') && !(await a.existe('plat hors budget')) && await a.existe('Ratio'));
 });

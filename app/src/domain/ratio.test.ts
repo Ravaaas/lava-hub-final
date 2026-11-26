@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTION, ancreCarte, apresPerte, BUDGETS_DE_DEPART, coefficient, ecartEuros, euros, lireMontant, pastille, plafondMatiere, prixConseille, recettesARanger, recettesCarte,
+import { ACTION, ancreCarte, carteARelier, apresPerte, BUDGETS_DE_DEPART, coefficient, ecartEuros, euros, lireMontant, pastille, plafondMatiere, prixConseille, recettesARanger, recettesCarte,
   REGLES_DE_DEPART as R, resume, totalBudgets, verifierCarte, verifierMenu, type BudgetMenu, type RecetteRatio } from './ratio';
 import type { FicheRecette, Menu } from './types';
 
@@ -103,6 +103,11 @@ describe('vérification de la carte', () => {
   it('une recette par plat : CARTE d\'abord, sans version, puis autre version ; ni MENU, ni LUNCH, ni MENU ENFANT', () => {
     expect(recettesCarte(recettes).map(r => r.id)).toEqual(['b1', 'c1', 'f1', 'h1', 'm1']);
   });
+  it('seulement la carte actuelle : plat relié à une fiche Carte, Partages ou Lunch ; non reliés à relier ; Best of écarté', () => {
+    const avecBestOf = [...frs.filter(f => f.id !== 'huitre'), { ...fr('huitre', 'HUÎTRE'), statut: 'bestof' as const }];
+    expect(verifierCarte(recettes, new Map(), liens, avecBestOf, R).map(l => l.plat)).toEqual(['BŒUF/PLEUROTE', 'MANGUE/MACIS']);
+    expect(carteARelier(recettes, liens).map(x => x.plat)).toEqual(['CHEVRE', 'FLATBREAD']);
+  });
   it('prix conseillé, prix réel, coefficient réel et pastille', () => {
     const carte = verifierCarte(recettes, new Map([['BŒUF/PLEUROTE', 24], ['HUITRES', 17.5]]), liens, frs, R);
     const boeuf = carte.find(l => l.plat === 'BŒUF/PLEUROTE');
@@ -115,15 +120,26 @@ describe('vérification de la carte', () => {
     expect(ancreCarte('BŒUF/PLEUROTE')).toBe('ratio-carte-boeuf-pleurote');
     expect(ancreCarte('ST JACK/CHOU FLEUR/ KUMQUAT')).toBe('ratio-carte-st-jack-chou-fleur-kumquat');
   });
-  it('résumé des alertes avec un lien vers chaque ligne', () => {
+  it('résumé : seuls un menu entier ou un plat de la carte sont hors budget, un plat de menu seul non', () => {
     const verifies = BUDGETS_DE_DEPART.map(b => verifierMenu(b, menus, frs, recettes, liens, R));
     const carte = verifierCarte(recettes, new Map([['BŒUF/PLEUROTE', 20]]), liens, frs, R);
     const r = resume(verifies, carte);
-    expect(r.horsBudget.map(x => `${x.nom} · ${x.ou}`)).toEqual([
-      'BŒUF AXURIA · Menu soir 5 temps · Temps 3', 'MANGUE COCO · Menu soir 5 temps · Temps 5', 'MANGUE COCO · Menu soir 3 temps · Temps 3', 'BŒUF/PLEUROTE · Carte']);
-    expect(r.proches.map(x => x.ancre)).toEqual(['ratio-soir5-0-0']);
-    expect(r.sansPrix.map(x => x.nom)).toEqual(['CHEVRE', 'FLATBREAD', 'HUITRES', 'MANGUE/MACIS']);
+    // Bœuf (5 temps) et Mangue dépassent leur temps, mais aucun menu entier n'est chiffré : seul le plat de la carte compte
+    expect(r.horsBudget.map(x => `${x.nom} · ${x.ou}`)).toEqual(['BŒUF/PLEUROTE · Carte']);
+    expect(r.proches).toEqual([]);
+    expect(r.sansPrix.map(x => x.nom)).toEqual(['HUITRES', 'MANGUE/MACIS']);
     expect(r.aCorriger.map(x => x.nom)).toEqual(['Pain maison', 'PLAT NON RELIÉ', 'TARTARE DE VEAU', 'BŒUF AXURIA']);
+  });
+  it('menu entier : coût réel comparé au total des budgets après perte', () => {
+    const complet: Menu[] = [{ id: 'x', nom: '3 temps', services: [{ nom: 'Temps 1', plats: [{ frId: 'huitre' }] }, { nom: 'Temps 2', plats: [{ frId: 'boeuf' }] }, { nom: 'Temps 3', plats: [{ frId: 'mangue' }] }] }];
+    const large = verifierMenu(soir3, complet, frs, recettes, liens, R);   // 6,71 € pour 9,03 €
+    expect(large).toMatchObject({ ancre: 'ratio-soir3', pastille: 'vert' });
+    expect(large.totalApresPerte).toBeCloseTo(9.025, 6);
+    const serre = verifierMenu({ ...soir3, temps: [{ nom: 'Temps 1', budget: 1.4 }, { nom: 'Temps 2', budget: 4 }, { nom: 'Temps 3', budget: 1.5 }] }, complet, frs, recettes, liens, R);
+    expect(serre.pastille).toBe('rouge');   // 6,71 € pour 6,9 × 0,95 = 6,555 € après perte
+    const r = resume([serre], []);
+    expect(r.horsBudget.map(x => `${x.nom} · ${x.ou}`)).toEqual([`Menu soir 3 temps · coût 6,71 € pour ${euros(6.9 * 0.95)}`]);
+    expect(r.horsBudget[0]?.menu).toBe(true);
   });
 });
 

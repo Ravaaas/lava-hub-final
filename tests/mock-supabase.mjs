@@ -79,17 +79,18 @@ const RECETTES_YOKITUP = [
     ingredients: [ing('p4', 'GANACHE CHOCOLAT', '30')] },
 ];
 
-// Coûts que la fonction « yokitup » simulée calcule (€ HT par portion) : la cassolette Menu (3,90 €) dépasse le Temps 3 du 5 temps (3,80 € après perte).
+// Coûts que la fonction « yokitup » simulée calcule (€ HT par portion) : la cassolette Menu (3,90 €) dépasse le Temps 3 du 5 temps (3,80 € après perte),
+// et le 5 temps entier (la cassolette à chaque temps : 19,50 €) dépasse ses 14,25 € de budgets après perte.
 const COUTS_YOKITUP = [
   { recette_id: 'yk1', cout: 4.2, manquants: [] },
   { recette_id: 'yk2', cout: 3.9, manquants: [] },
   { recette_id: 'yk3', cout: 1.1, manquants: ['ZESTE DE CITRON'] },
 ];
-// Menus pour l'onglet Ratio : la cassolette au Temps 3 du 5 temps et au Temps 2 du 3 temps, la tarte en dessert du Lunch, un plat libre au Lunch.
+// Menus pour l'onglet Ratio : la cassolette à chaque temps du 5 temps et au Temps 2 du 3 temps, la tarte en dessert du Lunch, un plat libre au Lunch.
 const MENUS_RATIO = { id: 'menus', data: { items: [
   { id: 'm1', nom: 'Carte du soir', services: [{ nom: 'Partages', plats: [] }, { nom: 'Plat', plats: [{ frId: 'r1' }] }, { nom: 'Dessert', plats: [{ frId: 'r2' }] }] },
   { id: 'm2', nom: '3 temps', services: [{ nom: 'Temps 1', plats: [] }, { nom: 'Temps 2', plats: [{ frId: 'r1' }] }, { nom: 'Temps 3', plats: [] }] },
-  { id: 'm3', nom: '5 temps', services: [{ nom: 'Temps 1', plats: [] }, { nom: 'Temps 2', plats: [] }, { nom: 'Temps 3', plats: [{ frId: 'r1' }] }, { nom: 'Temps 4', plats: [] }, { nom: 'Temps 5', plats: [] }] },
+  { id: 'm3', nom: '5 temps', services: ['Temps 1', 'Temps 2', 'Temps 3', 'Temps 4', 'Temps 5'].map(nom => ({ nom, plats: [{ frId: 'r1' }] })) },
   { id: 'm4', nom: 'Lunch', services: [{ nom: 'Entrée', plats: [] }, { nom: 'Plat', plats: [{ text: 'Plat du jour' }] }, { nom: 'Dessert', plats: [{ frId: 'r2' }] }] },
 ] } };
 

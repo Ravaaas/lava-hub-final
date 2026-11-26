@@ -17,7 +17,6 @@ import { PertesPerso } from './pertesPerso/PertesPerso';
 import { Ratio } from './ratio/Ratio';
 import { chargerRatio } from '../db/ratio';
 import { nbHorsBudget } from '../domain/ratio';
-import { pluriel } from '../domain/texte';
 
 type Onglet = 'journal' | 'fiches' | 'recettes' | 'menus' | 'groupes' | 'pertes' | 'ratio' | 'config';
 
@@ -45,7 +44,7 @@ export function Coque() {
     { id: 'menus', icone: 'utensils', long: 'Menus', court: 'Menus' },
     { id: 'groupes', icone: 'users', long: 'Groupes', court: 'Groupes', badge: groupesFiltres(groupes, 'avenir').length },
     { id: 'pertes', icone: 'clipboard', long: 'Pertes & Perso', court: 'Pertes', cuisine: true },
-    { id: 'ratio', icone: 'ratio', long: 'Ratio', court: 'Ratio', admin: true, ...(horsBudget ? { alerte: pluriel(horsBudget, 'plat hors budget', 'plats hors budget') } : {}) },
+    { id: 'ratio', icone: 'ratio', long: 'Ratio', court: 'Ratio', admin: true, ...(horsBudget ? { alerte: `${horsBudget} hors budget` } : {}) },
     { id: 'config', icone: 'sliders', long: 'Config', court: 'Config', admin: true },
   ];
 
@@ -81,7 +80,7 @@ export function Coque() {
   );
 }
 
-/** Nombre de plats hors budget (admin) : relu à l'ouverture, quand les menus ou les fiches changent, et en quittant l'onglet Ratio. */
+/** Nombre de menus entiers et de plats de la carte hors budget (admin) : relu à l'ouverture, quand les menus ou les fiches changent, et en quittant l'onglet Ratio. */
 function useHorsBudget(admin: boolean, onglet: Onglet, menus: Menu[], frs: FicheRecette[]): number {
   const [d, setD] = useState<Awaited<ReturnType<typeof chargerRatio>> | null>(null);
   const surRatio = onglet === 'ratio';

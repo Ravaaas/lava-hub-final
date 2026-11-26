@@ -829,6 +829,8 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .rt-ranger{margin:0;padding:0;list-style:none;border:1px solid #E0D0D0}
 .rt-ranger li{padding:0.55rem 0.75rem;border-top:1px solid #EDD8D8;font-size:0.9375rem;color:#221818}
 .rt-ranger li:first-child{border-top:0}
+.rt-menu-etat{display:flex;flex-wrap:wrap;align-items:center;gap:0.3rem 0.6rem;margin:0 0 0.6rem;font-size:0.875rem;font-weight:600;color:#221818}
+.rt-menu-etat .rt-ecart{min-width:0}
 .rt-note{margin:0;font-size:0.875rem;line-height:1.5;color:#55555a}
 .rt-apercu{margin-top:4px;font-size:14px;color:var(--ink2)}
 @keyframes rt-vise{0%,40%{box-shadow:inset 0 0 0 2px #B5433C}100%{box-shadow:inset 0 0 0 2px transparent}}
@@ -859,6 +861,7 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .rt-duo .rt-menu+.rt-menu{margin-top:0}
   .rt-duo .rt-cles{gap:0 2mm}
   .rt-cles{margin:0 0 1mm;font-size:7.5pt;gap:0 3mm}
+  .rt-menu-etat{margin:0 0 1mm;font-size:7.5pt;gap:0 2mm}
   .rt-table thead th{font-size:7pt;padding:0.5mm 2mm}
   .rt-table tbody td,.rt-table tbody th{font-size:8pt;padding:0.35mm 2mm;line-height:1.2}
   .rt-table tbody tr.rt-plat td{padding:0.3mm 2mm 0.3mm 5mm}

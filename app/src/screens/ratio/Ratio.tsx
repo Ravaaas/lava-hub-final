@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useId, useState } from 'react';
-import { ACTION, apresPerte, coef, ecartEuros, euros, lireMontant, plafondMatiere, pourcent, recettesARanger, resume, totalBudgets, verifierCarte, verifierMenu,
+import { ACTION, apresPerte, carteARelier, coef, ecartEuros, euros, lireMontant, plafondMatiere, pourcent, recettesARanger, resume, totalBudgets, verifierCarte, verifierMenu,
   type BudgetMenu, type LigneCarte, type MenuVerifie, type Pastille, type PlatVerifie, type Regles, type Renvoi } from '../../domain/ratio';
 import { heureFr, pluriel } from '../../domain/texte';
 import { chargerRatio, enregistrerBudget, enregistrerPrixCarte, enregistrerRegles, type DonneesRatio } from '../../db/ratio';
@@ -53,6 +53,7 @@ export function Ratio() {
   const carte = verifierCarte(d.recettes, d.prixCarte, d.liens, fichesRecette, d.regles);
   const alertes = resume(verifies, carte);
   const aRanger = recettesARanger(d.recettes, verifies, d.liens);
+  const aRelier = carteARelier(d.recettes, d.liens);
   // Produits sans prix dans Yokitup (eau, parures, pain rassis…) : comptés 0 €, comme Yokitup ; signalés une seule fois.
   const sansPrix = [...new Set(d.recettes.flatMap(r => r.manquants))].sort((a, b) => a.localeCompare(b, 'fr'));
 
@@ -97,6 +98,10 @@ export function Ratio() {
             <div className="fdoc-ptitle">Produits sans prix dans Yokitup</div>
             <p className="rt-note">Comptés 0 €, comme dans Yokitup : {sansPrix.join(', ')}. Si l'un d'eux n'est pas gratuit, lui donner un prix dans Yokitup : les coûts suivront à la prochaine lecture.</p>
           </div>}
+          {aRelier.length > 0 && <div className="fdoc-ecran">
+            <div className="fdoc-ptitle">Recettes CARTE de Yokitup non reliées</div>
+            <p className="rt-note">{aRelier.map(r => r.plat).join(', ')}. Si l'un de ces plats est à la carte, relie-le à sa fiche recette dans Config &gt; Yokitup : il apparaîtra dans la carte ci-dessus.</p>
+          </div>}
           {aRanger.length > 0 && <div className="fdoc-ecran">
             <div className="fdoc-ptitle">Recettes Yokitup hors des menus</div>
             <ul className="rt-ranger">{aRanger.map(x => (
@@ -113,19 +118,26 @@ export function Ratio() {
   );
 }
 
+/** « 1 menu hors budget · 2 plats de la carte hors budget » : seuls un menu entier ou un plat de la carte sont comptés. */
+function compte(renvois: readonly Renvoi[], etat: string, etatPluriel = etat): string {
+  const menus = renvois.filter(r => r.menu).length, plats = renvois.length - menus;
+  return [menus ? `${pluriel(menus, 'menu')} ${menus > 1 ? etatPluriel : etat}` : '', plats ? `${pluriel(plats, 'plat')} de la carte ${plats > 1 ? etatPluriel : etat}` : '']
+    .filter(Boolean).join(' · ');
+}
+
 /** En tête : ce qui demande une action, avec un lien vers chaque ligne concernée (jamais imprimé). */
 function Alertes({ alertes }: { alertes: ReturnType<typeof resume> }) {
   type Ligne = { cle: string; ton: Pastille | 'neutre'; titre: string; renvois: Renvoi[]; nombre?: number };
   const toutes: Ligne[] = [
-    { cle: 'hors', ton: 'rouge', titre: pluriel(alertes.horsBudget.length, 'plat hors budget', 'plats hors budget'), renvois: alertes.horsBudget },
-    { cle: 'proches', ton: 'ambre', titre: pluriel(alertes.proches.length, 'plat proche du plafond', 'plats proches du plafond'), renvois: alertes.proches },
+    { cle: 'hors', ton: 'rouge', titre: compte(alertes.horsBudget, 'hors budget'), renvois: alertes.horsBudget },
+    { cle: 'proches', ton: 'ambre', titre: compte(alertes.proches, 'proche du plafond', 'proches du plafond'), renvois: alertes.proches },
     // plats sans prix : un seul lien vers le premier (la carte est un tableau à remplir d'un coup)
     { cle: 'prix', ton: 'neutre', titre: pluriel(alertes.sansPrix.length, 'plat de la carte sans prix', 'plats de la carte sans prix'),
       renvois: alertes.sansPrix.length > 3 ? alertes.sansPrix.slice(0, 1).map(r => ({ ...r, nom: 'Saisir les prix', ou: 'Carte' })) : alertes.sansPrix, nombre: alertes.sansPrix.length },
     { cle: 'corriger', ton: 'neutre', titre: pluriel(alertes.aCorriger.length, 'plat impossible à vérifier', 'plats impossibles à vérifier'), renvois: alertes.aCorriger },
   ];
   const lignes = toutes.filter(l => (l.nombre ?? l.renvois.length) > 0);
-  if (!lignes.length && !alertes.budgetsTropHauts.length) return <div className="rt-alertes rt-tout-bon" role="status"><Icone nom="check" />Tous les plats sont dans leur budget.</div>;
+  if (!lignes.length && !alertes.budgetsTropHauts.length) return <div className="rt-alertes rt-tout-bon" role="status"><Icone nom="check" />Menus et carte dans leur budget.</div>;
   return (
     <section className="rt-alertes" aria-label="Alertes">
       {alertes.budgetsTropHauts.map(n => <div key={n} className="rt-alerte rt-ton-rouge"><span className="rt-point" aria-hidden="true" /><div><strong>{n} : budgets au-dessus du plafond matière</strong></div></div>)}
@@ -151,7 +163,7 @@ function PastilleCout({ p }: { p: Pastille }) {
 function SectionMenu({ m, regles, onModifier }: { m: MenuVerifie; regles: Regles; onModifier: () => void }) {
   const b = m.budget;
   return (
-    <section className="rt-menu" aria-label={b.nom}>
+    <section className="rt-menu" aria-label={b.nom} id={m.ancre}>
       <div className="fdoc-ptitle rt-titre"><span>{b.nom}</span>
         <button type="button" className="btn btn-g btn-sm fdoc-ecran rt-modifier" onClick={onModifier}>Modifier</button></div>
       <div className="rt-cles">
@@ -160,6 +172,11 @@ function SectionMenu({ m, regles, onModifier }: { m: MenuVerifie; regles: Regles
         <span className={m.budgetsTropHauts ? 'rt-txt-rouge' : undefined}>Budgets {euros(m.total)} · coefficient {m.coefficient === null ? '—' : coef(m.coefficient)}</span>
         {m.coutReel !== null && <span>Coût réel {euros(m.coutReel)} · coefficient {m.coefficientReel === null ? '—' : coef(m.coefficientReel)}</span>}
       </div>
+      {m.pastille && m.ecart !== null && <div className="rt-menu-etat">
+        <span>Menu entier : {euros(m.coutReel ?? 0)} pour {euros(m.totalApresPerte)} après perte</span>
+        <PastilleCout p={m.pastille} /><span className={`rt-ecart rt-txt-${m.pastille}`}>{ecartEuros(m.ecart)}</span>
+      </div>}
+      {!m.pastille && m.menuTrouve && <div className="rt-menu-etat rt-vide">Menu entier : coût inconnu tant qu'un temps n'a aucun plat chiffré</div>}
       {!m.menuTrouve && <div className="rt-action">Menu « {b.menuHub} » introuvable dans l'onglet Menus : aucun plat à vérifier.</div>}
       <table className="fdoc-table rt-table">
         <thead><tr><th scope="col">Temps</th><th scope="col">Budget</th><th scope="col">Après perte {pourcent(regles.perte)}</th><th scope="col">Part</th></tr></thead>
@@ -203,8 +220,8 @@ function SectionCarte({ lignes, regles, onPrix }: { lignes: LigneCarte[]; regles
   return (
     <section className="rt-carte" aria-label="Carte">
       <div className="fdoc-ptitle">Carte</div>
-      <div className="rt-cles"><span>Prix conseillé = coût × {coef(regles.coefficient)} × {coef(1 + regles.tva)}, arrondi au demi-euro supérieur</span></div>
-      {!lignes.length ? <div className="rt-vide">Aucune recette CARTE lue dans Yokitup.</div> : (
+      <div className="rt-cles"><span>Plats de la carte actuelle (fiches Carte, Partages, Lunch)</span><span>Prix conseillé = coût × {coef(regles.coefficient)} × {coef(1 + regles.tva)}, arrondi au demi-euro supérieur</span></div>
+      {!lignes.length ? <div className="rt-vide">Aucun plat de la carte actuelle relié à une recette CARTE de Yokitup.</div> : (
         <div className="rt-defile">
           <table className="fdoc-table rt-table rt-table-carte">
             <thead><tr><th scope="col">Plat</th><th scope="col">Coût</th><th scope="col">Prix conseillé</th><th scope="col">Prix réel TTC</th><th scope="col">Coefficient</th></tr></thead>
