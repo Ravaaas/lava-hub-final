@@ -125,9 +125,9 @@ describe('vérification de la carte', () => {
     const carte = verifierCarte(recettes, new Map([['BŒUF/PLEUROTE', 20]]), liens, frs, R);
     const r = resume(verifies, carte);
     // Bœuf (5 temps) et Mangue dépassent leur temps, mais aucun menu entier n'est chiffré : seul le plat de la carte compte
-    expect(r.horsBudget.map(x => `${x.nom} · ${x.ou}`)).toEqual(['BŒUF/PLEUROTE · Carte']);
+    expect(r.horsBudget.map(x => `${x.nom} · ${x.ou}`)).toEqual(['BŒUF AXURIA · carte · coef. 3,38']);
     expect(r.proches).toEqual([]);
-    expect(r.sansPrix.map(x => x.nom)).toEqual(['HUITRES', 'MANGUE/MACIS']);
+    expect(r.sansPrix.map(x => x.nom)).toEqual(['HUÎTRE', 'MANGUE COCO']);
     expect(r.aCorriger.map(x => x.nom)).toEqual(['Pain maison', 'PLAT NON RELIÉ', 'TARTARE DE VEAU', 'BŒUF AXURIA']);
   });
   it('menu entier : coût réel comparé au total des budgets après perte', () => {
@@ -138,7 +138,7 @@ describe('vérification de la carte', () => {
     const serre = verifierMenu({ ...soir3, temps: [{ nom: 'Temps 1', budget: 1.4 }, { nom: 'Temps 2', budget: 4 }, { nom: 'Temps 3', budget: 1.5 }] }, complet, frs, recettes, liens, R);
     expect(serre.pastille).toBe('rouge');   // 6,71 € pour 6,9 × 0,95 = 6,555 € après perte
     const r = resume([serre], []);
-    expect(r.horsBudget.map(x => `${x.nom} · ${x.ou}`)).toEqual([`Menu soir 3 temps · coût 6,71 € pour ${euros(6.9 * 0.95)}`]);
+    expect(r.horsBudget.map(x => `${x.nom} · ${x.ou}`)).toEqual([`Menu soir 3 temps · ${ecartEuros(6.71 - 6.9 * 0.95)}`]);
     expect(r.horsBudget[0]?.menu).toBe(true);
   });
 });

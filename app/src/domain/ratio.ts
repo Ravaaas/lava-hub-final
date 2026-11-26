@@ -92,6 +92,12 @@ export const ACTION: Record<Probleme, (version: string) => string> = {
   sansCout: () => 'Coût introuvable dans Yokitup : vérifier les prix de ses produits',
 };
 
+/** Le même problème en quelques mots, écrit dans la ligne du plat (l'action complète est dans le résumé et au survol). */
+export const PROBLEME_COURT: Record<Probleme, (version: string) => string> = {
+  libre: () => 'plat libre', supprime: () => 'fiche supprimée', nonRelie: () => 'non relié à Yokitup',
+  sansVersion: v => `pas de version ${v}`, sansCout: () => 'sans coût',
+};
+
 export interface PlatVerifie {
   /** Ancre de la ligne (liens du résumé). */
   ancre: string;
@@ -193,8 +199,10 @@ export interface LigneCarte {
   ancre: string;
   plat: string;
   recette: RecetteRatio;
-  /** Fiche recette du Hub reliée (nom affiché en dessous), si elle existe. */
+  /** Fiche recette du Hub reliée, si elle existe. */
   fiche: string | null;
+  /** Nom court affiché : nom court de la fiche reliée, sinon le nom Yokitup. */
+  court: string;
   cout: number | null;
   conseille: { brut: number; arrondi: number } | null;
   prixReel: number | null;
@@ -216,17 +224,18 @@ const ficheALaCarte = (plat: string, liens: ReadonlyMap<string, string>, frs: re
 /** Carte : seulement les plats de la carte actuelle (plat Yokitup relié à une fiche Carte, Partages ou Lunch). */
 export function verifierCarte(recettes: readonly RecetteRatio[], prix: ReadonlyMap<string, number>, liens: ReadonlyMap<string, string>,
   frs: readonly FicheRecette[], r: Regles): LigneCarte[] {
-  return recettesCarte(recettes).filter(rec => ficheALaCarte(rec.plat, liens, frs)).map(rec => {
+  return recettesCarte(recettes).filter(rec => ficheALaCarte(rec.plat, liens, frs)).map((rec): LigneCarte => {
     const cout = rec.cout, prixReel = prix.get(rec.plat) ?? null;
     const coef = cout !== null && prixReel !== null ? coefficient(prixReel, cout, r) : null;
     return {
       ancre: ancreCarte(rec.plat), plat: rec.plat, recette: rec,
       fiche: ficheALaCarte(rec.plat, liens, frs)?.nom ?? null,
+      court: (f => (f ? nomSurFiche(f) : rec.plat))(ficheALaCarte(rec.plat, liens, frs)),
       cout, conseille: cout !== null ? prixConseille(cout, r) : null, prixReel, coefficientReel: coef,
       pastille: cout !== null && prixReel !== null ? pastille(cout, plafondMatiere(prixReel, r)) : null,
       ecartPrix: cout !== null && prixReel !== null ? prixReel - prixConseille(cout, r).arrondi : null,
     };
-  });
+  }).sort((a, b) => compareFr(a.court, b.court));
 }
 
 /** Recettes CARTE de Yokitup reliées à aucune fiche recette : nouveau plat à relier (Config > Yokitup) s'il est à la carte.
@@ -259,13 +268,13 @@ export function resume(menus: readonly MenuVerifie[], carte: readonly LigneCarte
   const r: Resume = { horsBudget: [], proches: [], sansPrix: [], aCorriger: [], budgetsTropHauts: menus.filter(m => m.budgetsTropHauts).map(m => m.budget.nom) };
   for (const m of menus) {
     if (m.pastille && m.coutReel !== null && m.pastille !== 'vert') {
-      const renvoi = { ancre: m.ancre, nom: m.budget.nom, ou: `coût ${euros(m.coutReel)} pour ${euros(m.totalApresPerte)}`, menu: true as const };
+      const renvoi = { ancre: m.ancre, nom: m.budget.nom, ou: ecartEuros(m.ecart ?? 0), menu: true as const };
       (m.pastille === 'rouge' ? r.horsBudget : r.proches).push(renvoi);
     }
-    for (const t of m.temps) for (const p of t.plats) if (p.probleme) r.aCorriger.push({ ancre: p.ancre, nom: p.nom, ou: `${m.budget.nom} · ${t.nom}` });
+    for (const t of m.temps) for (const p of t.plats) if (p.probleme) r.aCorriger.push({ ancre: p.ancre, nom: p.court, ou: `${m.budget.nom} · ${t.nom}` });
   }
   for (const l of carte) {
-    const renvoi = { ancre: l.ancre, nom: l.plat, ou: 'Carte' };
+    const renvoi = { ancre: l.ancre, nom: l.court, ou: l.pastille && l.coefficientReel !== null ? `carte · coef. ${coef(l.coefficientReel)}` : 'carte' };
     if (l.pastille === 'rouge') r.horsBudget.push(renvoi);
     else if (l.pastille === 'ambre') r.proches.push(renvoi);
     if (l.cout === null) r.aCorriger.push(renvoi);

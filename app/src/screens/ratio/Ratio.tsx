@@ -1,5 +1,5 @@
-import { Fragment, useCallback, useEffect, useId, useState } from 'react';
-import { ACTION, apresPerte, carteARelier, coef, ecartEuros, euros, lireMontant, plafondMatiere, pourcent, recettesARanger, resume, totalBudgets, verifierCarte, verifierMenu,
+import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
+import { ACTION, carteARelier, coef, ecartEuros, euros, lireMontant, plafondMatiere, pourcent, PROBLEME_COURT, recettesARanger, resume, totalBudgets, verifierCarte, verifierMenu,
   type BudgetMenu, type LigneCarte, type MenuVerifie, type Pastille, type PlatVerifie, type Regles, type Renvoi } from '../../domain/ratio';
 import { heureFr, pluriel } from '../../domain/texte';
 import { chargerRatio, enregistrerBudget, enregistrerPrixCarte, enregistrerRegles, type DonneesRatio } from '../../db/ratio';
@@ -10,7 +10,7 @@ import { Fenetre } from '../../ui/Fenetre';
 import { Icone } from '../../ui/Icone';
 import { useNotifier } from '../../ui/Notifications';
 
-const LIBELLE: Record<Pastille, string> = { vert: 'Dans le budget', ambre: 'Proche du plafond', rouge: 'Au-dessus' };
+const LIBELLE: Record<Pastille, string> = { vert: 'dans le budget', ambre: 'proche du budget', rouge: 'au-dessus du budget' };
 
 /** Fait défiler jusqu'à une ligne de la feuille et la fait clignoter un instant. */
 function viser(ancre: string) {
@@ -56,6 +56,7 @@ export function Ratio() {
   const aRelier = carteARelier(d.recettes, d.liens);
   // Produits sans prix dans Yokitup (eau, parures, pain rassis…) : comptés 0 €, comme Yokitup ; signalés une seule fois.
   const sansPrix = [...new Set(d.recettes.flatMap(r => r.manquants))].sort((a, b) => a.localeCompare(b, 'fr'));
+  const nbLignes = carte.length + verifies.reduce((n, m) => n + m.temps.reduce((k, t) => k + Math.max(1, t.plats.length), 0), 0);
 
   const enregistrerPrix = async (l: LigneCarte, prix: number | null) => {
     if (prix === l.prixReel) return;
@@ -69,45 +70,40 @@ export function Ratio() {
     <>
       <div className="ph">
         <div><div className="ph-title">Ratio</div>
-          <div className="ph-sub">Coût matière de chaque plat, lu dans Yokitup, face aux budgets · réservé à l'admin</div></div>
+          <div className="ph-sub">{d.derniere
+            ? <>Coûts Yokitup du {dateLecture(d.derniere.le)}{!d.derniere.ok && <span className="rt-err"> · échec : {d.derniere.message}</span>} · relus chaque nuit</>
+            : 'Yokitup n\'a pas encore été lu'}</div></div>
         <div className="ph-actions">
           <button type="button" className="btn btn-o btn-sm" disabled={lecture} onClick={() => void relire()}><Icone nom="refresh" />{lecture ? 'Lecture…' : 'Relire Yokitup'}</button>
           <button type="button" className="btn btn-g btn-sm" onClick={() => { setEdition('regles'); }}>Règles</button>
           <button type="button" className="btn btn-g btn-sm" onClick={() => { window.print(); }}><Icone nom="printer" />Imprimer</button>
         </div>
       </div>
-      <p className="rt-lu">
-        {d.derniere ? <>Coûts lus {dateLecture(d.derniere.le)}{!d.derniere.ok && <span className="rt-err"> · échec : {d.derniere.message}</span>}.</> : 'Yokitup n\'a pas encore été lu.'}
-        {' '}Relu chaque nuit : une recette créée dans Yokitup apparaît ici le lendemain, ou tout de suite avec « Relire Yokitup ».
-      </p>
       {d.sansCouts && d.recettes.length > 0 && <div className="alg-etat" role="status">Les coûts n'ont pas encore été lus : clique « Relire Yokitup ».</div>}
       <Alertes alertes={alertes} />
       {/* longue carte : encore plus serré à l'impression pour rester sur une page */}
-      <div className={`fdoc fdoc-ratio${carte.length + verifies.reduce((n, m) => n + m.temps.reduce((k, t) => k + t.plats.length, 0), 0) > 44 ? ' rt-serre' : ''}`}>
+      <div className={`fdoc fdoc-ratio${nbLignes > 44 ? ' rt-serre' : ''}`}>
         <div className="fdoc-hdr"><div className="fdoc-sur">Ratio matière</div><div className="fdoc-nom">Budgets et coûts</div>
-          <div className="fdoc-cles"><span>Coefficient {coef(d.regles.coefficient)}</span><span>TVA {pourcent(d.regles.tva)}</span><span>Perte {pourcent(d.regles.perte)} incluse</span>
+          <div className="fdoc-cles"><span>Coefficient {coef(d.regles.coefficient)}</span><span>TVA {pourcent(d.regles.tva)}</span><span>Budgets après perte de {pourcent(d.regles.perte)}</span>
             {d.derniere && <span>Yokitup du {new Date(d.derniere.le).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })}</span>}</div>
         </div>
         <div className="fdoc-body">
           <hr className="fdoc-sep" />
+          <div className="rt-legende" aria-hidden="true">
+            {(['vert', 'ambre', 'rouge'] as const).map(p => <span key={p}><span className={`rt-point rt-${p}`} />{LIBELLE[p]}</span>)}
+          </div>
           {/* à l'impression, les deux menus du soir côte à côte : la feuille tient sur une page avec toute la carte */}
-          <div className="rt-duo">{verifies.filter(m => m.budget.version === 'MENU').map(m => <SectionMenu key={m.budget.id} m={m} regles={d.regles} onModifier={() => { setEdition(m.budget); }} />)}</div>
-          {verifies.filter(m => m.budget.version !== 'MENU').map(m => <SectionMenu key={m.budget.id} m={m} regles={d.regles} onModifier={() => { setEdition(m.budget); }} />)}
+          <div className="rt-duo">{verifies.filter(m => m.budget.version === 'MENU').map(m => <SectionMenu key={m.budget.id} m={m} onModifier={() => { setEdition(m.budget); }} />)}</div>
+          {verifies.filter(m => m.budget.version !== 'MENU').map(m => <SectionMenu key={m.budget.id} m={m} onModifier={() => { setEdition(m.budget); }} />)}
           <SectionCarte lignes={carte} regles={d.regles} onPrix={(l, p) => void enregistrerPrix(l, p)} />
-          {sansPrix.length > 0 && <div className="fdoc-ecran">
-            <div className="fdoc-ptitle">Produits sans prix dans Yokitup</div>
-            <p className="rt-note">Comptés 0 €, comme dans Yokitup : {sansPrix.join(', ')}. Si l'un d'eux n'est pas gratuit, lui donner un prix dans Yokitup : les coûts suivront à la prochaine lecture.</p>
-          </div>}
-          {aRelier.length > 0 && <div className="fdoc-ecran">
-            <div className="fdoc-ptitle">Recettes CARTE de Yokitup non reliées</div>
-            <p className="rt-note">{aRelier.map(r => r.plat).join(', ')}. Si l'un de ces plats est à la carte, relie-le à sa fiche recette dans Config &gt; Yokitup : il apparaîtra dans la carte ci-dessus.</p>
-          </div>}
-          {aRanger.length > 0 && <div className="fdoc-ecran">
-            <div className="fdoc-ptitle">Recettes Yokitup hors des menus</div>
-            <ul className="rt-ranger">{aRanger.map(x => (
-              <li key={x.recette.id}><strong>{x.recette.nom}</strong>{x.recette.cout !== null && <> · {euros(x.recette.cout)}</>}
-                <span className="rt-action">{x.relie ? 'Ajouter sa fiche recette à un temps du menu dans Menus' : 'Relier à sa fiche recette dans Config > Yokitup, puis l\'ajouter au menu'}</span></li>
-            ))}</ul>
+          {(aRanger.length > 0 || aRelier.length > 0 || sansPrix.length > 0) && <div className="fdoc-ecran rt-aregarder">
+            <div className="fdoc-ptitle">À regarder dans Yokitup</div>
+            {aRanger.length > 0 && <p><strong>Hors des menus</strong> {aRanger.map(x => x.recette.nom).join(', ')}
+              <span>Ajouter la fiche à un temps dans Menus (la relier d'abord dans Config &gt; Yokitup si besoin).</span></p>}
+            {aRelier.length > 0 && <p><strong>Non reliées</strong> {aRelier.map(r => r.plat).join(', ')}
+              <span>Si le plat est à la carte, le relier dans Config &gt; Yokitup.</span></p>}
+            {sansPrix.length > 0 && <p><strong>Sans prix, comptés 0 €</strong> {sansPrix.join(', ')}
+              <span>Leur donner un prix dans Yokitup s'ils ne sont pas gratuits.</span></p>}
           </div>}
         </div>
       </div>
@@ -130,87 +126,78 @@ function Alertes({ alertes }: { alertes: ReturnType<typeof resume> }) {
   type Ligne = { cle: string; ton: Pastille | 'neutre'; titre: string; renvois: Renvoi[]; nombre?: number };
   const toutes: Ligne[] = [
     { cle: 'hors', ton: 'rouge', titre: compte(alertes.horsBudget, 'hors budget'), renvois: alertes.horsBudget },
-    { cle: 'proches', ton: 'ambre', titre: compte(alertes.proches, 'proche du plafond', 'proches du plafond'), renvois: alertes.proches },
+    { cle: 'proches', ton: 'ambre', titre: compte(alertes.proches, 'proche du budget', 'proches du budget'), renvois: alertes.proches },
     // plats sans prix : un seul lien vers le premier (la carte est un tableau à remplir d'un coup)
-    { cle: 'prix', ton: 'neutre', titre: pluriel(alertes.sansPrix.length, 'plat de la carte sans prix', 'plats de la carte sans prix'),
-      renvois: alertes.sansPrix.length > 3 ? alertes.sansPrix.slice(0, 1).map(r => ({ ...r, nom: 'Saisir les prix', ou: 'Carte' })) : alertes.sansPrix, nombre: alertes.sansPrix.length },
+    { cle: 'prix', ton: 'neutre', titre: pluriel(alertes.sansPrix.length, 'prix de la carte à saisir', 'prix de la carte à saisir'),
+      renvois: alertes.sansPrix.length > 3 ? alertes.sansPrix.slice(0, 1).map(r => ({ ...r, nom: 'Saisir les prix', ou: '' })) : alertes.sansPrix, nombre: alertes.sansPrix.length },
     { cle: 'corriger', ton: 'neutre', titre: pluriel(alertes.aCorriger.length, 'plat impossible à vérifier', 'plats impossibles à vérifier'), renvois: alertes.aCorriger },
   ];
   const lignes = toutes.filter(l => (l.nombre ?? l.renvois.length) > 0);
   if (!lignes.length && !alertes.budgetsTropHauts.length) return <div className="rt-alertes rt-tout-bon" role="status"><Icone nom="check" />Menus et carte dans leur budget.</div>;
   return (
     <section className="rt-alertes" aria-label="Alertes">
-      {alertes.budgetsTropHauts.map(n => <div key={n} className="rt-alerte rt-ton-rouge"><span className="rt-point" aria-hidden="true" /><div><strong>{n} : budgets au-dessus du plafond matière</strong></div></div>)}
+      {alertes.budgetsTropHauts.map(n => <div key={n} className="rt-alerte rt-ton-rouge"><span className="rt-point" aria-hidden="true" /><strong>{n} : budgets au-dessus du plafond matière</strong></div>)}
       {lignes.map(l => (
         <div key={l.cle} className={`rt-alerte rt-ton-${l.ton}`}>
           <span className="rt-point" aria-hidden="true" />
-          <div className="rt-alerte-txt"><strong>{l.titre}</strong>
-            <span className="rt-renvois">{l.renvois.map(r => (
-              <a key={r.ancre} href={`#${r.ancre}`} className="rt-renvoi" onClick={e => { e.preventDefault(); viser(r.ancre); }}>{r.nom}<span> · {r.ou}</span></a>
-            ))}</span>
-          </div>
+          <strong>{l.titre}</strong>
+          <span className="rt-renvois">{l.renvois.map(r => (
+            <a key={r.ancre} href={`#${r.ancre}`} className="rt-renvoi" onClick={e => { e.preventDefault(); viser(r.ancre); }}>{r.nom}{r.ou && <span> {r.ou}</span>}</a>
+          ))}</span>
         </div>
       ))}
     </section>
   );
 }
 
-function PastilleCout({ p }: { p: Pastille }) {
-  return <span className={`rt-pastille rt-${p}`}><span className="rt-point" aria-hidden="true" />{LIBELLE[p]}</span>;
+/** Écart coloré : point + montant signé (le texte « dans / proche / au-dessus du budget » est lu par les lecteurs d'écran). */
+function Ecart({ p, ecart }: { p: Pastille; ecart: number }) {
+  return <span className={`rt-ecart rt-txt-${p}`}><span className={`rt-point rt-${p}`} aria-hidden="true" />{ecartEuros(ecart)}<span className="rt-cache"> · {LIBELLE[p]}</span></span>;
 }
 
-/** Un menu : tableau des temps (budget, après perte, part), et sous chaque temps ses plats avec leur coût Yokitup. */
-function SectionMenu({ m, regles, onModifier }: { m: MenuVerifie; regles: Regles; onModifier: () => void }) {
+/** « Temps 3 » → « T3 » sur téléphone. */
+function NomTemps({ nom }: { nom: string }) {
+  const n = /^temps\s+(\d+)$/i.exec(nom.trim())?.[1];
+  return n ? <><span className="rt-long">{nom}</span><span className="rt-court" aria-hidden="true">T{n}</span></> : <>{nom}</>;
+}
+
+/** Un menu : une ligne par plat (temps, plat, coût, budget du temps après perte, écart), puis le menu entier. */
+function SectionMenu({ m, onModifier }: { m: MenuVerifie; onModifier: () => void }) {
   const b = m.budget;
   return (
     <section className="rt-menu" aria-label={b.nom} id={m.ancre}>
-      <div className="fdoc-ptitle rt-titre"><span>{b.nom}</span>
-        <button type="button" className="btn btn-g btn-sm fdoc-ecran rt-modifier" onClick={onModifier}>Modifier</button></div>
-      <div className="rt-cles">
-        <span><strong>{euros(b.prixTtc)} TTC</strong> · {euros(m.prixHt)} HT</span>
-        <span>Plafond {euros(m.plafond)}</span>
-        <span className={m.budgetsTropHauts ? 'rt-txt-rouge' : undefined}>Budgets {euros(m.total)} · coefficient {m.coefficient === null ? '—' : coef(m.coefficient)}</span>
-        {m.coutReel !== null && <span>Coût réel {euros(m.coutReel)} · coefficient {m.coefficientReel === null ? '—' : coef(m.coefficientReel)}</span>}
+      <div className="fdoc-ptitle rt-titre">
+        <span>{b.nom}</span>
+        <span className="rt-titre-d"><span className="rt-prix-menu">{euros(b.prixTtc).replace(',00', '')}{m.coefficientReel !== null && <> · coef. {coef(m.coefficientReel)}</>}</span>
+          <button type="button" className="btn btn-g btn-sm fdoc-ecran rt-modifier" onClick={onModifier}>Modifier</button></span>
       </div>
-      {m.pastille && m.ecart !== null && <div className="rt-menu-etat">
-        <span>Menu entier : {euros(m.coutReel ?? 0)} pour {euros(m.totalApresPerte)} après perte</span>
-        <PastilleCout p={m.pastille} /><span className={`rt-ecart rt-txt-${m.pastille}`}>{ecartEuros(m.ecart)}</span>
-      </div>}
-      {!m.pastille && m.menuTrouve && <div className="rt-menu-etat rt-vide">Menu entier : coût inconnu tant qu'un temps n'a aucun plat chiffré</div>}
-      {!m.menuTrouve && <div className="rt-action">Menu « {b.menuHub} » introuvable dans l'onglet Menus : aucun plat à vérifier.</div>}
+      {!m.menuTrouve && <p className="rt-vide">Menu « {b.menuHub} » introuvable dans l'onglet Menus.</p>}
       <table className="fdoc-table rt-table">
-        <thead><tr><th scope="col">Temps</th><th scope="col">Budget</th><th scope="col">Après perte {pourcent(regles.perte)}</th><th scope="col">Part</th></tr></thead>
+        <thead><tr><th scope="col" className="rt-c-temps">Temps</th><th scope="col">Plat</th><th scope="col">Coût</th><th scope="col">Budget</th><th scope="col">Écart</th></tr></thead>
         <tbody>
-          {m.temps.map((t, i) => (
-            <Fragment key={i}>
-              <tr className="rt-temps"><th scope="row">{t.nom}</th><td>{euros(t.budget)}</td><td>{euros(t.apresPerte)}</td><td>{pourcent(t.part)}</td></tr>
-              {!t.plats.length && <tr className="rt-plat"><td colSpan={4}><span className="rt-vide">Aucun plat dans ce temps (onglet Menus)</span></td></tr>}
-              {t.plats.map(p => <LignePlat key={p.ancre} p={p} version={b.version} />)}
-            </Fragment>
-          ))}
-          <tr className="rt-total"><th scope="row">Total</th><td>{euros(m.total)}</td><td>{euros(apresPerte(m.total, regles))}</td><td>100 %</td></tr>
+          {m.temps.flatMap((t, i) => {
+            const nom = <th scope="row" className="rt-c-temps" rowSpan={Math.max(1, t.plats.length)}><NomTemps nom={t.nom} /></th>;
+            const budget = euros(t.apresPerte);
+            if (!t.plats.length) return [<tr key={i} className="rt-debut"><>{nom}</><td className="rt-vide">—</td><td /><td>{budget}</td><td /></tr>];
+            return t.plats.map((p, k) => <LignePlat key={p.ancre} p={p} version={b.version} budget={budget} debut={k === 0} nomTemps={k === 0 ? nom : null} />);
+          })}
+          <tr className="rt-total"><th scope="row" colSpan={2}>Menu entier</th>
+            <td>{m.coutReel === null ? <span className="rt-vide">incomplet</span> : euros(m.coutReel)}</td><td>{euros(m.totalApresPerte)}</td>
+            <td>{m.pastille && m.ecart !== null && <Ecart p={m.pastille} ecart={m.ecart} />}</td></tr>
         </tbody>
       </table>
     </section>
   );
 }
 
-function LignePlat({ p, version }: { p: PlatVerifie; version: string }) {
+function LignePlat({ p, version, budget, debut, nomTemps }: { p: PlatVerifie; version: string; budget: string; debut: boolean; nomTemps: ReactNode }) {
   return (
-    <tr className="rt-plat" id={p.ancre}>
-      <td colSpan={4}>
-        <div className="rt-plat-l">
-          <div className="rt-plat-nom"><span className="rt-nom-long">{p.nom}</span><span className="rt-nom-court">{p.court}</span>
-            {p.recette && <span className="rt-yk">{p.recette.nom}</span>}
-            {p.probleme && <span className="rt-action">{ACTION[p.probleme](version)}</span>}
-          </div>
-          {p.cout !== null && p.pastille && <div className="rt-plat-cout">
-            <span className="rt-montant">{euros(p.cout)}</span>
-            <PastilleCout p={p.pastille} />
-            {p.ecart !== null && <span className={`rt-ecart rt-txt-${p.pastille}`}>{ecartEuros(p.ecart)}</span>}
-          </div>}
-        </div>
-      </td>
+    <tr id={p.ancre} className={debut ? 'rt-debut' : undefined}>
+      {nomTemps}
+      <td className="rt-c-plat" title={p.nom}>{p.court}</td>
+      {p.probleme
+        ? <td colSpan={3} className="rt-probleme" title={ACTION[p.probleme](version)}>{PROBLEME_COURT[p.probleme](version)}</td>
+        : <><td>{p.cout === null ? '—' : euros(p.cout)}</td><td>{budget}</td><td>{p.pastille && p.ecart !== null && <Ecart p={p.pastille} ecart={p.ecart} />}</td></>}
     </tr>
   );
 }
@@ -219,15 +206,13 @@ function LignePlat({ p, version }: { p: PlatVerifie; version: string }) {
 function SectionCarte({ lignes, regles, onPrix }: { lignes: LigneCarte[]; regles: Regles; onPrix: (l: LigneCarte, prix: number | null) => void }) {
   return (
     <section className="rt-carte" aria-label="Carte">
-      <div className="fdoc-ptitle">Carte</div>
-      <div className="rt-cles"><span>Plats de la carte actuelle (fiches Carte, Partages, Lunch)</span><span>Prix conseillé = coût × {coef(regles.coefficient)} × {coef(1 + regles.tva)}, arrondi au demi-euro supérieur</span></div>
-      {!lignes.length ? <div className="rt-vide">Aucun plat de la carte actuelle relié à une recette CARTE de Yokitup.</div> : (
-        <div className="rt-defile">
-          <table className="fdoc-table rt-table rt-table-carte">
-            <thead><tr><th scope="col">Plat</th><th scope="col">Coût</th><th scope="col">Prix conseillé</th><th scope="col">Prix réel TTC</th><th scope="col">Coefficient</th></tr></thead>
-            <tbody>{lignes.map(l => <LigneCarteRatio key={l.ancre} l={l} onPrix={onPrix} />)}</tbody>
-          </table>
-        </div>
+      <div className="fdoc-ptitle rt-titre"><span>Carte</span>
+        <span className="rt-titre-d"><span className="rt-prix-menu">conseillé = coût × {coef(regles.coefficient * (1 + regles.tva))}, au demi-euro</span></span></div>
+      {!lignes.length ? <p className="rt-vide">Aucun plat de la carte actuelle relié à Yokitup.</p> : (
+        <table className="fdoc-table rt-table rt-table-carte">
+          <thead><tr><th scope="col">Plat</th><th scope="col">Coût</th><th scope="col"><span className="rt-long">Conseillé</span><span className="rt-court">Cons.</span></th><th scope="col">Prix</th><th scope="col">Coef.</th></tr></thead>
+          <tbody>{lignes.map(l => <LigneCarteRatio key={l.ancre} l={l} onPrix={onPrix} />)}</tbody>
+        </table>
       )}
     </section>
   );
@@ -246,21 +231,18 @@ function LigneCarteRatio({ l, onPrix }: { l: LigneCarte; onPrix: (l: LigneCarte,
   };
   return (
     <tr id={l.ancre}>
-      <th scope="row" className="rt-carte-plat">{l.plat}
-        {l.fiche && <span className="rt-yk">{l.fiche}</span>}
-        {l.cout === null && <span className="rt-action">{ACTION.sansCout('CARTE')}</span>}
-      </th>
-      <td data-libelle="Coût">{l.cout === null ? '—' : euros(l.cout)}</td>
-      <td data-libelle="Conseillé">{l.conseille ? <><strong>{euros(l.conseille.arrondi)}</strong><span className="rt-brut">{euros(l.conseille.brut)}</span></> : '—'}</td>
-      <td className="rt-prix" data-libelle="Prix réel">
+      <th scope="row" className="rt-c-plat" title={l.fiche ? `${l.fiche} — Yokitup : ${l.recette.nom}` : l.recette.nom}>{l.court}</th>
+      <td>{l.cout === null ? <span className="rt-probleme" title={ACTION.sansCout('CARTE')}>sans coût</span> : euros(l.cout)}</td>
+      <td>{l.conseille ? euros(l.conseille.arrondi) : '—'}</td>
+      <td className="rt-prix">
         <label className="rt-cache" htmlFor={id}>Prix réel — {l.plat}</label>
-        <input id={id} className={`fi2 rt-saisie fdoc-ecran${faux ? ' pp-faux' : ''}`} inputMode="decimal" placeholder={l.conseille ? String(l.conseille.arrondi).replace('.', ',') : '€'}
+        <input id={id} className={`rt-saisie fdoc-ecran${faux ? ' rt-faux' : ''}`} inputMode="decimal" placeholder="—"
           value={saisie} onChange={e => { setSaisie(e.target.value); }} onBlur={valider} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />
         <span className="rt-imprime">{l.prixReel === null ? '—' : euros(l.prixReel)}</span>
-        {l.ecartPrix !== null && Math.abs(l.ecartPrix) > 0.004 && <span className="rt-brut">{ecartEuros(l.ecartPrix)} / conseillé</span>}
       </td>
-      <td data-libelle="Coefficient">{l.coefficientReel !== null && l.pastille ? <span className={`rt-coef rt-txt-${l.pastille}`}><span className={`rt-point rt-${l.pastille}`} aria-hidden="true" />{coef(l.coefficientReel)}<span className="rt-cache"> · {LIBELLE[l.pastille]}</span></span>
-        : <span className="rt-vide">{l.cout === null ? '—' : 'Sans prix'}</span>}</td>
+      <td>{l.coefficientReel !== null && l.pastille
+        ? <span className={`rt-ecart rt-txt-${l.pastille}`}><span className={`rt-point rt-${l.pastille}`} aria-hidden="true" />{coef(l.coefficientReel)}<span className="rt-cache"> · {LIBELLE[l.pastille]}</span></span>
+        : <span className="rt-vide">—</span>}</td>
     </tr>
   );
 }
