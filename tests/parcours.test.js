@@ -820,8 +820,9 @@ scenario('Yokitup sans clé', { yokitupSansCle: true }, async (a) => {
   check('clé absente : message clair, rien de lu', await a.notif(m, /clé yokitup absente/i) && await a.attend('échec') && !a.ecritures('yokitup_liens').length);
 });
 
-scenario('Ratio', { ratio: true }, async (a, page) => {
+scenario('Ratio', { ratio: true }, async (a, page, base) => {
   check('connexion admin', await a.connexion('Cuisine', 'Alexandre RAVASIO'));
+  check('alerte sur l\'onglet Ratio, visible depuis tout le Hub', await a.attendClic('Ratio — 1 plat hors budget') && await a.voit('Fiche Technique'));
   await a.onglet('Ratio');
   check('résumé des alertes : hors budget, sans prix, à vérifier', await a.attend('1 plat hors budget') && await a.voit('1 plat de la carte sans prix')
     && await a.voit('1 plat impossible à vérifier') && await a.existe('CASSOLETTE DE SAINT-JACQUES · Menu soir 5 temps · Temps 3'));
@@ -853,6 +854,11 @@ scenario('Ratio', { ratio: true }, async (a, page) => {
   check('impression : la feuille seule, sans boutons ni résumé', imp.n === 1 && imp.texte.includes('menu soir 5 temps') && imp.texte.includes('19,00 €') && !imp.texte.includes('relire yokitup') && !imp.texte.includes('plat hors budget'), imp.texte.slice(0, 300));
   const a4 = await a.feuilleA4();
   check('feuille Ratio : 1 page A4, 4 cm en haut', a4.pages === 1 && a4.margeHaute === '40mm', JSON.stringify(a4));
+  await a.onglet('Fiche Technique');
+  check('alerte de l\'onglet mise à jour en le quittant (carte sous le coefficient, menu revenu au budget)', await a.attendClic('Ratio — 1 plat hors budget'));
+  base.db.ratio_carte = [];
+  await a.onglet('Ratio'); await a.onglet('Menus');
+  check('plus rien hors budget : plus d\'alerte', await a.attendClic('Menus') && !(await a.existe('plat hors budget')) && await a.existe('Ratio'));
 });
 
 scenario('Ratio — réservé à l\'admin', { ratio: true }, async (a, page, base) => {
@@ -860,7 +866,7 @@ scenario('Ratio — réservé à l\'admin', { ratio: true }, async (a, page, bas
   check('cuisine : pas d\'onglet Ratio', !(await a.existe('Ratio')));
   await a.deconnexion();
   check('connexion salle', await a.connexion('Salle', 'Paul BERNARD'));
-  check('salle : pas d\'onglet Ratio', !(await a.existe('Ratio')));
+  check('salle : pas d\'onglet Ratio ni d\'alerte', !(await a.existe('Ratio')) && !(await a.existe('plat hors budget')));
   check('ni prix ni coûts demandés à la base par la cuisine ou la salle', !base.etat.ratioLuParAutre);
 });
 

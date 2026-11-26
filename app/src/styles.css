@@ -123,6 +123,9 @@ nav.tabs::-webkit-scrollbar{display:none}
 .tb:hover{color:var(--ink)}
 .tb.active{background:var(--seg-on);color:var(--ink);font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.08),0 0 0 .5px rgba(0,0,0,.04)}
 .tb .tb-ic,.tb .l-short,.tbadge{display:none}
+/* alerte visible partout : plats hors budget (onglet Ratio, admin) */
+.tb{position:relative}
+.tb-alerte{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--danger-solid);color:#fff;font-size:11px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
 
 main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
 .tc{display:none}
@@ -455,6 +458,7 @@ main{flex:1;width:100%;max-width:880px;margin:0 auto;padding:30px 24px 80px}
   .tb .tb-ic{display:inline-flex}
   .tb .l-full{display:none}
   .tb .l-short{display:inline}
+  .tb-alerte{position:absolute;top:3px;left:calc(50% + 6px);min-width:16px;height:16px;font-size:10px;box-shadow:0 0 0 2px var(--glass)}
   .tb.active{background:var(--accent-soft);box-shadow:none;color:var(--accent-text)}
   main{padding-bottom:130px}
   .toast{bottom:calc(96px + env(safe-area-inset-bottom,0px))}

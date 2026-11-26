@@ -248,6 +248,12 @@ export function resume(menus: readonly MenuVerifie[], carte: readonly LigneCarte
   return r;
 }
 
+/** Plats hors budget (menus et carte), pour la pastille rouge de l'onglet Ratio visible partout dans le Hub. */
+export function nbHorsBudget(budgets: readonly BudgetMenu[], menus: readonly Menu[], frs: readonly FicheRecette[], recettes: readonly RecetteRatio[],
+  liens: ReadonlyMap<string, string>, prix: ReadonlyMap<string, number>, r: Regles): number {
+  return resume(budgets.map(b => verifierMenu(b, menus, frs, recettes, liens, r)), verifierCarte(recettes, prix, liens, frs, r)).horsBudget.length;
+}
+
 // ── Affichage ──
 const fmt = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 /** 15.1 → « 15,10 € » */

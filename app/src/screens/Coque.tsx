@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import type { FicheRecette, Menu } from '../domain/types';
 import { useSession, useMoi } from '../etat/Session';
 import { useDonnees } from '../etat/Donnees';
 import { groupesFiltres } from '../domain/groupes';
@@ -14,6 +15,9 @@ import { Groupes } from './groupes/Groupes';
 import { Config } from './config/Config';
 import { PertesPerso } from './pertesPerso/PertesPerso';
 import { Ratio } from './ratio/Ratio';
+import { chargerRatio } from '../db/ratio';
+import { nbHorsBudget } from '../domain/ratio';
+import { pluriel } from '../domain/texte';
 
 type Onglet = 'journal' | 'fiches' | 'recettes' | 'menus' | 'groupes' | 'pertes' | 'ratio' | 'config';
 
@@ -27,20 +31,21 @@ function basculerTheme() {
 export function Coque() {
   const { moi, admin, role } = useMoi();
   const { deconnecter } = useSession();
-  const { fiches, fichesRecette, groupes, synchro } = useDonnees();
+  const { fiches, fichesRecette, groupes, menus, synchro } = useDonnees();
   const notifier = useNotifier();
   const [onglet, setOnglet] = useState<Onglet>('fiches');
   const [menuOuvert, setMenuOuvert] = useState(false);
   const [mdp, setMdp] = useState(false);
+  const horsBudget = useHorsBudget(admin, onglet, menus, fichesRecette);
 
-  const onglets: { id: Onglet; icone: NomIcone; long: string; court: string; badge?: number; admin?: true; cuisine?: true }[] = [
+  const onglets: { id: Onglet; icone: NomIcone; long: string; court: string; badge?: number; alerte?: string; admin?: true; cuisine?: true }[] = [
     { id: 'journal', icone: 'clock', long: 'Journal', court: 'Journal', admin: true },
     { id: 'fiches', icone: 'file', long: 'Fiche Technique', court: 'Fiches', badge: fiches.length },
     { id: 'recettes', icone: 'book', long: 'Fiche Recette', court: 'Recettes', badge: fichesRecette.length },
     { id: 'menus', icone: 'utensils', long: 'Menus', court: 'Menus' },
     { id: 'groupes', icone: 'users', long: 'Groupes', court: 'Groupes', badge: groupesFiltres(groupes, 'avenir').length },
     { id: 'pertes', icone: 'clipboard', long: 'Pertes & Perso', court: 'Pertes', cuisine: true },
-    { id: 'ratio', icone: 'ratio', long: 'Ratio', court: 'Ratio', admin: true },
+    { id: 'ratio', icone: 'ratio', long: 'Ratio', court: 'Ratio', admin: true, ...(horsBudget ? { alerte: pluriel(horsBudget, 'plat hors budget', 'plats hors budget') } : {}) },
     { id: 'config', icone: 'sliders', long: 'Config', court: 'Config', admin: true },
   ];
 
@@ -61,10 +66,12 @@ export function Coque() {
       <nav className="tabs">
         {onglets.filter(o => (admin || !o.admin) && (!o.cuisine || admin || role === 'cuisine')).map(o => (
           <button key={o.id} type="button" className={`tb${onglet === o.id ? ' active' : ''}`} aria-current={onglet === o.id ? 'page' : undefined}
+            aria-label={o.alerte ? `${o.long} — ${o.alerte}` : undefined} title={o.alerte}
             onClick={e => { setOnglet(o.id); e.currentTarget.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }}>
             <Icone nom={o.icone} taille={22} className="tb-ic" />
             <span className="l-full">{o.long}</span><span className="l-short">{o.court}</span>
             {o.badge !== undefined && <span className="tbadge">{o.badge}</span>}
+            {o.alerte && <span className="tb-alerte" aria-hidden="true">{o.alerte.split(' ')[0]}</span>}
           </button>
         ))}
       </nav>
@@ -72,6 +79,21 @@ export function Coque() {
       {mdp && <MotDePasse impose={false} onAnnuler={() => { setMdp(false); }} onFini={() => { setMdp(false); notifier('Mot de passe modifié', 'ok'); }} />}
     </div>
   );
+}
+
+/** Nombre de plats hors budget (admin) : relu à l'ouverture, quand les menus ou les fiches changent, et en quittant l'onglet Ratio. */
+function useHorsBudget(admin: boolean, onglet: Onglet, menus: Menu[], frs: FicheRecette[]): number {
+  const [d, setD] = useState<Awaited<ReturnType<typeof chargerRatio>> | null>(null);
+  const surRatio = onglet === 'ratio';
+  // Lecture des prix et coûts (système externe), admin seulement : les données arrivent de façon asynchrone.
+  useEffect(() => {
+    if (!admin || surRatio) return;
+    let actif = true;
+    chargerRatio().then(x => { if (actif) setD(x); }, () => { /* tables absentes : pas d'alerte */ });
+    return () => { actif = false; };
+  }, [admin, surRatio]);
+  if (!admin || !d) return 0;
+  return nbHorsBudget(d.budgets, menus, frs, d.recettes, d.liens, d.prixCarte, d.regles);
 }
 
 function MenuProfil({ prenom, ouvert, setOuvert, onMotDePasse, onQuitter }: { prenom: string; ouvert: boolean; setOuvert: (v: boolean) => void; onMotDePasse: () => void; onQuitter: () => void }) {
