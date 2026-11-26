@@ -13,8 +13,9 @@ import { Menus } from './menus/Menus';
 import { Groupes } from './groupes/Groupes';
 import { Config } from './config/Config';
 import { PertesPerso } from './pertesPerso/PertesPerso';
+import { Ratio } from './ratio/Ratio';
 
-type Onglet = 'journal' | 'fiches' | 'recettes' | 'menus' | 'groupes' | 'pertes' | 'config';
+type Onglet = 'journal' | 'fiches' | 'recettes' | 'menus' | 'groupes' | 'pertes' | 'ratio' | 'config';
 
 function basculerTheme() {
   const sombre = document.documentElement.dataset.theme !== 'dark';
@@ -39,11 +40,12 @@ export function Coque() {
     { id: 'menus', icone: 'utensils', long: 'Menus', court: 'Menus' },
     { id: 'groupes', icone: 'users', long: 'Groupes', court: 'Groupes', badge: groupesFiltres(groupes, 'avenir').length },
     { id: 'pertes', icone: 'clipboard', long: 'Pertes & Perso', court: 'Pertes', cuisine: true },
+    { id: 'ratio', icone: 'ratio', long: 'Ratio', court: 'Ratio', admin: true },
     { id: 'config', icone: 'sliders', long: 'Config', court: 'Config', admin: true },
   ];
 
   const contenu: Record<Onglet, ReactNode> = {
-    journal: <Journal />, fiches: <FichesTechniques />, recettes: <FichesRecette />, menus: <Menus />, groupes: <Groupes />, pertes: <PertesPerso />, config: <Config />,
+    journal: <Journal />, fiches: <FichesTechniques />, recettes: <FichesRecette />, menus: <Menus />, groupes: <Groupes />, pertes: <PertesPerso />, ratio: <Ratio />, config: <Config />,
   };
 
   return (

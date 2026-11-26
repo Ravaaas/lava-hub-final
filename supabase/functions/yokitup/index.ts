@@ -1,8 +1,10 @@
-// Edge Function "yokitup" — LIT les recettes Yokitup et en range une copie dans la table yokitup_recettes.
+// Edge Function "yokitup" — LIT les recettes Yokitup et en range une copie dans la table yokitup_recettes,
+// avec leur coût matière dans yokitup_couts (onglet Ratio, admin seulement : voir couts.ts pour le calcul).
 // Sens unique, lecture seule : cette fonction n'envoie que des requêtes GET à Yokitup (voir `lire`), elle ne crée,
 // ne modifie et ne supprime jamais rien chez Yokitup. Elle ne touche pas non plus aux fiches recette du Hub :
 // l'admin compare puis reprend les grammages lui-même (Config > Yokitup).
 //
+// Fichiers à déployer ensemble : index.ts et couts.ts.
 // À déployer une seule fois : Supabase > Edge Functions > Deploy a new function > "Via Editor", nom : yokitup.
 // Laisser "Verify JWT" activé. SUPABASE_URL et SUPABASE_SERVICE_ROLE_KEY sont fournis automatiquement.
 // Secret à créer par le propriétaire (Supabase > Edge Functions > Secrets) :
@@ -14,6 +16,7 @@
 //   lecture de la nuit (pg_cron)                              { auto: true } + en-tête x-cron-token (jeton de la table perso_cron)
 // Réponse (toujours HTTP 200) : { ok: true, recettes } ou { ok: false, message }.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { calculateurCouts, coutsDesStocks, lignesParRecette, lireLigneRecette, lireProduit, lireUnite, prixDesFournisseurs } from "./couts.ts";
 
 const OWNER = "alexandre.ravasio@outlook.com";
 const API = "https://api.yokitup.com";
@@ -101,7 +104,8 @@ async function synchroniser(cle: string) {
       `liens lus : ${liensTags.length}, produits lus : ${produits.size}) : copie inchangée`);
   }
   const ingredients = await lireParIds(cle, "/recipe_ingredients", "recipe_product_ids", recettes.map(r => s(r.id)));
-  const unites = new Map((await lire(cle, "/measurement_units")).map(u => [s(u.id), s(u.name)]));
+  const lignesUnites = await lire(cle, "/measurement_units");
+  const unites = new Map(lignesUnites.map(u => [s(u.id), s(u.name)]));
   const idsIngr = new Set(ingredients.map(i => s(i.ingredient_product_id)));
   const allergenes = new Map((await lire(cle, "/allergens")).map(a => [s(a.id), s(a.name)]));
   const presences = (await lire(cle, "/product_allergens")).filter(x => idsIngr.has(s(x.product_id)));
@@ -127,11 +131,45 @@ async function synchroniser(cle: string) {
     const { error } = await admin.from("yokitup_recettes").upsert(lignes);
     if (error) throw new Error("Enregistrement impossible : " + error.message);
   }
+  // Coûts matière (onglet Ratio) : une erreur ici n'empêche pas la copie des recettes d'être à jour.
+  let couts = 0, messageCouts = "";
+  try {
+    couts = await enregistrerCouts(cle, lignes.map(l => l.id), produits, ingredients, lignesUnites, lu);
+  } catch (e) {
+    messageCouts = "coûts non lus : " + (e instanceof Error ? e.message : String(e));
+  }
   const garder = lignes.map(l => l.id);
   const { data: anciennes } = await admin.from("yokitup_recettes").select("id");
   const aEffacer = (anciennes || []).map(a => a.id as string).filter(id => !garder.includes(id));
   if (aEffacer.length) await admin.from("yokitup_recettes").delete().in("id", aEffacer);
-  return { recettes: lignes.length, plats: new Set(lignes.map(l => l.plat)).size, effacees: aEffacer.length };
+  return { recettes: lignes.length, plats: new Set(lignes.map(l => l.plat)).size, effacees: aEffacer.length, couts, messageCouts };
+}
+
+/** Coût de chaque recette lue, recalculé comme Yokitup (sous-recettes comprises), rangé dans yokitup_couts. Renvoie le nombre de recettes chiffrées. */
+async function enregistrerCouts(cle: string, ids: string[], produits: Map<string, Ligne>, ingredients: Ligne[], lignesUnites: Ligne[], lu: string): Promise<number> {
+  // Lignes de toutes les recettes (sous-recettes comprises) : la liste complète d'abord, sinon recette par recette.
+  let toutes = (await lire(cle, "/recipe_ingredients")).map(lireLigneRecette);
+  if (!toutes.length) toutes = ingredients.map(lireLigneRecette);
+  const connues = new Set(toutes.map(l => l.recette));
+  // sous-recettes dont les lignes manquent encore (liste complète tronquée ou refusée) : lues une par une
+  for (let tour = 0; tour < 10; tour++) {
+    const aLire = [...new Set(toutes.map(l => l.ingredient))].filter(id => s(produits.get(id)?.type) === "recipe" && !connues.has(id));
+    if (!aLire.length) break;
+    const lues = (await lireParIds(cle, "/recipe_ingredients", "recipe_product_ids", aLire)).map(lireLigneRecette);
+    aLire.forEach(id => connues.add(id));
+    toutes = toutes.concat(lues);
+  }
+  const calcul = calculateurCouts({
+    produits: new Map([...produits].map(([id, p]) => [id, lireProduit(p)])),
+    unites: new Map(lignesUnites.map(u => [s(u.id), lireUnite(u)])),
+    lignes: lignesParRecette(toutes),
+    coutStock: coutsDesStocks(await lire(cle, "/product_stocks")),
+    prixFournisseur: prixDesFournisseurs(await lire(cle, "/supplier_products")),
+  });
+  const lignes = ids.map(id => ({ recette_id: id, ...calcul(id), lu_le: lu }));
+  const { error } = await admin.from("yokitup_couts").upsert(lignes);
+  if (error) throw new Error(error.message);
+  return lignes.filter(l => l.cout !== null).length;
 }
 
 Deno.serve(async (req) => {
@@ -153,10 +191,11 @@ Deno.serve(async (req) => {
     if (!cle) return reply({ ok: false, message: "Clé Yokitup absente : à coller dans Supabase > Edge Functions > Secrets (YOKITUP_API_KEY)" });
 
     const r = await synchroniser(cle);
-    await admin.from("yokitup_synchros").insert({ par, recettes: r.recettes, ok: true, message: `${r.plats} plats` });
+    const message = `${r.plats} plats · ${r.messageCouts || `${r.couts} coûts`}`;
+    await admin.from("yokitup_synchros").insert({ par, recettes: r.recettes, ok: true, message });
     await admin.from("audit_log").insert({ ts: Date.now(), action: "lecture Yokitup", fiche_nom: "Yokitup", profil: par,
-      detail: [`${r.recettes} recettes lues (${r.plats} plats)`, ...(r.effacees ? [`${r.effacees} recette(s) retirée(s) de Yokitup`] : [])] });
-    return reply({ ok: true, recettes: r.recettes, plats: r.plats });
+      detail: [`${r.recettes} recettes lues (${r.plats} plats)`, r.messageCouts || `${r.couts} coûts calculés`, ...(r.effacees ? [`${r.effacees} recette(s) retirée(s) de Yokitup`] : [])] });
+    return reply({ ok: true, recettes: r.recettes, plats: r.plats, couts: r.couts, ...(r.messageCouts ? { avertissement: r.messageCouts } : {}) });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     await admin.from("yokitup_synchros").insert({ par, recettes: 0, ok: false, message }).then(() => {}, () => {});

@@ -24,7 +24,7 @@ React 19 + TypeScript strict + Vite dans `app/`, données dans Supabase. Chaque 
 - Installable comme app (`app/public/manifest.webmanifest`) ; app iPhone de test dans `ios/` (voir `ios/LISEZMOI.md`).
 
 ## Base Supabase (projet `qmvxmxzsmpigvseuidcd`) — détail dans `docs/BASE.md`
-- Tables : `fiches`, `fiches_recette`, `lava_config` (catégories, menus sans prix), `groupes` + `groupes_contacts`, `membres`, `yokitup_*`, `allergenes_imprimes`/`_alertes`, `audit_log`, `sauvegardes`, `perso_*` + `pertes`.
+- Tables : `fiches`, `fiches_recette`, `lava_config` (catégories, menus sans prix ; les prix et coûts vivent seulement dans l'onglet Ratio, tables `ratio_*` et `yokitup_couts` réservées à l'admin), `groupes` + `groupes_contacts`, `membres`, `yokitup_*`, `allergenes_imprimes`/`_alertes`, `audit_log`, `sauvegardes`, `perso_*` + `pertes`.
 - Pièges : `fiches.allergenes` est du jsonb **chaîne OU tableau** ; `fiches_recette.allergenes` est **calculé par la base** (déclencheurs, jamais en baisse si un lien est cassé) : ne pas le recoder côté app.
 - La base est la source de vérité ; `supabase/sql/*.sql` sont **déjà appliqués** et rejouables.
 

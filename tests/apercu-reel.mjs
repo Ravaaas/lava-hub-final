@@ -11,7 +11,7 @@ const ecritureAutorisee = new URLSearchParams(location.search).has('ecriture');
 const CLE = 'lava-apercu-tests';
 const JSON_HDR = { 'content-type': 'application/json' };
 const reponse = (status, corps) => Promise.resolve(new Response(JSON.stringify(corps), { status, headers: JSON_HDR }));
-const cleDe = table => (table === 'membres' ? 'email' : 'id');
+const cleDe = table => (table === 'membres' ? 'email' : table === 'ratio_carte' ? 'plat' : table === 'yokitup_couts' ? 'recette_id' : 'id');
 
 // tests[table][clé] = { ligne, nouveau } ; ligne null = supprimée. nouveau = absente de la vraie base.
 let tests = {};

@@ -2,6 +2,7 @@
 // Reproduit ce dont l'app dépend : connexion par compte, profils de connexion, fonction « equipe »,
 // lecture/écriture des tables avec les mêmes droits que la RLS de la vraie base
 // (écriture = admin ; copie Yokitup = fonction seulement ; groupes = admin ou salle ; coordonnées des référents = admin ou salle, lecture comprise ; journal = tout membre connecté ;
+//  Ratio (prix et coûts) = admin seulement, lecture comprise ; coûts Yokitup = fonction seulement ;
 //  Pertes & Perso = cuisine + admin, journée validée verrouillée, chacun ses commentaires et ses pertes ; fiche allergènes imprimée = tout membre).
 // Déclencheur reproduit : allergènes d'une fiche technique modifiés → fiches recette qui l'utilisent recalculées (supabase/sql/automatisation.sql).
 export const HOST = 'qmvxmxzsmpigvseuidcd.supabase.co';
@@ -57,6 +58,11 @@ function donneesDeDepart() {
     yokitup_recettes: [],
     yokitup_liens: [],
     yokitup_synchros: [],
+    // Ratio (admin seulement) : coûts calculés par la fonction « yokitup », règles, budgets et prix de la carte (vides : valeurs de départ)
+    yokitup_couts: [],
+    ratio_regles: [],
+    ratio_menus: [],
+    ratio_carte: [],
     // dernière fiche allergènes imprimée de chaque menu (voir FICHE_IMPRIMEE)
     allergenes_imprimes: [],
   };
@@ -73,6 +79,20 @@ const RECETTES_YOKITUP = [
     ingredients: [ing('p4', 'GANACHE CHOCOLAT', '30')] },
 ];
 
+// Coûts que la fonction « yokitup » simulée calcule (€ HT par portion) : la cassolette Menu (3,90 €) dépasse le Temps 3 du 5 temps (3,80 € après perte).
+const COUTS_YOKITUP = [
+  { recette_id: 'yk1', cout: 4.2, manquants: [] },
+  { recette_id: 'yk2', cout: 3.9, manquants: [] },
+  { recette_id: 'yk3', cout: 1.1, manquants: ['ZESTE DE CITRON'] },
+];
+// Menus pour l'onglet Ratio : la cassolette au Temps 3 du 5 temps et au Temps 2 du 3 temps, la tarte en dessert du Lunch, un plat libre au Lunch.
+const MENUS_RATIO = { id: 'menus', data: { items: [
+  { id: 'm1', nom: 'Carte du soir', services: [{ nom: 'Partages', plats: [] }, { nom: 'Plat', plats: [{ frId: 'r1' }] }, { nom: 'Dessert', plats: [{ frId: 'r2' }] }] },
+  { id: 'm2', nom: '3 temps', services: [{ nom: 'Temps 1', plats: [] }, { nom: 'Temps 2', plats: [{ frId: 'r1' }] }, { nom: 'Temps 3', plats: [] }] },
+  { id: 'm3', nom: '5 temps', services: [{ nom: 'Temps 1', plats: [] }, { nom: 'Temps 2', plats: [] }, { nom: 'Temps 3', plats: [{ frId: 'r1' }] }, { nom: 'Temps 4', plats: [] }, { nom: 'Temps 5', plats: [] }] },
+  { id: 'm4', nom: 'Lunch', services: [{ nom: 'Entrée', plats: [] }, { nom: 'Plat', plats: [{ text: 'Plat du jour' }] }, { nom: 'Dessert', plats: [{ frId: 'r2' }] }] },
+] } };
+
 // Menus enregistrés par une ancienne version : « 3 temps » avec des noms de temps périmés.
 const ANCIENS_MENUS = { id: 'menus', data: { items: [
   { id: 'm1', nom: 'Carte du soir', services: [{ nom: 'Plat', plats: [{ frId: 'r1' }] }, { nom: 'Dessert', plats: [{ frId: 'r2' }] }] },
@@ -87,7 +107,8 @@ const FICHE_IMPRIMEE = { menu_id: 'carte', menu_nom: 'La carte', imprime_le: '20
 ] };
 
 // Clé de chaque table (insertion = remplacement si la clé existe déjà, comme un upsert PostgREST).
-const CLES = { allergenes_imprimes: ['menu_id'], yokitup_liens: ['plat'], groupes_contacts: ['groupe_id'], membres: ['email'], perso_produits: ['cle'], perso_saisies: ['date', 'produit_cle'], perso_commentaires: ['date', 'email'], perso_validations: ['date'], perso_recaps: ['semaine'] };
+const CLES = { yokitup_couts: ['recette_id'], ratio_carte: ['plat'], allergenes_imprimes: ['menu_id'], yokitup_liens: ['plat'], groupes_contacts: ['groupe_id'], membres: ['email'], perso_produits: ['cle'], perso_saisies: ['date', 'produit_cle'], perso_commentaires: ['date', 'email'], perso_validations: ['date'], perso_recaps: ['semaine'] };
+const RATIO = ['yokitup_couts', 'ratio_regles', 'ratio_menus', 'ratio_carte'];
 const PERSO = ['perso_produits', 'perso_saisies', 'perso_commentaires', 'perso_validations', 'pertes', 'perso_recaps'];
 
 const b64 = o => btoa(JSON.stringify(o)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
@@ -96,6 +117,13 @@ export function creerBase(options = {}) {
   const db = donneesDeDepart();
   if (options.anciensMenus) db.lava_config.push(JSON.parse(JSON.stringify(ANCIENS_MENUS)));
   if (options.ficheImprimee) db.allergenes_imprimes.push(JSON.parse(JSON.stringify(FICHE_IMPRIMEE)));
+  if (options.ratio) {   // Yokitup déjà lu, plats reliés, menus composés
+    db.lava_config.push(JSON.parse(JSON.stringify(MENUS_RATIO)));
+    db.yokitup_recettes = JSON.parse(JSON.stringify(RECETTES_YOKITUP));
+    db.yokitup_couts = JSON.parse(JSON.stringify(COUTS_YOKITUP));
+    db.yokitup_liens = [{ plat: 'CASSOLETTE ST JACQUES', fiche_recette_id: 'r1' }, { plat: 'TARTE CITRON', fiche_recette_id: 'r2' }];
+    db.yokitup_synchros = [{ id: 1, le: new Date().toISOString(), par: 'Lecture de la nuit', recettes: 3, ok: true, message: '2 plats · 3 coûts' }];
+  }
   const mdp = {};   // mots de passe créés à la première connexion
   const etat = { session: null, ecritures: [], inconnus: [], refuserTout: !!options.refuserEcritures };
   const yokitup = { recettes: RECETTES_YOKITUP };   // remplaçable (aperçu démo : tests/yokitup-reel.json)
@@ -109,7 +137,7 @@ export function creerBase(options = {}) {
     const r = role();
     if (!r) return false;
     if (table === 'audit_log') return true;
-    if (table === 'yokitup_recettes' || table === 'yokitup_synchros') return false;   // remplies par la fonction « yokitup » seulement
+    if (table === 'yokitup_recettes' || table === 'yokitup_synchros' || table === 'yokitup_couts') return false;   // remplies par la fonction « yokitup » seulement
     if (table === 'groupes' || table === 'groupes_contacts') return r === 'admin' || r === 'salle';
     if (table === 'allergenes_imprimes') return true;   // la personne qui imprime solde l'alerte
     if (table === 'perso_saisies') return r === 'admin' || (r === 'cuisine' && !valide(ligne.date));
@@ -200,6 +228,7 @@ export function creerBase(options = {}) {
         return repondre(req, 200, { ok: false, message: 'Clé Yokitup absente : à coller dans Supabase > Edge Functions > Secrets (YOKITUP_API_KEY)' });
       }
       db.yokitup_recettes = JSON.parse(JSON.stringify(yokitup.recettes));
+      db.yokitup_couts = JSON.parse(JSON.stringify(COUTS_YOKITUP.filter(c => yokitup.recettes.some(r => r.id === c.recette_id))));
       const plats = new Set(yokitup.recettes.map(r => r.plat)).size;
       db.yokitup_synchros.unshift({ id: db.yokitup_synchros.length + 1, le: new Date().toISOString(), par: 'Alexandre', recettes: yokitup.recettes.length, ok: true, message: `${plats} plats` });
       return repondre(req, 200, { ok: true, recettes: yokitup.recettes.length, plats });
@@ -223,6 +252,7 @@ export function creerBase(options = {}) {
         if (t === 'perso_recaps' && role() !== 'admin') return repondre(req, 200, []);
         if (t === 'groupes_contacts' && role() === 'cuisine') return repondre(req, 200, []);   // coordonnées : admin et salle
         if (t === 'yokitup_synchros' && role() !== 'admin') return repondre(req, 200, []);   // historique Yokitup : admin
+        if (RATIO.includes(t) && role() !== 'admin') { etat.ratioLuParAutre = true; return repondre(req, 200, []); }   // prix et coûts : admin
         const rows = filtre(db[t].slice());
         if (/vnd\.pgrst\.object/.test(req.headers()['accept'] || '')) return rows.length ? repondre(req, 200, rows[0]) : repondre(req, 406, { code: 'PGRST116', message: 'no rows' });
         return repondre(req, 200, rows);
